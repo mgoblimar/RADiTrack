@@ -1,0 +1,65 @@
+@startuml raditrack_system_architecture
+!theme plain
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+
+title RADiTrack — System Architecture & Component Diagram (Zero-PII)
+
+package "Hospital RIS & Clinical Ingestion" as IngestionBoundary {
+    [Radiology Information System (RIS)] as ExtRIS
+    [Manual Exam Entry / Webhook Listener] as IngestionHook
+}
+
+package "Next.js Application Layer (Localhost:3000 / Intranet)" as AppLayer {
+    
+    package "Frontend Presentation Layer (React 19 / Tailwind)" as UI {
+        [Staff Operations Dashboard\n(/)] as StaffDashboard
+        [Public Masked Kiosk View\n(/kiosk)] as PublicKiosk
+        [SLA Configuration & Audit Panel\n(/admin/sla)] as AdminPanel
+    }
+
+    package "Server & Analytics Engine (TypeScript)" as Backend {
+        [Next.js Server Actions\n(actions.ts)] as ServerActions
+        [Turnaround Time (TAT) & SLA Engine\n(radiologyService.ts)] as TatEngine
+        [7-Day Comparative & Backlog Aggregator] as Aggregator
+        [Prisma ORM Client Singleton\n(lib/prisma.ts)] as PrismaClient
+    }
+}
+
+package "Data Persistence Layer" as DataLayer {
+    database "SQLite (Local Dev: dev.db)\nOR Supabase PostgreSQL (Prod)" as Database {
+        [examinations] as TblExams
+        [radiology_reports] as TblReports
+        [modalities] as TblModalities
+        [examination_statuses] as TblStatuses
+        [sla_configurations] as TblSla
+        [radiologists] as TblStaff
+    }
+}
+
+' ==============================================================================
+' CONNECTIONS & DATA FLOW
+' ==============================================================================
+
+ExtRIS --> IngestionHook : Push Exam Completed (T1) & Signed (T2)
+IngestionHook --> ServerActions : Ingest Accession & Timestamps
+StaffDashboard <--> ServerActions : Manual Log / Mark Signed
+PublicKiosk <-- Aggregator : Sanitized Public Modality Load
+AdminPanel <--> ServerActions : Update SLA Targets (Minutes)
+
+ServerActions --> TatEngine : Trigger TAT & SLA Evaluation
+TatEngine --> Aggregator : Recalculate Avg/Median TAT & 7-Day Trend
+TatEngine --> PrismaClient : Read/Write Records
+Aggregator --> PrismaClient : Query Queue Dwell & Carry-over Scans
+
+PrismaClient --> Database : SQL CRUD & Transactions
+Database --> TblExams
+Database --> TblReports
+Database --> TblModalities
+Database --> TblStatuses
+Database --> TblSla
+Database --> TblStaff
+
+@enduml

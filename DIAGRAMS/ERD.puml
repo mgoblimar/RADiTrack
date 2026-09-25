@@ -1,0 +1,99 @@
+@startuml
+' ============================================================================
+' PlantUML Entity-Relationship Diagram: RADiTrack RIS Operations & TAT Schema
+' Zero-PII / Exam-Centric Architecture
+' ============================================================================
+
+!theme plain
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam entity {
+    BackgroundColor #F8FAFC
+    BorderColor #334155
+    FontName "Segoe UI", "Helvetica", sans-serif
+    FontSize 12
+    HeaderBackgroundColor #0EA5E9
+    HeaderFontColor #FFFFFF
+    HeaderFontSize 13
+}
+
+entity "modalities" as modalities {
+    * modality_code : VARCHAR(10) <<PK>>
+    --
+    * modality_name : VARCHAR(100)
+    department_room : VARCHAR(50)
+    * is_active : BOOLEAN = true
+    * created_at : TIMESTAMPTZ = now()
+}
+
+entity "examination_statuses" as statuses {
+    * status_code : VARCHAR(50) <<PK>>
+    --
+    * status_name : VARCHAR(100)
+    * stage_category : VARCHAR(30)
+    * sequence_order : INT = 1
+}
+
+entity "radiologists" as radiologists {
+    * radiologist_id : UUID <<PK>>
+    --
+    * full_name : VARCHAR(150)
+    subspecialty : VARCHAR(100)
+    license_number : VARCHAR(50) <<UK>>
+    * is_active : BOOLEAN = true
+    * created_at : TIMESTAMPTZ = now()
+}
+
+entity "sla_configurations" as sla {
+    * sla_id : UUID <<PK>>
+    --
+    * modality_code : VARCHAR(10) <<FK>>
+    * triage_level : VARCHAR(10) = 'OPD'
+    * urgency_level : VARCHAR(20) = 'ROUTINE'
+    * target_tat_minutes : INT
+    --
+    <<UK(modality_code, triage_level, urgency_level)>>
+}
+
+entity "examinations" as examinations {
+    * exam_id : UUID <<PK>>
+    --
+    * examination_identifier : VARCHAR(50) <<UK>>
+    * modality_code : VARCHAR(10) <<FK>>
+    * status_code : VARCHAR(50) <<FK>>
+    * triage_level : VARCHAR(10) = 'OPD'
+    * urgency_level : VARCHAR(20) = 'ROUTINE'
+    * study_date : DATE
+    exam_completed_at : TIMESTAMPTZ
+    notes : TEXT
+    * created_at : TIMESTAMPTZ = now()
+    * updated_at : TIMESTAMPTZ = now()
+}
+
+entity "radiology_reports" as reports {
+    * report_id : UUID <<PK>>
+    --
+    * exam_id : UUID <<FK, UK>>
+    radiologist_id : UUID <<FK>>
+    report_started_at : TIMESTAMPTZ
+    report_signed_at : TIMESTAMPTZ
+    * report_status : VARCHAR(50) = 'FINALIZED'
+    tat_exam_to_sign_minutes : NUMERIC(10,2)
+    * is_sla_breached : BOOLEAN = false
+    * created_at : TIMESTAMPTZ = now()
+    * updated_at : TIMESTAMPTZ = now()
+}
+
+' ============================================================================
+' RELATIONSHIPS & CARDINALITIES
+' ============================================================================
+
+modalities ||--o{ examinations : "categorizes (1:N)"
+statuses ||--o{ examinations : "tracks_lifecycle (1:N)"
+modalities ||--o{ sla : "defines_targets (1:N)"
+examinations ||--o| reports : "produces (1:0..1)"
+radiologists ||--o{ reports : "dictates_and_signs (1:N)"
+
+@enduml

@@ -1,0 +1,105 @@
+@startuml raditrack_automated_data_flow
+!theme plain
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 250
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam roundcorner 8
+
+title RADiTrack — Automated Data Flow & Event-Driven TAT Calculation (Updated Zero-PII Model)
+
+actor "Radiologic Technologist\n(RadTech)" as RadTech
+actor "Radiologist\n(Doctor)" as Radiologist
+participant "Radiology Information\nSystem (RIS)" as RIS
+participant "RADiTrack Ingestion\n& Server Actions" as Ingestion
+participant "RADiTrack Analytics\n& TAT Engine" as Engine
+database "RADiTrack Datastore\n(Prisma SQLite / Supabase)" as DB
+participant "Public Waiting Kiosk UI\n(Zero-PII Workload)" as PublicUI
+participant "Management Dashboard UI\n(Staff & Doctors)" as StaffUI
+
+' ==============================================================================
+== 1. EXAMINATION COMPLETION EVENT (Image Acquired / Backlog Enqueued) ==
+' ==============================================================================
+
+RadTech -> RIS: Complete Examination Acquisition\n(e.g., Modality: CT, Triage: ER, Urgency: STAT)
+activate RIS
+RIS -> RIS: Set Status = "EXAM_COMPLETED"\nRecord ExamCompletionTimestamp (T1 / exam_completed_at)
+
+RIS -> Ingestion: Push Event: {\n  examination_identifier: "ACC-2026-001",\n  modality_code: "CT",\n  triage_level: "ER",\n  urgency_level: "STAT",\n  study_date: "2026-09-25",\n  exam_completed_at: "2026-09-25 08:30:00"\n}
+activate Ingestion
+
+Ingestion -> Engine: Process Completed Exam
+activate Engine
+
+Engine -> DB: 1. INSERT INTO examinations (examination_identifier, modality_code, status_code: 'EXAM_COMPLETED', exam_completed_at: T1)\n2. Enqueue to Active Reading Queue (Start Live Dwell Timer from T1)
+activate DB
+DB --> Engine: Examination Record Persisted
+deactivate DB
+
+Engine -> PublicUI: Broadcast Live Modality Census Count\n(e.g., CT: +1 Active Scan, Masked / Zero-PII)
+PublicUI --> PublicUI: Re-render Modality Queue Counts
+
+Engine -> StaffUI: Push Live Interpretation Worklist Update\n(New ER STAT CT sitting at 0.0 mins dwell)
+StaffUI --> StaffUI: Render Exam in Unread Table with Yellow Active Timer
+
+deactivate Engine
+deactivate Ingestion
+deactivate RIS
+
+' ==============================================================================
+== 2. REPORT SIGN-OFF EVENT & AUTOMATED TAT CALCULATION ==
+' ==============================================================================
+
+Radiologist -> RIS: Interpret Images & Electronically Sign Report
+activate RIS
+RIS -> RIS: Set Status = "COMPLETED_SIGNED_OFF"\nRecord ReportSignedTimestamp (T2 / report_signed_at)
+
+RIS -> Ingestion: Push Event: {\n  examination_identifier: "ACC-2026-001",\n  status_code: "COMPLETED_SIGNED_OFF",\n  report_signed_at: "2026-09-25 09:15:00"\n}
+activate Ingestion
+
+Ingestion -> Engine: Process Final Sign-off & Calculate TAT
+activate Engine
+
+note over Engine
+  **Automated Turnaround Time (TAT) Calculation:**
+  T1 = exam_completed_at = 2026-09-25 08:30:00
+  T2 = report_signed_at  = 2026-09-25 09:15:00
+  tat_exam_to_sign_minutes = (T2 - T1) = **45.00 Minutes**
+
+  **SLA Compliance Rule Match:**
+  Query sla_configurations WHERE modality='CT' AND triage='ER' AND urgency='STAT'
+  Target TAT = 60 Minutes
+  Actual TAT (45m) <= Target (60m) ==> **is_sla_breached = FALSE (ON-TIME)**
+end note
+
+Engine -> DB: BEGIN TRANSACTION:\n1. INSERT INTO radiology_reports (exam_id, report_signed_at: T2, tat_exam_to_sign_minutes: 45.0, is_sla_breached: false)\n2. UPDATE examinations SET status_code = 'COMPLETED_SIGNED_OFF'\n3. Recalculate Modality Avg TAT, Median TAT & 7-Day Rolling Comparison\nCOMMIT;
+activate DB
+DB --> Engine: Report Finalized & Analytics Updated
+deactivate DB
+
+Engine -> StaffUI: Push Updated Metrics & Worklist Dequeue
+activate StaffUI
+StaffUI -> StaffUI: Refresh UI Widgets:\n- Remove ACC-2026-001 from Active Reading Queue\n- Update Today's Average TAT & Median TAT\n- Update % Meeting SLA Target (On-Time)\n- Update 7-Day Comparative Trendline (+% vs prev 7 days)
+deactivate StaffUI
+
+deactivate Engine
+deactivate Ingestion
+deactivate RIS
+
+' ==============================================================================
+== 3. REAL-TIME SITTING LATENCY & PRIOR-DAY CARRY-OVER AUDIT ==
+' ==============================================================================
+
+Engine -> DB: Query Unread Exams: (NOW() - exam_completed_at)\nFilter: exam_completed_at < CURRENT_DATE (Carry-Over Backlog)
+activate Engine
+activate DB
+DB --> Engine: Return Aging Pending Exams
+deactivate DB
+
+Engine -> Engine: Classify Queue Severity & Flags:\n• Normal: < 75% of Target SLA\n• Warning: > 75% of Target SLA\n• SLA Breached: > Target SLA Minutes\n• Carry-Over Flag: Study Date from previous calendar days
+
+Engine -> StaffUI: Update Live Sitting Timers & Purple Carry-Over Badges
+deactivate Engine
+
+@enduml
