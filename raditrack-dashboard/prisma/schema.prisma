@@ -11,3 +11,106 @@ generator client {
 datasource db {
   provider = "sqlite"
 }
+
+model Modality {
+  modalityCode   String  @id @map("modality_code")
+  modalityName   String  @map("modality_name")
+  departmentRoom String? @map("department_room")
+  isActive       Boolean @default(true) @map("is_active")
+
+  examinations Examination[]
+  slaConfigs   SlaConfiguration[]
+
+  @@map("modalities")
+}
+
+model ExaminationStatus {
+  statusCode    String @id @map("status_code")
+  statusName    String @map("status_name")
+  stageCategory String @map("stage_category")
+  sequenceOrder Int    @default(1) @map("sequence_order")
+
+  examinations Examination[]
+
+  @@map("examination_statuses")
+}
+
+model Radiologist {
+  radiologistId String  @id @default(uuid()) @map("radiologist_id")
+  fullName      String  @map("full_name")
+  subspecialty  String? @map("subspecialty")
+  licenseNumber String? @unique @map("license_number")
+  isActive      Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  reports RadiologyReport[]
+
+  @@map("radiologists")
+}
+
+model SlaConfiguration {
+  slaId            String   @id @default(uuid()) @map("sla_id")
+  modalityCode     String   @map("modality_code")
+  triageLevel      String   @default("OPD") @map("triage_level")
+  urgencyLevel     String   @default("ROUTINE") @map("urgency_level")
+  targetTatMinutes Int      @map("target_tat_minutes")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  modality Modality @relation(fields: [modalityCode], references: [modalityCode], onDelete: Cascade)
+
+  @@unique([modalityCode, triageLevel, urgencyLevel])
+  @@map("sla_configurations")
+}
+
+model Examination {
+  examId                String @id @default(uuid()) @map("exam_id")
+  examinationIdentifier String @unique @map("examination_identifier")
+
+  modalityCode String @map("modality_code")
+  statusCode   String @map("status_code")
+  triageLevel  String @default("OPD") @map("triage_level")
+  urgencyLevel String @default("ROUTINE") @map("urgency_level")
+
+  studyDate       DateTime  @map("study_date")
+  examCompletedAt DateTime? @map("exam_completed_at")
+  notes           String?   @map("notes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  modality Modality          @relation(fields: [modalityCode], references: [modalityCode], onDelete: Restrict)
+  status   ExaminationStatus @relation(fields: [statusCode], references: [statusCode], onDelete: Restrict)
+
+  report RadiologyReport?
+
+  @@index([examinationIdentifier])
+  @@index([studyDate])
+  @@index([modalityCode, triageLevel, urgencyLevel])
+  @@index([statusCode])
+  @@index([examCompletedAt])
+  @@map("examinations")
+}
+
+model RadiologyReport {
+  reportId      String  @id @default(uuid()) @map("report_id")
+  examId        String  @unique @map("exam_id")
+  radiologistId String? @map("radiologist_id")
+
+  reportStartedAt DateTime? @map("report_started_at")
+  reportSignedAt  DateTime? @map("report_signed_at")
+  reportStatus    String    @default("FINALIZED") @map("report_status")
+
+  tatExamToSignMinutes Float?  @map("tat_exam_to_sign_minutes")
+  isSlaBreached        Boolean @default(false) @map("is_sla_breached")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  examination Examination  @relation(fields: [examId], references: [examId], onDelete: Cascade)
+  radiologist Radiologist? @relation(fields: [radiologistId], references: [radiologistId], onDelete: SetNull)
+
+  @@index([reportSignedAt])
+  @@index([tatExamToSignMinutes, isSlaBreached])
+  @@map("radiology_reports")
+}

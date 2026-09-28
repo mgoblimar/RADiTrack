@@ -29,7 +29,7 @@ package "Next.js Application Layer (Localhost:3000 / Intranet)" as AppLayer {
 }
 
 package "Data Persistence Layer" as DataLayer {
-    database "SQLite (Local Dev: dev.db)\nOR Supabase PostgreSQL (Prod)" as Database {
+    database "SQLite (Local Dev: radiology.db)\nOR Supabase PostgreSQL (Prod)" as Database {
         [examinations] as TblExams
         [radiology_reports] as TblReports
         [modalities] as TblModalities
