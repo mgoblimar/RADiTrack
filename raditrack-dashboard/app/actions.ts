@@ -36,7 +36,7 @@ export async function createExaminationAction(formData: FormData) {
   });
 
   revalidatePath("/");
-  return { success: true };
+
 }
 
 // 2. ACTION: Sign Off Report (TAT & SLA Engine)
@@ -91,7 +91,6 @@ export async function signOffReportAction(formData: FormData) {
   ]);
 
   revalidatePath("/");
-  return { success: true };
 }
 
 // 3. QUERY: Dashboard Aggregations
@@ -148,7 +147,7 @@ export async function getDashboardData() {
     avgTatMinutes: avgTat,
     medianTatMinutes: medianTat,
     pctOnTime,
-    PendingReadingQueue: pendingReadingExams.map((e) => {
+    pendingReadingQueue: pendingReadingExams.map((e) => {
       const dwellMinutes = Number(
         (
           (now.getTime() - new Date(e.examCompletedAt!).getTime()) /
@@ -167,7 +166,7 @@ export async function getDashboardData() {
       return {
         examId: e.examId,
         identifier: e.examinationIdentifier,
-        modalityCode: e.modality,
+        modalityCode: e.modalityCode,
         triageLevel: e.triageLevel,
         urgencyLevel: e.urgencyLevel,
         dwellMinutes,
