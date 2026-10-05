@@ -1,8 +1,16 @@
-import { getDashboardData, getSevenDayStaffAnalytics, signOffReportAction } from "./actions";
+import {
+  getDashboardData,
+  getSevenDayStaffAnalytics,
+  getTwelveMonthTatTrend,
+  getModalityTatOverview,
+  signOffReportAction,
+} from "./actions";
 import { Activity, Clock, CheckCircle2, AlertTriangle, Tv } from "lucide-react";
 import Link from "next/link";
 import { TatOverviewChart } from "@/components/charts/TatOverviewChart";
 import { SevenDayTatTable } from "@/components/staff/SevenDayTatTable";
+import { TwelveMonthTrendChart } from "@/components/staff/TwelveMonthTrendChart";
+import { ExportCsvButton } from "@/components/staff/ExportCsvButton";
 import { QuickIngestionModal } from "@/components/dashboard/QuickIngestionModal";
 import {
   ModalityCode,
@@ -16,10 +24,13 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [data, sevenDayAnalytics] = await Promise.all([
-    getDashboardData(),
-    getSevenDayStaffAnalytics(),
-  ]);
+  const [data, sevenDayAnalytics, twelveMonthTrend, modalityTatOverview] =
+    await Promise.all([
+      getDashboardData(),
+      getSevenDayStaffAnalytics(),
+      getTwelveMonthTatTrend(),
+      getModalityTatOverview(),
+    ]);
 
   return (
     <main className="min-h-screen bg-slate-900 text-slate-100 p-6 md:p-10 font-sans">
@@ -36,7 +47,7 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Link
               href="/patient"
               className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium px-3.5 py-2 rounded-xl text-xs transition"
@@ -44,6 +55,7 @@ export default async function DashboardPage() {
               <Tv className="h-4 w-4 text-emerald-400" />
               Patient Waiting Display (/patient)
             </Link>
+            <ExportCsvButton />
             <QuickIngestionModal />
           </div>
         </header>
@@ -103,10 +115,13 @@ export default async function DashboardPage() {
         {/* Proposal 7-Day Performance Table */}
         <SevenDayTatTable analytics={sevenDayAnalytics} />
 
-        {/* Visual Recharts Overview */}
-        <TatOverviewChart />
+        {/* Recharts Analytics Suite */}
+        <div className="space-y-6">
+          <TatOverviewChart data={modalityTatOverview} />
+          <TwelveMonthTrendChart data={twelveMonthTrend} />
+        </div>
 
-        {/* Live Reading Queue */}
+        {/* Live Interpretation Queue */}
         <section className="bg-slate-800/40 border border-slate-700/80 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">
@@ -184,7 +199,7 @@ export default async function DashboardPage() {
                         <input type="hidden" name="examId" value={item.examId} />
                         <button
                           type="submit"
-                          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-3 py-1 rounded-md text-xs transition"
+                          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-3 py-1 rounded-md text-xs transition shadow-sm"
                         >
                           Mark Signed
                         </button>

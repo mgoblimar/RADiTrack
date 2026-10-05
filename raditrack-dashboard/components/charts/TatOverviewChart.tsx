@@ -15,28 +15,34 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Filter } from "lucide-react";
+import type { ModalityTatOverviewItem } from "@/app/actions";
 
-// Sample dataset: Turnaround Time performance by Modality
-const initialData = [
-  { modality: "CT", avgTat: 42, target: 60, volume: 18 },
-  { modality: "XRAY", avgTat: 18, target: 30, volume: 45 },
-  { modality: "MRI", avgTat: 85, target: 120, volume: 12 },
-  { modality: "US", avgTat: 28, target: 45, volume: 22 },
-  { modality: "MAMMO", avgTat: 55, target: 60, volume: 8 },
-];
+interface Props {
+  data?: ModalityTatOverviewItem[];
+}
 
-export function TatOverviewChart() {
+export function TatOverviewChart({ data }: Props) {
   const [filter, setFilter] = useState<"ALL" | "EMERGENCY" | "ROUTINE">("ALL");
 
-  // Adjust display data dynamically based on the active button filter
-  const displayData = initialData.map((d) => {
-    if (filter === "EMERGENCY") {
-      return { ...d, avgTat: Math.round(d.avgTat * 0.7), target: Math.round(d.target * 0.5) };
-    }
-    if (filter === "ROUTINE") {
-      return { ...d, avgTat: Math.round(d.avgTat * 1.3), target: Math.round(d.target * 1.5) };
-    }
-    return d;
+  // Fallback defaults if data is still loading or not provided
+  const sourceData = data && data.length > 0 ? data : [];
+
+  // Compute live display data dynamically based on the active button filter
+  const displayData = sourceData.map((d) => {
+    const stats =
+      filter === "EMERGENCY"
+        ? d.emergency
+        : filter === "ROUTINE"
+        ? d.routine
+        : d.all;
+
+    return {
+      modality: d.modality,
+      name: d.name,
+      avgTat: stats.avgTat,
+      target: stats.target,
+      volume: stats.volume,
+    };
   });
 
   return (
@@ -103,16 +109,29 @@ export function TatOverviewChart() {
                   color: "#f8fafc",
                   fontSize: "12px",
                 }}
-                formatter={(value: any, name: any) => [
-                  `${value} mins`,
-                  name === "avgTat" ? "Actual Avg TAT" : "SLA Target",
-                ]}
+                formatter={(value: any, name: any, item: any) => {
+                  const vol = item?.payload?.volume ?? 0;
+                  if (vol === 0) {
+                    return ["0 mins (No finalized scans yet)", "Actual Avg TAT"];
+                  }
+                  return [
+                    `${value} mins (${vol} finalized)`,
+                    name === "avgTat" ? "Actual Avg TAT" : "SLA Target",
+                  ];
+                }}
+                labelFormatter={(label) => `Modality: ${label}`}
               />
               <Bar dataKey="avgTat" radius={[6, 6, 0, 0]}>
                 {displayData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={entry.avgTat > entry.target ? "#f87171" : "#38bdf8"}
+                    fill={
+                      entry.volume === 0
+                        ? "#475569"
+                        : entry.avgTat > entry.target
+                        ? "#f87171"
+                        : "#38bdf8"
+                    }
                   />
                 ))}
               </Bar>
@@ -129,6 +148,10 @@ export function TatOverviewChart() {
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
               SLA Breach Warning
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+              No Data Yet
             </span>
           </div>
           <span>Filter: <strong className="text-slate-200">{filter}</strong></span>

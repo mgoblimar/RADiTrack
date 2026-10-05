@@ -504,3 +504,86 @@ export async function getTwelveMonthTatTrend() {
   }
   return monthsData;
 }
+
+// ============================================================================
+// 8. QUERY: Real Modality Turnaround Time (TAT) vs SLA Target Overview
+// Calculates real-time average TAT per modality filtered by STAT vs Routine
+// ============================================================================
+export interface ModalityTatStats {
+  avgTat: number;
+  target: number;
+  volume: number;
+}
+
+export interface ModalityTatOverviewItem {
+  modality: string;
+  name: string;
+  all: ModalityTatStats;
+  emergency: ModalityTatStats;
+  routine: ModalityTatStats;
+}
+
+export async function getModalityTatOverview(): Promise<ModalityTatOverviewItem[]> {
+  const modalities = await prisma.modality.findMany({
+    include: {
+      slaConfigs: true,
+      examinations: {
+        where: {
+          report: { reportSignedAt: { not: null } },
+          statusCode: { not: "CANCELLED" },
+        },
+        include: { report: true },
+      },
+    },
+    orderBy: { modalityCode: "asc" },
+  });
+
+  return modalities.map((m) => {
+    const calcStats = (exams: typeof m.examinations, isStat: boolean | null): ModalityTatStats => {
+      const filtered = exams.filter((e) => {
+        if (isStat === true) return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
+        if (isStat === false) return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+        return true;
+      });
+
+      const tatList = filtered
+        .map((e) => e.report?.tatExamToSignMinutes || 0)
+        .filter((v) => v > 0);
+
+      const avgTat =
+        tatList.length > 0
+          ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
+          : 0;
+
+      // Select matching target from SLA rules
+      const sla = m.slaConfigs.find((s) => {
+        if (isStat === true) return s.urgencyLevel === UrgencyLevel.STAT || s.triageLevel === TriageLevel.ER;
+        if (isStat === false) return s.urgencyLevel === UrgencyLevel.ROUTINE;
+        return true;
+      });
+
+      // Default fallback targets if specific rule not matched
+      const defaultTarget =
+        m.modalityCode === ModalityCode.CT
+          ? (isStat ? 60 : 1440)
+          : m.modalityCode === ModalityCode.XRAY
+          ? (isStat ? 30 : 480)
+          : 120;
+
+      return {
+        avgTat,
+        target: sla?.targetTatMinutes || defaultTarget,
+        volume: filtered.length,
+      };
+    };
+
+    return {
+      modality: m.modalityCode,
+      name: m.modalityName,
+      all: calcStats(m.examinations, null),
+      emergency: calcStats(m.examinations, true),
+      routine: calcStats(m.examinations, false),
+    };
+  });
+}
+
