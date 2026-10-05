@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ModalityCode } from "@/lib/enums";
-import { Table, Calendar, TrendingUp, TrendingDown, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Calendar, TrendingUp, TrendingDown, Clock, CheckCircle2 } from "lucide-react";
 
 interface DayRow {
   dayLabel: string;

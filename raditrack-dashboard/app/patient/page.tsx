@@ -1,9 +1,17 @@
 import { getPublicActivityData } from "@/app/actions";
-import { Activity, ShieldCheck, Clock, Users, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import {
+  Activity,
+  ShieldCheck,
+  Clock,
+  Users,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+} from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60; // Refresh data every 60 seconds
+export const revalidate = 60; // Automated re-render every 60 seconds (Client-confirmed TV heartbeat)
 
 export default async function PatientActivityPage() {
   const data = await getPublicActivityData();
@@ -13,7 +21,7 @@ export default async function PatientActivityPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans selection:bg-sky-500 selection:text-white">
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Kiosk Header */}
+        {/* Kiosk / TV Screen Header */}
         <header className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-800 pb-6 gap-4">
           <div>
             <div className="flex items-center gap-2 text-sky-400 text-xs font-semibold tracking-wider uppercase mb-1">
@@ -46,6 +54,7 @@ export default async function PatientActivityPage() {
 
         {/* Grand Total Comparison Banner */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Today Volume */}
           <div className="bg-gradient-to-br from-sky-950/60 to-slate-900 border border-sky-800/50 p-6 rounded-2xl shadow-xl">
             <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
               <span>Total Examinations Completed Today</span>
@@ -59,6 +68,7 @@ export default async function PatientActivityPage() {
             </div>
           </div>
 
+          {/* Yesterday Volume Baseline */}
           <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-lg">
             <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
               <span>Yesterday's Total Volume</span>
@@ -72,6 +82,7 @@ export default async function PatientActivityPage() {
             </div>
           </div>
 
+          {/* Day-Over-Day Shift Indicator */}
           <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-lg flex flex-col justify-between">
             <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
               Day-Over-Day Shift Volume
@@ -108,7 +119,7 @@ export default async function PatientActivityPage() {
               Breakdown by Imaging Modality & Patient Origin
             </h2>
             <span className="text-xs text-slate-400">
-              Aggregated statistics by OPD • IN • ER
+              Aggregated statistics by OPD • IN (Inpatient) • ER
             </span>
           </div>
 
@@ -180,11 +191,11 @@ export default async function PatientActivityPage() {
           </div>
         </section>
 
-        {/* Privacy & Zero-PII Reassurance Banner */}
+        {/* Privacy & Zero-PII Guarantee Banner */}
         <footer className="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-4 flex items-center gap-3.5 text-xs text-emerald-300">
           <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
           <p>
-            <strong>Strict Zero-PII Compliance:</strong> This display is strictly for department workload monitoring and waiting area information. No patient-identifiable data (names, identification numbers, clinical findings, or patient turnaround times) is processed or displayed.
+            <strong>Strict Zero-PII Compliance:</strong> This display is strictly for department workload monitoring and waiting area information. No patient-identifiable data (names, identification numbers, clinical findings, or individual turnaround times) is processed or displayed.
           </p>
         </footer>
       </div>
