@@ -184,6 +184,7 @@ export async function getDashboardData() {
         targetTat: targetRule?.targetTatMinutes ?? null,
         isBreached,
         isCarryOver,
+        notes: e.notes ?? "",
       };
     }),
   };
@@ -585,5 +586,89 @@ export async function getModalityTatOverview(): Promise<ModalityTatOverviewItem[
       routine: calcStats(m.examinations, false),
     };
   });
+}
+
+// ============================================================================
+// 9. AGENDA 4 ACTIONS: Examination Record Lifecycle Management
+// ============================================================================
+
+/**
+ * 9A. ACTION: Update Unfinalized Examination Details
+ * Corrects manual entry mistakes (Accession ID, Modality, Triage, Urgency, Notes)
+ */
+export async function updateExaminationAction(formData: FormData) {
+  const examId = formData.get("examId") as string;
+  const examinationIdentifier = (formData.get("examinationIdentifier") as string)?.trim();
+  const modalityCode = formData.get("modalityCode") as string;
+  const triageLevel = formData.get("triageLevel") as string;
+  const urgencyLevel = formData.get("urgencyLevel") as string;
+  const notes = (formData.get("notes") as string)?.trim() || null;
+
+  if (!examId || !examinationIdentifier || !modalityCode || !triageLevel || !urgencyLevel) {
+    throw new Error("Missing required examination update fields.");
+  }
+
+  // Safety check: Prevent modifying core parameters if already finalized
+  const existing = await prisma.examination.findUnique({
+    where: { examId },
+    include: { report: true },
+  });
+
+  if (!existing) {
+    throw new Error("Examination not found.");
+  }
+
+  if (existing.report?.reportSignedAt) {
+    throw new Error("Finalized examination parameters cannot be modified to preserve audit integrity.");
+  }
+
+  await prisma.examination.update({
+    where: { examId },
+    data: {
+      examinationIdentifier,
+      modalityCode,
+      triageLevel,
+      urgencyLevel,
+      notes,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/patient");
+}
+
+/**
+ * 9B. ACTION: Soft Cancel Examination (Clinical Standard for Aborted Procedures)
+ * Sets status to CANCELLED, removing from queue & TAT while preserving medical-legal logs
+ */
+export async function cancelExaminationAction(formData: FormData) {
+  const examId = formData.get("examId") as string;
+  if (!examId) throw new Error("Missing examId for cancellation.");
+
+  await prisma.examination.update({
+    where: { examId },
+    data: {
+      statusCode: ExaminationStatusCode.CANCELLED,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/patient");
+}
+
+/**
+ * 9C. ACTION: Hard Delete Examination (Administrative Duplicate Cleanup)
+ * Permanently removes mistaken double entries from database (cascades report)
+ */
+export async function deleteExaminationAction(formData: FormData) {
+  const examId = formData.get("examId") as string;
+  if (!examId) throw new Error("Missing examId for deletion.");
+
+  await prisma.examination.delete({
+    where: { examId },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/patient");
 }
 

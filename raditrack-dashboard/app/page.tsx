@@ -5,13 +5,15 @@ import {
   getModalityTatOverview,
   signOffReportAction,
 } from "./actions";
-import { Activity, Clock, CheckCircle2, AlertTriangle, Tv } from "lucide-react";
+import { Activity, Clock, CheckCircle2, AlertTriangle, Tv, Calendar } from "lucide-react";
 import Link from "next/link";
 import { TatOverviewChart } from "@/components/charts/TatOverviewChart";
 import { SevenDayTatTable } from "@/components/staff/SevenDayTatTable";
 import { TwelveMonthTrendChart } from "@/components/staff/TwelveMonthTrendChart";
 import { ExportCsvButton } from "@/components/staff/ExportCsvButton";
 import { QuickIngestionModal } from "@/components/dashboard/QuickIngestionModal";
+import { EditExamDialog } from "@/components/dashboard/EditExamDialog";
+import { DeleteExamDialog } from "@/components/dashboard/DeleteExamDialog";
 import {
   ModalityCode,
   TriageLevel,
@@ -31,6 +33,11 @@ export default async function DashboardPage() {
       getTwelveMonthTatTrend(),
       getModalityTatOverview(),
     ]);
+
+  const prevMonth =
+    twelveMonthTrend.length >= 2
+      ? twelveMonthTrend[twelveMonthTrend.length - 2]
+      : null;
 
   return (
     <main className="min-h-screen bg-slate-900 text-slate-100 p-6 md:p-10 font-sans">
@@ -60,8 +67,8 @@ export default async function DashboardPage() {
           </div>
         </header>
 
-        {/* Executive KPI Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Executive KPI Summary Cards (5-Card Responsive Suite) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="bg-slate-800/60 border border-slate-700/60 p-5 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between text-slate-400 text-sm font-medium">
               <span>Total Volume</span>
@@ -109,6 +116,36 @@ export default async function DashboardPage() {
               {data.pendingReadingCount}
             </div>
             <div className="text-xs text-slate-400 mt-2">Pending Radiologist Sign-off</div>
+          </div>
+
+          {/* Client Requested Metric: Previous Month Average TAT */}
+          <div className="bg-slate-800/60 border border-slate-700/60 p-5 rounded-2xl shadow-sm">
+            <div className="flex items-center justify-between text-slate-400 text-sm font-medium">
+              <span>Prev Month TAT</span>
+              <Calendar className="h-5 w-5 text-purple-400" />
+            </div>
+            <div className="text-3xl font-bold text-purple-300 mt-2">
+              {prevMonth ? (
+                prevMonth.avgTatHours >= 1 ? (
+                  <>
+                    {prevMonth.avgTatHours}{" "}
+                    <span className="text-lg font-normal text-slate-400">hrs</span>
+                  </>
+                ) : (
+                  <>
+                    {prevMonth.avgTatMinutes}{" "}
+                    <span className="text-lg font-normal text-slate-400">mins</span>
+                  </>
+                )
+              ) : (
+                <span className="text-lg text-slate-500 font-normal">N/A</span>
+              )}
+            </div>
+            <div className="text-xs text-slate-400 mt-2">
+              {prevMonth
+                ? `${prevMonth.fullMonth} • ${prevMonth.totalFinalized} finalized`
+                : "No prior month data"}
+            </div>
           </div>
         </div>
 
@@ -195,15 +232,19 @@ export default async function DashboardPage() {
                       {item.targetTat ? `${item.targetTat} mins` : "No Target"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <form action={signOffReportAction} className="inline">
-                        <input type="hidden" name="examId" value={item.examId} />
-                        <button
-                          type="submit"
-                          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-3 py-1 rounded-md text-xs transition shadow-sm"
-                        >
-                          Mark Signed
-                        </button>
-                      </form>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <EditExamDialog item={item} />
+                        <DeleteExamDialog examId={item.examId} identifier={item.identifier} />
+                        <form action={signOffReportAction} className="inline">
+                          <input type="hidden" name="examId" value={item.examId} />
+                          <button
+                            type="submit"
+                            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-3 py-1 rounded-md text-xs transition shadow-sm"
+                          >
+                            Mark Signed
+                          </button>
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 ))}
