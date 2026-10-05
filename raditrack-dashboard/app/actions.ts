@@ -2,6 +2,13 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import {
+  TriageLevel,
+  UrgencyLevel,
+  ModalityCode,
+  ExaminationStatusCode,
+  ReportStatusCode,
+} from "@/lib/enums";
 
 // Calculates the median of an array of numbers
 export async function calculatedMedian(numbers: number[]): Promise<number> {
@@ -16,10 +23,11 @@ export async function calculatedMedian(numbers: number[]): Promise<number> {
 // 1. ACTION: Log New Examination (Manual Ingestion)
 export async function createExaminationAction(formData: FormData) {
   const examinationIdentifier = formData.get("examinationIdentifier") as string;
-  const modalityCode = formData.get("modalityCode") as string;
-  const triageLevel = (formData.get("triageLevel") as string) || "OPD";
-  const urgencyLevel = (formData.get("urgencyLevel") as string) || "ROUTINE";
-  const statusCode = (formData.get("statusCode") as string) || "EXAM_COMPLETED";
+  const modalityCode = (formData.get("modalityCode") as string) || ModalityCode.CT;
+  const triageLevel = (formData.get("triageLevel") as string) || TriageLevel.OPD;
+  const urgencyLevel = (formData.get("urgencyLevel") as string) || UrgencyLevel.ROUTINE;
+  const statusCode =
+    (formData.get("statusCode") as string) || ExaminationStatusCode.EXAM_COMPLETED;
 
   const now = new Date();
 
@@ -36,7 +44,6 @@ export async function createExaminationAction(formData: FormData) {
   });
 
   revalidatePath("/");
-
 }
 
 // 2. ACTION: Sign Off Report (TAT & SLA Engine)
@@ -53,7 +60,7 @@ export async function signOffReportAction(formData: FormData) {
     throw new Error("Exam not found or completion time missing.");
   }
 
-  // Turnaround Time in minutes:  (ReportSigned - ExamCompleted)
+  // Turnaround Time in minutes: (ReportSigned - ExamCompleted)
   const diffMs = now.getTime() - new Date(exam.examCompletedAt).getTime();
   const tatMinutes = Number((diffMs / (1000 * 60)).toFixed(2));
 
@@ -74,19 +81,19 @@ export async function signOffReportAction(formData: FormData) {
         reportSignedAt: now,
         tatExamToSignMinutes: tatMinutes,
         isSlaBreached,
-        reportStatus: "FINALIZED",
+        reportStatus: ReportStatusCode.FINALIZED,
       },
       create: {
         examId,
         reportSignedAt: now,
         tatExamToSignMinutes: tatMinutes,
         isSlaBreached,
-        reportStatus: "FINALIZED",
+        reportStatus: ReportStatusCode.FINALIZED,
       },
     }),
     prisma.examination.update({
       where: { examId },
-      data: { statusCode: "COMPLETED_SIGNED_OFF" },
+      data: { statusCode: ExaminationStatusCode.COMPLETED_SIGNED_OFF },
     }),
   ]);
 
@@ -108,7 +115,11 @@ export async function getDashboardData() {
       where: {
         examCompletedAt: { not: null },
         statusCode: {
-          notIn: ["CANCELLED", "COMPLETED_SIGNED_OFF", "FINALIZED"],
+          notIn: [
+            ExaminationStatusCode.CANCELLED,
+            ExaminationStatusCode.COMPLETED_SIGNED_OFF,
+            "FINALIZED",
+          ],
         },
         report: { is: null },
       },

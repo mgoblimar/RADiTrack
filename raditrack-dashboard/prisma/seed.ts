@@ -1,6 +1,13 @@
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import "dotenv/config";
+import {
+  ModalityCode,
+  ExaminationStatusCode,
+  StageCategory,
+  TriageLevel,
+  UrgencyLevel,
+} from "../lib/enums";
 
 const connectionString = `${process.env.DATABASE_URL || "file:./radiology.db"}`;
 
@@ -13,27 +20,27 @@ async function main() {
   // 1. Modalities
   const modalities = [
     {
-      modalityCode: "CT",
+      modalityCode: ModalityCode.CT,
       modalityName: "Computed Tomography",
       departmentRoom: "CT Suite 1",
     },
     {
-      modalityCode: "XRAY",
+      modalityCode: ModalityCode.XRAY,
       modalityName: "General Radiography",
       departmentRoom: "X-Ray Room 1",
     },
     {
-      modalityCode: "MRI",
+      modalityCode: ModalityCode.MRI,
       modalityName: "Magnetic Resonance Imaging",
       departmentRoom: "MRI Basement",
     },
     {
-      modalityCode: "US",
+      modalityCode: ModalityCode.US,
       modalityName: "Ultrasound",
       departmentRoom: "US Room 3",
     },
     {
-      modalityCode: "MAMMO",
+      modalityCode: ModalityCode.MAMMO,
       modalityName: "Mammography",
       departmentRoom: "Breast Imaging Center",
     },
@@ -48,42 +55,41 @@ async function main() {
   }
 
   // 2. Statuses
-
   const statuses = [
     {
-      statusCode: "ARRIVED",
+      statusCode: ExaminationStatusCode.ARRIVED,
       statusName: "Patient Arrived",
-      stageCategory: "PRE_EXAM",
+      stageCategory: StageCategory.PRE_EXAM,
       sequenceOrder: 1,
     },
     {
-      statusCode: "IN_PROGRESS",
+      statusCode: ExaminationStatusCode.IN_PROGRESS,
       statusName: "Scanning",
-      stageCategory: "PRE_EXAM",
+      stageCategory: StageCategory.PRE_EXAM,
       sequenceOrder: 2,
     },
     {
-      statusCode: "EXAM_COMPLETED",
+      statusCode: ExaminationStatusCode.EXAM_COMPLETED,
       statusName: "Scan Completed",
-      stageCategory: "READING_QUEUE",
+      stageCategory: StageCategory.READING_QUEUE,
       sequenceOrder: 3,
     },
     {
-      statusCode: "PENDING_INTERPRETATION",
+      statusCode: ExaminationStatusCode.PENDING_INTERPRETATION,
       statusName: "Awaiting Radiologist",
-      stageCategory: "READING_QUEUE",
+      stageCategory: StageCategory.READING_QUEUE,
       sequenceOrder: 4,
     },
     {
-      statusCode: "COMPLETED_SIGNED_OFF",
+      statusCode: ExaminationStatusCode.COMPLETED_SIGNED_OFF,
       statusName: "Report Finalized",
-      stageCategory: "FINALIZED",
+      stageCategory: StageCategory.FINALIZED,
       sequenceOrder: 6,
     },
     {
-      statusCode: "CANCELLED",
+      statusCode: ExaminationStatusCode.CANCELLED,
       statusName: "Cancelled",
-      stageCategory: "CANCELLED",
+      stageCategory: StageCategory.CANCELLED,
       sequenceOrder: 99,
     },
   ];
@@ -97,36 +103,35 @@ async function main() {
   }
 
   // 3. SLA Targets
-
   const slas = [
     {
-      modalityCode: "CT",
-      triageLevel: "ER",
-      urgencyLevel: "STAT",
+      modalityCode: ModalityCode.CT,
+      triageLevel: TriageLevel.ER,
+      urgencyLevel: UrgencyLevel.STAT,
       targetTatMinutes: 60,
     },
     {
-      modalityCode: "CT",
-      triageLevel: "OPD",
-      urgencyLevel: "ROUTINE",
+      modalityCode: ModalityCode.CT,
+      triageLevel: TriageLevel.OPD,
+      urgencyLevel: UrgencyLevel.ROUTINE,
       targetTatMinutes: 1440,
     },
     {
-      modalityCode: "XRAY",
-      triageLevel: "ER",
-      urgencyLevel: "STAT",
+      modalityCode: ModalityCode.XRAY,
+      triageLevel: TriageLevel.ER,
+      urgencyLevel: UrgencyLevel.STAT,
       targetTatMinutes: 30,
     },
     {
-      modalityCode: "XRAY",
-      triageLevel: "OPD",
-      urgencyLevel: "ROUTINE",
+      modalityCode: ModalityCode.XRAY,
+      triageLevel: TriageLevel.OPD,
+      urgencyLevel: UrgencyLevel.ROUTINE,
       targetTatMinutes: 480,
     },
     {
-      modalityCode: "MRI",
-      triageLevel: "IN",
-      urgencyLevel: "ROUTINE",
+      modalityCode: ModalityCode.MRI,
+      triageLevel: TriageLevel.IN,
+      urgencyLevel: UrgencyLevel.ROUTINE,
       targetTatMinutes: 2880,
     },
   ];

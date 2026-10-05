@@ -11,7 +11,15 @@ import {
   PlusCircle,
 } from "lucide-react";
 
-import { TatOverviewChart } from "@/components/charts/TatOverviewChart"
+import { TatOverviewChart } from "@/components/charts/TatOverviewChart";
+import {
+  ModalityCode,
+  TriageLevel,
+  UrgencyLevel,
+  MODALITY_CONFIG,
+  TRIAGE_CONFIG,
+  URGENCY_CONFIG,
+} from "@/lib/enums";
 
 export const dynamic = "force-dynamic";
 
@@ -99,7 +107,7 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
-        <TatOverviewChart />
+     
         {/* Manual Input Form */}
         <section className="bg-slate-800/40 border border-slate-700/80 rounded-2xl p-6">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
@@ -127,13 +135,14 @@ export default async function DashboardPage() {
               </label>
               <select
                 name="modalityCode"
+                defaultValue={ModalityCode.CT}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
               >
-                <option value="CT">CT Scan</option>
-                <option value="XRAY">X-Ray</option>
-                <option value="MRI">MRI</option>
-                <option value="US">Ultrasound</option>
-                <option value="MAMMO">Mammography</option>
+                {Object.entries(MODALITY_CONFIG).map(([code, config]) => (
+                  <option key={code} value={code}>
+                    {config.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -142,11 +151,14 @@ export default async function DashboardPage() {
               </label>
               <select
                 name="triageLevel"
+                defaultValue={TriageLevel.OPD}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
               >
-                <option value="ER">ER (Emergency)</option>
-                <option value="OPD">OPD (Outpatient)</option>
-                <option value="IN">IN (Inpatient)</option>
+                {Object.entries(TRIAGE_CONFIG).map(([level, config]) => (
+                  <option key={level} value={level}>
+                    {config.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -155,10 +167,14 @@ export default async function DashboardPage() {
               </label>
               <select
                 name="urgencyLevel"
+                defaultValue={UrgencyLevel.ROUTINE}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
               >
-                <option value="ROUTINE">Routine</option>
-                <option value="STAT">STAT (Emergency)</option>
+                {Object.entries(URGENCY_CONFIG).map(([urgency, config]) => (
+                  <option key={urgency} value={urgency}>
+                    {config.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex items-end">
@@ -210,17 +226,40 @@ export default async function DashboardPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3">{item.modalityCode}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-200">
+                      {MODALITY_CONFIG[item.modalityCode as ModalityCode]?.shortName ?? item.modalityCode}
+                    </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`px-2 py-0.5 rounded text-xs ${item.triageLevel === "ER" ? "bg-red-950 text-red-300 border border-red-800" : "bg-slate-700 text-slate-300"}`}
+                        className={`px-2 py-0.5 rounded text-xs border font-medium ${
+                          TRIAGE_CONFIG[item.triageLevel as TriageLevel]?.badgeClass ??
+                          "bg-slate-700 text-slate-300 border-slate-600"
+                        }`}
                       >
                         {item.triageLevel}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{item.urgencyLevel}</td>
-                    <td className="px-4 py-3 font-semibold text-amber-400">
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs border font-medium ${
+                          URGENCY_CONFIG[item.urgencyLevel as UrgencyLevel]?.badgeClass ??
+                          "bg-slate-800 text-slate-300 border-slate-700"
+                        }`}
+                      >
+                        {item.urgencyLevel}
+                      </span>
+                    </td>
+                    <td
+                      className={`px-4 py-3 font-semibold ${
+                        item.isBreached ? "text-rose-400 font-bold" : "text-amber-400"
+                      }`}
+                    >
                       {item.dwellMinutes} mins
+                      {item.isBreached && (
+                        <span className="ml-1 text-[10px] text-rose-400 font-bold">
+                          (BREACHED)
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-slate-400">
                       {item.targetTat ? `${item.targetTat} mins` : "No Target"}
@@ -257,6 +296,7 @@ export default async function DashboardPage() {
             </table>
           </div>
         </section>
+        <TatOverviewChart />
       </div>
     </main>
   );
