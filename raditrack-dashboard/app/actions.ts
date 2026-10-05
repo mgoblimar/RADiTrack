@@ -415,3 +415,92 @@ export async function getSevenDayStaffAnalytics() {
     },
   };
 }
+
+
+// ============================================================================
+// 6. ACTION: Client Request - Export Raw De-Identified Data to CSV
+// Used by hospital staff to audit timestamps against RIS and monthly reports
+// ============================================================================
+export async function exportExaminationsCSVAction(): Promise<string> {
+  const exams = await prisma.examination.findMany({
+    include: {
+      report: true,
+      modality: { include: { slaConfigs: true } },
+    },
+    orderBy: { studyDate: "desc" },
+  });
+  const headers = [
+    "Accession_Number",
+    "Modality_Code",
+    "Triage_Origin",
+    "Clinical_Urgency",
+    "Study_Date",
+    "Exam_Completed_T1",
+    "Report_Signed_T2",
+    "Turnaround_Time_Minutes",
+    "Turnaround_Time_Hours",
+    "Target_SLA_Minutes",
+    "SLA_Breach_Status",
+    "Workflow_Status",
+  ];
+  const rows = exams.map((e) => {
+    const targetRule = e.modality.slaConfigs.find(
+      (s) => s.triageLevel === e.triageLevel && s.urgencyLevel === e.urgencyLevel
+    );
+    const tatMinutes = e.report?.tatExamToSignMinutes ?? "";
+    const tatHours = tatMinutes !== "" ? (Number(tatMinutes) / 60).toFixed(2) : "";
+    const isBreached = e.report ? (e.report.isSlaBreached ? "BREACHED" : "MET_SLA") : "PENDING";
+    return [
+      e.examinationIdentifier,
+      e.modalityCode,
+      e.triageLevel,
+      e.urgencyLevel,
+      e.studyDate.toISOString().split("T")[0],
+      e.examCompletedAt ? e.examCompletedAt.toISOString() : "",
+      e.report?.reportSignedAt ? e.report.reportSignedAt.toISOString() : "",
+      tatMinutes,
+      tatHours,
+      targetRule?.targetTatMinutes ?? "",
+      isBreached,
+      e.statusCode,
+    ].join(",");
+  });
+  return [headers.join(","), ...rows].join("\n");
+}
+
+// ============================================================================
+// 7. QUERY: Client Request - 12-Month Historical TAT Trend (Annual Review)
+// Aggregates monthly averages across past 12 months for departmental meetings
+// ============================================================================
+export async function getTwelveMonthTatTrend() {
+  const now = new Date();
+  const monthsData = [];
+  for (let i = 11; i >= 0; i--) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+    const monthReports = await prisma.radiologyReport.findMany({
+      where: {
+        reportSignedAt: { not: null },
+        examination: {
+          studyDate: { gte: start, lte: end },
+          statusCode: { not: "CANCELLED" },
+        },
+      },
+      select: { tatExamToSignMinutes: true },
+    });
+    const tatList = monthReports.map((r) => r.tatExamToSignMinutes || 0).filter((v) => v > 0);
+    const avgMinutes =
+      tatList.length > 0
+        ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
+        : 0;
+    const avgHours = Number((avgMinutes / 60).toFixed(1));
+    monthsData.push({
+      monthLabel: start.toLocaleDateString("en-US", { month: "short" }),
+      fullMonth: start.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+      totalFinalized: monthReports.length,
+      avgTatHours: avgHours,
+      avgTatMinutes: avgMinutes,
+    });
+  }
+  return monthsData;
+}
