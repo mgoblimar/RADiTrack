@@ -288,26 +288,80 @@ export async function getPublicActivityData() {
 // 5. QUERY: 7-Day Retrospective Staff & Management Analytics (Proposal Page 6)
 // Day-by-Day performance table with OPD/IN/ER split, Finalized, Pending, and Avg TAT
 // ============================================================================
-export async function getSevenDayStaffAnalytics() {
-  const now = new Date();
+export interface SevenDayAnalyticsOptions {
+  anchorDate?: string;
+  mode?: "rolling" | "static";
+}
 
-  // Build rolling 14 days (7 days current week, 7 days prior week for comparison)
-  const currentWeekDays: Date[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    d.setHours(0, 0, 0, 0);
-    currentWeekDays.push(d);
+export async function getSevenDayStaffAnalytics(options?: SevenDayAnalyticsOptions) {
+  const mode = options?.mode || "rolling";
+  let anchor: Date;
+  if (options?.anchorDate) {
+    const parts = options.anchorDate.split("-").map(Number);
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      anchor = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+    } else {
+      anchor = new Date(options.anchorDate);
+    }
+  } else {
+    anchor = new Date();
+  }
+  if (isNaN(anchor.getTime())) anchor = new Date();
+
+  const currentDays: Date[] = [];
+  const priorDays: Date[] = [];
+
+  if (mode === "static") {
+    // Static calendar week: Monday to Sunday of the anchor week
+    // Requirement: Latest as Sunday at the top down to Monday at the bottom
+    const d = new Date(anchor);
+    const day = d.getDay(); // 0 = Sun, 1 = Mon ...
+    const diffToMon = d.getDate() - (day === 0 ? 6 : day - 1);
+    const mon = new Date(d);
+    mon.setDate(diffToMon);
+    mon.setHours(0, 0, 0, 0);
+
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    sun.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 7; i++) {
+      const cur = new Date(sun);
+      cur.setDate(sun.getDate() - i);
+      currentDays.push(cur);
+
+      const pri = new Date(cur);
+      pri.setDate(cur.getDate() - 7);
+      priorDays.push(pri);
+    }
+  } else {
+    // Rolling mode: anchor date going back 6 days (7 days total, e.g. Oct 5 down to Sep 29)
+    const base = new Date(anchor);
+    base.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 7; i++) {
+      const cur = new Date(base);
+      cur.setDate(base.getDate() - i);
+      currentDays.push(cur);
+
+      const pri = new Date(cur);
+      pri.setDate(cur.getDate() - 7);
+      priorDays.push(pri);
+    }
   }
 
-  const priorWeekStart = new Date(now);
-  priorWeekStart.setDate(priorWeekStart.getDate() - 14);
-  priorWeekStart.setHours(0, 0, 0, 0);
+  // Find min and max dates across both 7-day windows for query
+  const allDays = [...currentDays, ...priorDays];
+  const queryStart = new Date(Math.min(...allDays.map((d) => d.getTime())));
+  queryStart.setHours(0, 0, 0, 0);
 
-  // Fetch all exams in the 14-day window with their reports
+  const queryEnd = new Date(Math.max(...allDays.map((d) => d.getTime())));
+  queryEnd.setHours(23, 59, 59, 999);
+
+  // Fetch all exams in the 14-day combined window with their reports
   const all14DayExams = await prisma.examination.findMany({
     where: {
-      studyDate: { gte: priorWeekStart },
+      studyDate: { gte: queryStart, lte: queryEnd },
       statusCode: { not: "CANCELLED" },
     },
     include: {
@@ -322,86 +376,132 @@ export async function getSevenDayStaffAnalytics() {
       ? all14DayExams.filter((e) => e.modalityCode === filterCode)
       : all14DayExams;
 
-    const dayRows = currentWeekDays.map((dayDate, index) => {
-      const nextDay = new Date(dayDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+    const buildDayRows = (dayList: Date[], isPrior = false) =>
+      dayList.map((dayDate, index) => {
+        const nextDay = new Date(dayDate);
+        nextDay.setDate(nextDay.getDate() + 1);
 
-      const examsForDay = filteredExams.filter((e) => {
-        const s = new Date(e.studyDate);
-        return s >= dayDate && s < nextDay;
+        const examsForDay = filteredExams.filter((e) => {
+          const s = new Date(e.studyDate);
+          return s >= dayDate && s < nextDay;
+        });
+
+        const opdCount = examsForDay.filter((e) => e.triageLevel === TriageLevel.OPD).length;
+        const inCount = examsForDay.filter((e) => e.triageLevel === TriageLevel.IN).length;
+        const erCount = examsForDay.filter((e) => e.triageLevel === TriageLevel.ER).length;
+
+        const finalizedExams = examsForDay.filter(
+          (e) => e.report && e.report.reportSignedAt !== null
+        );
+        const pendingCount = examsForDay.length - finalizedExams.length;
+
+        // Proposal Rule: Average TAT is calculated ONLY from finalized reports
+        const tatList = finalizedExams
+          .map((e) => e.report?.tatExamToSignMinutes || 0)
+          .filter((v) => v > 0);
+
+        const avgTatMinutes =
+          tatList.length > 0
+            ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
+            : 0;
+
+        const y = dayDate.getFullYear();
+        const m = String(dayDate.getMonth() + 1).padStart(2, "0");
+        const dStr = String(dayDate.getDate()).padStart(2, "0");
+        const isoDate = `${y}-${m}-${dStr}`;
+
+        let dayLabel = "";
+        if (mode === "static") {
+          dayLabel = dayDate.toLocaleDateString("en-US", { weekday: "short" });
+        } else if (!isPrior) {
+          dayLabel = index === 0 ? "Anchor" : index === 1 ? "Day -1" : `Day -${index}`;
+        } else {
+          dayLabel = index === 0 ? "Prior -7" : `Day -${index + 7}`;
+        }
+
+        return {
+          dayLabel,
+          formattedDate: dayDate.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            weekday: "short",
+          }),
+          isoDate,
+          totalExams: examsForDay.length,
+          opdCount,
+          inCount,
+          erCount,
+          finalizedCount: finalizedExams.length,
+          pendingCount,
+          avgTatMinutes,
+          avgTatHours: Number((avgTatMinutes / 60).toFixed(1)),
+        };
       });
 
-      const opdCount = examsForDay.filter((e) => e.triageLevel === TriageLevel.OPD).length;
-      const inCount = examsForDay.filter((e) => e.triageLevel === TriageLevel.IN).length;
-      const erCount = examsForDay.filter((e) => e.triageLevel === TriageLevel.ER).length;
+    const dayRows = buildDayRows(currentDays, false);
+    const priorDayRows = buildDayRows(priorDays, true);
 
-      const finalizedExams = examsForDay.filter(
-        (e) => e.report && e.report.reportSignedAt !== null
-      );
-      const pendingCount = examsForDay.length - finalizedExams.length;
+    // Current window totals
+    const curMin = new Date(Math.min(...currentDays.map((d) => d.getTime())));
+    curMin.setHours(0, 0, 0, 0);
+    const curMax = new Date(Math.max(...currentDays.map((d) => d.getTime())));
+    curMax.setHours(23, 59, 59, 999);
 
-      // Proposal Rule: Average TAT is calculated ONLY from finalized reports
-      const tatList = finalizedExams
-        .map((e) => e.report?.tatExamToSignMinutes || 0)
-        .filter((v) => v > 0);
-
-      const avgTatMinutes =
-        tatList.length > 0
-          ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
-          : 0;
-
-      return {
-        dayLabel: index === 0 ? "Today" : index === 1 ? "Yesterday" : `Day -${index}`,
-        formattedDate: dayDate.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          weekday: "short",
-        }),
-        totalExams: examsForDay.length,
-        opdCount,
-        inCount,
-        erCount,
-        finalizedCount: finalizedExams.length,
-        pendingCount,
-        avgTatMinutes,
-        avgTatHours: Number((avgTatMinutes / 60).toFixed(1)),
-      };
-    });
-
-    // Compute weekly comparison
-    // Current 7-day average TAT
-    const current7DayFinalized = filteredExams.filter((e) => {
+    const currentFinalized = filteredExams.filter((e) => {
       const s = new Date(e.studyDate);
-      return s >= currentWeekDays[6] && e.report?.tatExamToSignMinutes;
+      return s >= curMin && s <= curMax && e.report?.tatExamToSignMinutes;
     });
-    const currentTatList = current7DayFinalized.map((e) => e.report!.tatExamToSignMinutes!);
+    const currentTatList = currentFinalized.map((e) => e.report!.tatExamToSignMinutes!);
     const currentAvgTat =
       currentTatList.length > 0
         ? currentTatList.reduce((a, b) => a + b, 0) / currentTatList.length
         : 0;
 
-    // Prior 7-day average TAT (Days 8 to 14)
-    const prior7DayFinalized = filteredExams.filter((e) => {
+    // Prior window totals
+    const priMin = new Date(Math.min(...priorDays.map((d) => d.getTime())));
+    priMin.setHours(0, 0, 0, 0);
+    const priMax = new Date(Math.max(...priorDays.map((d) => d.getTime())));
+    priMax.setHours(23, 59, 59, 999);
+
+    const priorFinalized = filteredExams.filter((e) => {
       const s = new Date(e.studyDate);
-      return s < currentWeekDays[6] && e.report?.tatExamToSignMinutes;
+      return s >= priMin && s <= priMax && e.report?.tatExamToSignMinutes;
     });
-    const priorTatList = prior7DayFinalized.map((e) => e.report!.tatExamToSignMinutes!);
+    const priorTatList = priorFinalized.map((e) => e.report!.tatExamToSignMinutes!);
     const priorAvgTat =
       priorTatList.length > 0
         ? priorTatList.reduce((a, b) => a + b, 0) / priorTatList.length
         : 0;
 
     let pctChange = 0;
-    if (priorAvgTat > 0) {
+    if (priorAvgTat > 0 && currentAvgTat > 0) {
       pctChange = Number((((currentAvgTat - priorAvgTat) / priorAvgTat) * 100).toFixed(1));
     }
 
+    const currentTotalVolume = dayRows.reduce((a, b) => a + b.totalExams, 0);
+    const priorTotalVolume = priorDayRows.reduce((a, b) => a + b.totalExams, 0);
+    const currentFinalizedCount = dayRows.reduce((a, b) => a + b.finalizedCount, 0);
+    const priorFinalizedCount = priorDayRows.reduce((a, b) => a + b.finalizedCount, 0);
+
+    const ay = anchor.getFullYear();
+    const am = String(anchor.getMonth() + 1).padStart(2, "0");
+    const ad = String(anchor.getDate()).padStart(2, "0");
+    const anchorFormatted = `${ay}-${am}-${ad}`;
+
     return {
       dayRows,
+      priorDayRows,
       currentAvgTatMinutes: Number(currentAvgTat.toFixed(1)),
       currentAvgTatHours: Number((currentAvgTat / 60).toFixed(1)),
       priorAvgTatMinutes: Number(priorAvgTat.toFixed(1)),
-      pctChange, // positive = longer TAT, negative = faster TAT
+      priorAvgTatHours: Number((priorAvgTat / 60).toFixed(1)),
+      currentTotalVolume,
+      priorTotalVolume,
+      currentFinalizedCount,
+      priorFinalizedCount,
+      pctChange,
+      anchorFormatted,
+      mode,
     };
   };
 
@@ -416,6 +516,14 @@ export async function getSevenDayStaffAnalytics() {
     },
   };
 }
+
+export async function fetchSevenDayAnalyticsAction(
+  anchorDate?: string,
+  mode: "rolling" | "static" = "rolling"
+) {
+  return await getSevenDayStaffAnalytics({ anchorDate, mode });
+}
+
 
 
 // ============================================================================
