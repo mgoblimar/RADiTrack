@@ -9,10 +9,6 @@ import { TatOverviewChart } from "@/components/charts/TatOverviewChart";
 import { SevenDayTatTable } from "@/components/staff/SevenDayTatTable";
 import { TwelveMonthTrendChart } from "@/components/staff/TwelveMonthTrendChart";
 import { ExportCsvButton } from "@/components/staff/ExportCsvButton";
-import { QuickIngestionModal } from "@/components/dashboard/QuickIngestionModal";
-import { EditExamDialog } from "@/components/dashboard/EditExamDialog";
-import { DeleteExamDialog } from "@/components/dashboard/DeleteExamDialog";
-import { signOffReportAction } from "@/app/actions";
 import {
   Activity,
   Clock,
@@ -20,15 +16,8 @@ import {
   AlertTriangle,
   Tv,
   Calendar,
+  Radio,
 } from "lucide-react";
-import {
-  ModalityCode,
-  TriageLevel,
-  UrgencyLevel,
-  MODALITY_CONFIG,
-  TRIAGE_CONFIG,
-  URGENCY_CONFIG,
-} from "@/lib/enums";
 
 interface DashboardShellProps {
   data: any;
@@ -36,6 +25,7 @@ interface DashboardShellProps {
   twelveMonthTrend: any;
   modalityTatOverview: any;
   prevMonth: any;
+  configurationsData: any;
 }
 
 export function DashboardShell({
@@ -44,6 +34,7 @@ export function DashboardShell({
   twelveMonthTrend,
   modalityTatOverview,
   prevMonth,
+  configurationsData,
 }: DashboardShellProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
 
@@ -83,8 +74,14 @@ export function DashboardShell({
                     <Tv className="h-4 w-4 text-emerald-400" />
                     Patient Display (/patient)
                   </Link>
+                  <Link
+                    href="/simulator"
+                    className="flex items-center gap-2 bg-sky-950/80 hover:bg-sky-900 text-sky-300 border border-sky-800 font-semibold px-3.5 py-2 rounded-xl text-xs transition shadow-sm"
+                  >
+                    <Radio className="h-4 w-4 text-sky-400" />
+                    RIS Simulator (/simulator)
+                  </Link>
                   <ExportCsvButton />
-                  <QuickIngestionModal />
                 </div>
               </header>
 
@@ -178,108 +175,6 @@ export function DashboardShell({
                 <TatOverviewChart data={modalityTatOverview} />
                 <TwelveMonthTrendChart data={twelveMonthTrend} />
               </div>
-
-              {/* Live Interpretation Queue */}
-              <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-white">
-                    Active Reading Queue & Dwell Sitting Times
-                  </h2>
-                  <span className="text-xs text-slate-400">
-                    {data.pendingReadingQueue.length} scans waiting for interpretation
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-300">
-                    <thead className="bg-slate-900/80 text-xs text-slate-400 uppercase border-b border-slate-700">
-                      <tr>
-                        <th className="px-4 py-3">Accession ID</th>
-                        <th className="px-4 py-3">Modality</th>
-                        <th className="px-4 py-3">Triage</th>
-                        <th className="px-4 py-3">Urgency</th>
-                        <th className="px-4 py-3">Sitting Latency</th>
-                        <th className="px-4 py-3">SLA Target</th>
-                        <th className="px-4 py-3 text-right">Sign-Off Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800">
-                      {data.pendingReadingQueue.map((item: any) => (
-                        <tr key={item.examId} className="hover:bg-slate-800/50 transition">
-                          <td className="px-4 py-3 font-mono font-medium text-white flex items-center gap-2">
-                            {item.identifier}
-                            {item.isCarryOver && (
-                              <span className="text-[10px] bg-purple-900/60 text-purple-300 px-1.5 py-0.5 rounded border border-purple-700">
-                                Carry-Over
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-slate-200">
-                            {MODALITY_CONFIG[item.modalityCode as ModalityCode]?.shortName ?? item.modalityCode}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`px-2 py-0.5 rounded text-xs border font-medium ${
-                                TRIAGE_CONFIG[item.triageLevel as TriageLevel]?.badgeClass ??
-                                "bg-slate-700 text-slate-300 border-slate-600"
-                              }`}
-                            >
-                              {item.triageLevel}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`px-2 py-0.5 rounded text-xs border font-medium ${
-                                URGENCY_CONFIG[item.urgencyLevel as UrgencyLevel]?.badgeClass ??
-                                "bg-slate-800 text-slate-300 border-slate-700"
-                              }`}
-                            >
-                              {item.urgencyLevel}
-                            </span>
-                          </td>
-                          <td
-                            className={`px-4 py-3 font-semibold ${
-                              item.isBreached ? "text-rose-400 font-bold" : "text-amber-400"
-                            }`}
-                          >
-                            {item.dwellMinutes} mins
-                            {item.isBreached && (
-                              <span className="ml-1 text-[10px] text-rose-400 font-bold">
-                                (BREACHED)
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-slate-400">
-                            {item.targetTat ? `${item.targetTat} mins` : "No Target"}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <EditExamDialog item={item} />
-                              <DeleteExamDialog examId={item.examId} identifier={item.identifier} />
-                              <form action={signOffReportAction} className="inline">
-                                <input type="hidden" name="examId" value={item.examId} />
-                                <button
-                                  type="submit"
-                                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-3 py-1 rounded-md text-xs transition shadow-sm"
-                                >
-                                  Mark Signed
-                                </button>
-                              </form>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {data.pendingReadingQueue.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                            🎉 No pending interpretation backlog! All scans are finalized.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
             </div>
           )}
 
@@ -292,7 +187,9 @@ export function DashboardShell({
           )}
 
           {/* TAB 3: CONFIGURATIONS & SLA */}
-          {activeTab === "config" && <ConfigurationsHub />}
+          {activeTab === "config" && (
+            <ConfigurationsHub initialData={configurationsData} />
+          )}
         </main>
       </div>
     </div>

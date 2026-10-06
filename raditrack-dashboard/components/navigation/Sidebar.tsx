@@ -12,8 +12,8 @@ import {
   X,
   ShieldCheck,
   ChevronRight,
+  Radio,
 } from "lucide-react";
-import { QuickIngestionModal } from "@/components/dashboard/QuickIngestionModal";
 
 export type ActiveTab = "overview" | "examinations" | "config";
 
@@ -172,9 +172,18 @@ export function Sidebar({
               </span>
             </Link>
 
-            <div className="mt-2 px-1">
-              <QuickIngestionModal />
-            </div>
+            <Link
+              href="/simulator"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-sky-400 hover:bg-sky-950/20 border border-transparent hover:border-sky-800/40 transition group"
+            >
+              <div className="flex items-center gap-3">
+                <Radio className="h-4 w-4 text-sky-400" />
+                <span>RIS Simulator</span>
+              </div>
+              <span className="text-[10px] bg-sky-950 text-sky-400 px-1.5 py-0.5 rounded border border-sky-800">
+                Ingest
+              </span>
+            </Link>
           </div>
         </div>
 

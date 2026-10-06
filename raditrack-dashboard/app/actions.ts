@@ -578,40 +578,266 @@ export async function exportExaminationsCSVAction(): Promise<string> {
 }
 
 // ============================================================================
-// 7. QUERY: Client Request - 12-Month Historical TAT Trend (Annual Review)
-// Aggregates monthly averages across past 12 months for departmental meetings
+// 7. QUERY & ACTION: Multi-Year & 12-Month Historical TAT Trend (Annual Review)
+// Aggregates monthly averages and YoY comparisons across any calendar year or rolling 12M
 // ============================================================================
-export async function getTwelveMonthTatTrend() {
+export interface MonthTrendData {
+  monthIndex: number;
+  monthLabel: string;
+  fullMonth: string;
+  totalFinalized: number;
+  avgTatHours: number;
+  avgTatMinutes: number;
+  priorYearAvgTatHours?: number;
+  priorYearAvgTatMinutes?: number;
+  priorYearTotalFinalized?: number;
+}
+
+export interface TwelveMonthTrendResult {
+  selectedPeriod: string;
+  selectedPeriodLabel: string;
+  priorPeriodLabel: string;
+  availableYears: number[];
+  months: MonthTrendData[];
+  annualTotalFinalized: number;
+  annualAvgTatHours: number;
+  annualAvgTatMinutes: number;
+  priorAnnualTotalFinalized: number;
+  priorAnnualAvgTatHours: number;
+  priorAnnualAvgTatMinutes: number;
+  pctChangeTat: number;
+  pctChangeVolume: number;
+  fastestMonth: {
+    monthLabel: string;
+    avgTatHours: number;
+    avgTatMinutes: number;
+  } | null;
+  peakVolumeMonth: {
+    monthLabel: string;
+    volume: number;
+  } | null;
+}
+
+export async function getTwelveMonthTatTrend(
+  period: string = "rolling"
+): Promise<TwelveMonthTrendResult> {
   const now = new Date();
-  const monthsData = [];
-  for (let i = 11; i >= 0; i--) {
-    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-    const monthReports = await prisma.radiologyReport.findMany({
-      where: {
-        reportSignedAt: { not: null },
-        examination: {
-          studyDate: { gte: start, lte: end },
-          statusCode: { not: "CANCELLED" },
-        },
+  const isRolling = period === "rolling";
+  const targetYear = !isRolling && !isNaN(Number(period)) ? Number(period) : now.getFullYear();
+
+  const monthsConfig: Array<{
+    monthIndex: number;
+    monthLabel: string;
+    fullMonth: string;
+    start: Date;
+    end: Date;
+    priStart: Date;
+    priEnd: Date;
+  }> = [];
+
+  if (isRolling) {
+    for (let i = 11; i >= 0; i--) {
+      const curYear = now.getFullYear();
+      const curMonth = now.getMonth() - i;
+      const start = new Date(curYear, curMonth, 1, 0, 0, 0, 0);
+      const end = new Date(curYear, curMonth + 1, 0, 23, 59, 59, 999);
+
+      const priStart = new Date(start.getFullYear() - 1, start.getMonth(), 1, 0, 0, 0, 0);
+      const priEnd = new Date(start.getFullYear() - 1, start.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      monthsConfig.push({
+        monthIndex: 11 - i,
+        monthLabel: start.toLocaleDateString("en-US", { month: "short" }),
+        fullMonth: start.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+        start,
+        end,
+        priStart,
+        priEnd,
+      });
+    }
+  } else {
+    for (let m = 0; m < 12; m++) {
+      const start = new Date(targetYear, m, 1, 0, 0, 0, 0);
+      const end = new Date(targetYear, m + 1, 0, 23, 59, 59, 999);
+
+      const priStart = new Date(targetYear - 1, m, 1, 0, 0, 0, 0);
+      const priEnd = new Date(targetYear - 1, m + 1, 0, 23, 59, 59, 999);
+
+      const d = new Date(targetYear, m, 1);
+      monthsConfig.push({
+        monthIndex: m,
+        monthLabel: d.toLocaleDateString("en-US", { month: "short" }),
+        fullMonth: `${d.toLocaleDateString("en-US", { month: "short" })} '${String(targetYear).slice(-2)}`,
+        start,
+        end,
+        priStart,
+        priEnd,
+      });
+    }
+  }
+
+  const allDateStarts = [
+    ...monthsConfig.map((m) => m.start),
+    ...monthsConfig.map((m) => m.priStart),
+  ];
+  const allDateEnds = [
+    ...monthsConfig.map((m) => m.end),
+    ...monthsConfig.map((m) => m.priEnd),
+  ];
+
+  const minQueryDate = new Date(Math.min(...allDateStarts.map((d) => d.getTime())));
+  const maxQueryDate = new Date(Math.max(...allDateEnds.map((d) => d.getTime())));
+
+  const reports = await prisma.radiologyReport.findMany({
+    where: {
+      reportSignedAt: { not: null },
+      examination: {
+        studyDate: { gte: minQueryDate, lte: maxQueryDate },
+        statusCode: { not: "CANCELLED" },
       },
-      select: { tatExamToSignMinutes: true },
+    },
+    select: {
+      tatExamToSignMinutes: true,
+      examination: {
+        select: { studyDate: true },
+      },
+    },
+  });
+
+  const allCurrentTats: number[] = [];
+  const allPriorTats: number[] = [];
+  let annualTotalFinalized = 0;
+  let priorAnnualTotalFinalized = 0;
+
+  const monthsData: MonthTrendData[] = monthsConfig.map((cfg) => {
+    const curReports = reports.filter((r) => {
+      const s = new Date(r.examination.studyDate);
+      return s >= cfg.start && s <= cfg.end && r.tatExamToSignMinutes;
     });
-    const tatList = monthReports.map((r) => r.tatExamToSignMinutes || 0).filter((v) => v > 0);
+    const curTatList = curReports.map((r) => r.tatExamToSignMinutes!).filter((v) => v > 0);
     const avgMinutes =
-      tatList.length > 0
-        ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
+      curTatList.length > 0
+        ? Number((curTatList.reduce((a, b) => a + b, 0) / curTatList.length).toFixed(1))
         : 0;
     const avgHours = Number((avgMinutes / 60).toFixed(1));
-    monthsData.push({
-      monthLabel: start.toLocaleDateString("en-US", { month: "short" }),
-      fullMonth: start.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
-      totalFinalized: monthReports.length,
+
+    allCurrentTats.push(...curTatList);
+    annualTotalFinalized += curReports.length;
+
+    const priReports = reports.filter((r) => {
+      const s = new Date(r.examination.studyDate);
+      return s >= cfg.priStart && s <= cfg.priEnd && r.tatExamToSignMinutes;
+    });
+    const priTatList = priReports.map((r) => r.tatExamToSignMinutes!).filter((v) => v > 0);
+    const priAvgMinutes =
+      priTatList.length > 0
+        ? Number((priTatList.reduce((a, b) => a + b, 0) / priTatList.length).toFixed(1))
+        : 0;
+    const priAvgHours = Number((priAvgMinutes / 60).toFixed(1));
+
+    allPriorTats.push(...priTatList);
+    priorAnnualTotalFinalized += priReports.length;
+
+    return {
+      monthIndex: cfg.monthIndex,
+      monthLabel: cfg.monthLabel,
+      fullMonth: cfg.fullMonth,
+      totalFinalized: curReports.length,
       avgTatHours: avgHours,
       avgTatMinutes: avgMinutes,
-    });
+      priorYearAvgTatHours: priAvgHours,
+      priorYearAvgTatMinutes: priAvgMinutes,
+      priorYearTotalFinalized: priReports.length,
+    };
+  });
+
+  const annualAvgTatMinutes =
+    allCurrentTats.length > 0
+      ? Number((allCurrentTats.reduce((a, b) => a + b, 0) / allCurrentTats.length).toFixed(1))
+      : 0;
+  const annualAvgTatHours = Number((annualAvgTatMinutes / 60).toFixed(1));
+
+  const priorAnnualAvgTatMinutes =
+    allPriorTats.length > 0
+      ? Number((allPriorTats.reduce((a, b) => a + b, 0) / allPriorTats.length).toFixed(1))
+      : 0;
+  const priorAnnualAvgTatHours = Number((priorAnnualAvgTatMinutes / 60).toFixed(1));
+
+  let pctChangeTat = 0;
+  if (priorAnnualAvgTatMinutes > 0 && annualAvgTatMinutes > 0) {
+    pctChangeTat = Number(
+      (((annualAvgTatMinutes - priorAnnualAvgTatMinutes) / priorAnnualAvgTatMinutes) * 100).toFixed(1)
+    );
   }
-  return monthsData;
+
+  let pctChangeVolume = 0;
+  if (priorAnnualTotalFinalized > 0 && annualTotalFinalized > 0) {
+    pctChangeVolume = Number(
+      (
+        ((annualTotalFinalized - priorAnnualTotalFinalized) / priorAnnualTotalFinalized) *
+        100
+      ).toFixed(1)
+    );
+  }
+
+  const activeMonths = monthsData.filter((m) => m.avgTatMinutes > 0);
+  const fastestMonth =
+    activeMonths.length > 0
+      ? [...activeMonths].sort((a, b) => a.avgTatMinutes - b.avgTatMinutes)[0]
+      : null;
+
+  const activeVolMonths = monthsData.filter((m) => m.totalFinalized > 0);
+  const peakVolumeMonth =
+    activeVolMonths.length > 0
+      ? [...activeVolMonths].sort((a, b) => b.totalFinalized - a.totalFinalized)[0]
+      : null;
+
+  const distinctExams = await prisma.examination.findMany({
+    where: { statusCode: { not: "CANCELLED" } },
+    select: { studyDate: true },
+  });
+  const yearSet = new Set(distinctExams.map((e) => new Date(e.studyDate).getFullYear()));
+  const currentYear = now.getFullYear();
+  yearSet.add(currentYear);
+  yearSet.add(currentYear - 1);
+  const availableYears = Array.from(yearSet).sort((a, b) => b - a);
+
+  return {
+    selectedPeriod: period,
+    selectedPeriodLabel: isRolling
+      ? "Past 12 Months (Rolling)"
+      : `${targetYear} Calendar Year`,
+    priorPeriodLabel: isRolling
+      ? "Preceding 12 Months"
+      : `${targetYear - 1} Calendar Year`,
+    availableYears,
+    months: monthsData,
+    annualTotalFinalized,
+    annualAvgTatHours,
+    annualAvgTatMinutes,
+    priorAnnualTotalFinalized,
+    priorAnnualAvgTatHours,
+    priorAnnualAvgTatMinutes,
+    pctChangeTat,
+    pctChangeVolume,
+    fastestMonth: fastestMonth
+      ? {
+          monthLabel: fastestMonth.fullMonth,
+          avgTatHours: fastestMonth.avgTatHours,
+          avgTatMinutes: fastestMonth.avgTatMinutes,
+        }
+      : null,
+    peakVolumeMonth: peakVolumeMonth
+      ? {
+          monthLabel: peakVolumeMonth.fullMonth,
+          volume: peakVolumeMonth.totalFinalized,
+        }
+      : null,
+  };
+}
+
+export async function fetchYearlyTrendAction(period: string = "rolling") {
+  return await getTwelveMonthTatTrend(period);
 }
 
 // ============================================================================
@@ -778,5 +1004,605 @@ export async function deleteExaminationAction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/patient");
+}
+
+// ============================================================================
+// 10. ACTION: Advanced Filtered Examinations Query (Examinations Hub)
+// Supports filtering exact exams by Status, Date Presets, Custom Range, Modality, etc.
+// ============================================================================
+export interface ExaminationFilterOptions {
+  statusType?: "all" | "backlog" | "finalized";
+  datePreset?: "all" | "today" | "week" | "month" | "year" | "custom";
+  startDate?: string;
+  endDate?: string;
+  modalityCode?: string;
+  triageLevel?: string;
+  urgencyLevel?: string;
+  searchTerm?: string;
+}
+
+export interface FilteredExaminationItem {
+  examId: string;
+  identifier: string;
+  modalityCode: string;
+  triageLevel: string;
+  urgencyLevel: string;
+  studyDateFormatted: string;
+  isoDate: string;
+  examCompletedAtFormatted: string | null;
+  reportSignedAtFormatted: string | null;
+  dwellMinutes: number | null;
+  tatMinutes: number | null;
+  tatHours: number | null;
+  targetTatMinutes: number | null;
+  isBreached: boolean;
+  isCarryOver: boolean;
+  isFinalized: boolean;
+  statusCode: string;
+  notes: string;
+}
+
+export interface FilteredExaminationsResult {
+  items: FilteredExaminationItem[];
+  totalCount: number;
+  summary: {
+    totalFinalized: number;
+    totalBacklog: number;
+    avgTatMinutes: number;
+    avgTatHours: number;
+    totalBreached: number;
+  };
+}
+
+export async function fetchFilteredExaminationsAction(
+  options: ExaminationFilterOptions
+): Promise<FilteredExaminationsResult> {
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
+  const datePreset = options.datePreset || "all";
+  let dateFilter: { gte?: Date; lte?: Date } | undefined = undefined;
+
+  if (datePreset === "today") {
+    const s = new Date(now);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(now);
+    e.setHours(23, 59, 59, 999);
+    dateFilter = { gte: s, lte: e };
+  } else if (datePreset === "week") {
+    const d = new Date(now);
+    const day = d.getDay();
+    const diffToMon = d.getDate() - (day === 0 ? 6 : day - 1);
+    const mon = new Date(d);
+    mon.setDate(diffToMon);
+    mon.setHours(0, 0, 0, 0);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    sun.setHours(23, 59, 59, 999);
+    dateFilter = { gte: mon, lte: sun };
+  } else if (datePreset === "month") {
+    const s = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const e = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    dateFilter = { gte: s, lte: e };
+  } else if (datePreset === "year") {
+    const s = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const e = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    dateFilter = { gte: s, lte: e };
+  } else if (datePreset === "custom" && options.startDate && options.endDate) {
+    const sParts = options.startDate.split("-").map(Number);
+    const eParts = options.endDate.split("-").map(Number);
+    const s = new Date(sParts[0], sParts[1] - 1, sParts[2], 0, 0, 0, 0);
+    const e = new Date(eParts[0], eParts[1] - 1, eParts[2], 23, 59, 59, 999);
+    dateFilter = { gte: s, lte: e };
+  }
+
+  const whereClause: any = {
+    statusCode: { not: "CANCELLED" },
+  };
+
+  if (dateFilter) {
+    whereClause.studyDate = dateFilter;
+  }
+
+  if (options.statusType === "backlog") {
+    whereClause.report = { is: null };
+  } else if (options.statusType === "finalized") {
+    whereClause.report = { reportSignedAt: { not: null } };
+  }
+
+  if (options.modalityCode && options.modalityCode !== "ALL") {
+    whereClause.modalityCode = options.modalityCode;
+  }
+
+  if (options.triageLevel && options.triageLevel !== "ALL") {
+    whereClause.triageLevel = options.triageLevel;
+  }
+
+  if (options.urgencyLevel && options.urgencyLevel !== "ALL") {
+    whereClause.urgencyLevel = options.urgencyLevel;
+  }
+
+  if (options.searchTerm && options.searchTerm.trim() !== "") {
+    whereClause.examinationIdentifier = { contains: options.searchTerm.trim() };
+  }
+
+  const exams = await prisma.examination.findMany({
+    where: whereClause,
+    include: {
+      report: true,
+      modality: { include: { slaConfigs: true } },
+    },
+    orderBy: { studyDate: "desc" },
+  });
+
+  const tatList: number[] = [];
+  let totalBreached = 0;
+  let totalFinalized = 0;
+  let totalBacklog = 0;
+
+  const items: FilteredExaminationItem[] = exams.map((e) => {
+    const isFinalized = Boolean(e.report && e.report.reportSignedAt);
+    const targetRule = e.modality.slaConfigs.find(
+      (s) => s.triageLevel === e.triageLevel && s.urgencyLevel === e.urgencyLevel
+    );
+    const targetTat = targetRule?.targetTatMinutes ?? null;
+
+    let dwellMinutes: number | null = null;
+    let tatMinutes: number | null = null;
+    let tatHours: number | null = null;
+    let isBreached = false;
+    let isCarryOver = false;
+
+    if (isFinalized) {
+      totalFinalized++;
+      tatMinutes = e.report?.tatExamToSignMinutes ?? null;
+      if (tatMinutes && tatMinutes > 0) {
+        tatList.push(tatMinutes);
+        tatHours = Number((tatMinutes / 60).toFixed(1));
+      }
+      isBreached = Boolean(e.report?.isSlaBreached);
+      if (isBreached) totalBreached++;
+    } else {
+      totalBacklog++;
+      isCarryOver = new Date(e.studyDate) < todayStart;
+      if (e.examCompletedAt) {
+        dwellMinutes = Number(
+          ((now.getTime() - new Date(e.examCompletedAt).getTime()) / (1000 * 60)).toFixed(1)
+        );
+        if (targetTat && dwellMinutes > targetTat) {
+          isBreached = true;
+          totalBreached++;
+        }
+      }
+    }
+
+    return {
+      examId: e.examId,
+      identifier: e.examinationIdentifier,
+      modalityCode: e.modalityCode,
+      triageLevel: e.triageLevel,
+      urgencyLevel: e.urgencyLevel,
+      studyDateFormatted: new Date(e.studyDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      isoDate: new Date(e.studyDate).toISOString().split("T")[0],
+      examCompletedAtFormatted: e.examCompletedAt
+        ? new Date(e.examCompletedAt).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : null,
+      reportSignedAtFormatted: e.report?.reportSignedAt
+        ? new Date(e.report.reportSignedAt).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : null,
+      dwellMinutes,
+      tatMinutes,
+      tatHours,
+      targetTatMinutes: targetTat,
+      isBreached,
+      isCarryOver,
+      isFinalized,
+      statusCode: e.statusCode,
+      notes: e.notes ?? "",
+    };
+  });
+
+  const avgTatMinutes =
+    tatList.length > 0
+      ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
+      : 0;
+  const avgTatHours = Number((avgTatMinutes / 60).toFixed(1));
+
+  return {
+    items,
+    totalCount: items.length,
+    summary: {
+      totalFinalized,
+      totalBacklog,
+      avgTatMinutes,
+      avgTatHours,
+      totalBreached,
+    },
+  };
+}
+
+// ============================================================================
+// 11. ACTION: RIS Workflow Simulator Scenarios & Instant Actions
+// Used exclusively on the dedicated /simulator page
+// ============================================================================
+export async function simulateScenarioAction(
+  scenario: "stat_ct" | "stat_xray" | "opd_us" | "in_mri"
+) {
+  const count = await prisma.examination.count();
+  const nextId = `ACC-QCGH-${1000 + count + 1}`;
+  const now = new Date();
+
+  let modalityCode: ModalityCode = ModalityCode.CT;
+  let triageLevel: TriageLevel = TriageLevel.ER;
+  let urgencyLevel: UrgencyLevel = UrgencyLevel.STAT;
+  let notes = "Simulated ER Trauma Scan";
+
+  if (scenario === "stat_xray") {
+    modalityCode = ModalityCode.XRAY;
+    triageLevel = TriageLevel.ER;
+    urgencyLevel = UrgencyLevel.STAT;
+    notes = "Simulated Acute Chest X-Ray";
+  } else if (scenario === "opd_us") {
+    modalityCode = ModalityCode.US;
+    triageLevel = TriageLevel.OPD;
+    urgencyLevel = UrgencyLevel.ROUTINE;
+    notes = "Simulated Outpatient Abdominal Ultrasound";
+  } else if (scenario === "in_mri") {
+    modalityCode = ModalityCode.MRI;
+    triageLevel = TriageLevel.IN;
+    urgencyLevel = UrgencyLevel.ROUTINE;
+    notes = "Simulated Inpatient Brain MRI Scan";
+  }
+
+  await prisma.examination.create({
+    data: {
+      examinationIdentifier: nextId,
+      modalityCode,
+      statusCode: ExaminationStatusCode.EXAM_COMPLETED,
+      triageLevel,
+      urgencyLevel,
+      studyDate: now,
+      examCompletedAt: now,
+      notes,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/simulator");
+  revalidatePath("/patient");
+  return { success: true, identifier: nextId };
+}
+
+export async function autoSignOldestBacklogAction() {
+  const oldest = await prisma.examination.findFirst({
+    where: {
+      statusCode: { not: "CANCELLED" },
+      report: { is: null },
+      examCompletedAt: { not: null },
+    },
+    include: {
+      modality: { include: { slaConfigs: true } },
+    },
+    orderBy: { examCompletedAt: "asc" },
+  });
+
+  if (!oldest || !oldest.examCompletedAt) {
+    return { success: false, message: "No pending unfinalized studies found in queue." };
+  }
+
+  const now = new Date();
+  const tatMinutes = Number(
+    ((now.getTime() - new Date(oldest.examCompletedAt).getTime()) / (1000 * 60)).toFixed(1)
+  );
+
+  const targetRule = oldest.modality.slaConfigs.find(
+    (s) => s.triageLevel === oldest.triageLevel && s.urgencyLevel === oldest.urgencyLevel
+  );
+  const isBreached = targetRule ? tatMinutes > targetRule.targetTatMinutes : false;
+
+  await prisma.$transaction([
+    prisma.radiologyReport.create({
+      data: {
+        examId: oldest.examId,
+        reportStatus: ReportStatusCode.FINALIZED,
+        reportSignedAt: now,
+        tatExamToSignMinutes: tatMinutes,
+        isSlaBreached: isBreached,
+      },
+    }),
+    prisma.examination.update({
+      where: { examId: oldest.examId },
+      data: { statusCode: ExaminationStatusCode.COMPLETED_SIGNED_OFF },
+    }),
+  ]);
+
+  revalidatePath("/");
+  revalidatePath("/simulator");
+  revalidatePath("/patient");
+  return {
+    success: true,
+    identifier: oldest.examinationIdentifier,
+    tatMinutes,
+    isBreached,
+  };
+}
+
+// ============================================================================
+// CONFIGURATIONS & SLA BENCHMARKS SUITE
+// ============================================================================
+
+export interface SlaRuleItem {
+  slaId: string;
+  modalityCode: string;
+  triageLevel: string;
+  urgencyLevel: string;
+  targetTatMinutes: number;
+}
+
+export interface ModalityConfigItem {
+  modalityCode: string;
+  modalityName: string;
+  departmentRoom: string | null;
+  isActive: boolean;
+  totalExams: number;
+  slaConfigs: SlaRuleItem[];
+}
+
+export interface RadiologistItem {
+  radiologistId: string;
+  fullName: string;
+  subspecialty: string | null;
+  licenseNumber: string | null;
+  isActive: boolean;
+  totalReports: number;
+}
+
+export interface ConfigurationsData {
+  modalities: ModalityConfigItem[];
+  radiologists: RadiologistItem[];
+  hospitalGovernance: {
+    hospitalName: string;
+    department: string;
+    phiZeroCompliance: boolean;
+    dohAccreditation: string;
+    systemVersion: string;
+  };
+}
+
+// 17. ACTION: Get All Configurations, Modalities, SLAs & Radiologist Roster
+export async function getConfigurationsAction(): Promise<ConfigurationsData> {
+  // Ensure default radiologists exist if database has none
+  const radCount = await prisma.radiologist.count();
+  if (radCount === 0) {
+    const defaultRads = [
+      { fullName: "Dr. Maria Corazon Santos, MD, FPCR", subspecialty: "Neuroradiology & Head CT/MRI", licenseNumber: "PRC-0098412" },
+      { fullName: "Dr. Rafael Antonio Cruz, MD, FPCR", subspecialty: "Trauma, MSK & General Radiography", licenseNumber: "PRC-0104781" },
+      { fullName: "Dr. Angela Teresa Reyes, MD, DPBR", subspecialty: "Thoracic & Emergency Imaging", licenseNumber: "PRC-0112940" },
+      { fullName: "Dr. Jose Gabriel Lim, MD, FPCR", subspecialty: "Abdominal & High-Resolution Ultrasound", licenseNumber: "PRC-0087634" },
+      { fullName: "Dr. Christine Joy Bernardo, MD, FPCR", subspecialty: "Breast Imaging & Mammography", licenseNumber: "PRC-0120519" },
+    ];
+    for (const r of defaultRads) {
+      await prisma.radiologist.create({ data: r });
+    }
+  }
+
+  // Fetch modalities with their SLAs and examination counts
+  const modalitiesRaw = await prisma.modality.findMany({
+    include: {
+      slaConfigs: true,
+      _count: { select: { examinations: true } },
+    },
+    orderBy: { modalityCode: "asc" },
+  });
+
+  // Fetch radiologists with report counts
+  const radiologistsRaw = await prisma.radiologist.findMany({
+    include: {
+      _count: { select: { reports: true } },
+    },
+    orderBy: { fullName: "asc" },
+  });
+
+  const modalities: ModalityConfigItem[] = modalitiesRaw.map((m) => ({
+    modalityCode: m.modalityCode,
+    modalityName: m.modalityName,
+    departmentRoom: m.departmentRoom,
+    isActive: m.isActive,
+    totalExams: m._count.examinations,
+    slaConfigs: m.slaConfigs.map((s) => ({
+      slaId: s.slaId,
+      modalityCode: s.modalityCode,
+      triageLevel: s.triageLevel,
+      urgencyLevel: s.urgencyLevel,
+      targetTatMinutes: s.targetTatMinutes,
+    })),
+  }));
+
+  const radiologists: RadiologistItem[] = radiologistsRaw.map((r) => ({
+    radiologistId: r.radiologistId,
+    fullName: r.fullName,
+    subspecialty: r.subspecialty,
+    licenseNumber: r.licenseNumber,
+    isActive: r.isActive,
+    totalReports: r._count.reports,
+  }));
+
+  return {
+    modalities,
+    radiologists,
+    hospitalGovernance: {
+      hospitalName: "Quezon City General Hospital (QCGH)",
+      department: "Department of Radiology & Medical Imaging",
+      phiZeroCompliance: true,
+      dohAccreditation: "Tertiary Level III Hospital Center",
+      systemVersion: "RADiTrack v1.4.0 (Build 2026)",
+    },
+  };
+}
+
+// 18. ACTION: Update or Upsert SLA Benchmark
+export async function updateSlaTargetAction(formData: FormData) {
+  const modalityCode = formData.get("modalityCode") as string;
+  const triageLevel = (formData.get("triageLevel") as string) || "OPD";
+  const urgencyLevel = (formData.get("urgencyLevel") as string) || "ROUTINE";
+  const targetTatMinutes = Number(formData.get("targetTatMinutes"));
+
+  if (!modalityCode || isNaN(targetTatMinutes) || targetTatMinutes <= 0) {
+    return { success: false, message: "Invalid modality or target TAT duration." };
+  }
+
+  await prisma.slaConfiguration.upsert({
+    where: {
+      modalityCode_triageLevel_urgencyLevel: {
+        modalityCode,
+        triageLevel,
+        urgencyLevel,
+      },
+    },
+    update: { targetTatMinutes },
+    create: {
+      modalityCode,
+      triageLevel,
+      urgencyLevel,
+      targetTatMinutes,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/simulator");
+  return {
+    success: true,
+    modalityCode,
+    triageLevel,
+    urgencyLevel,
+    targetTatMinutes,
+  };
+}
+
+// 19. ACTION: Reset All SLA Benchmarks to Hospital Standards
+export async function resetDefaultSlasAction() {
+  const standardSlas = [
+    // CT Standards
+    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 60 },
+    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
+    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
+    // XRAY Standards
+    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 30 },
+    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 480 },
+    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 720 },
+    // US Standards
+    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 45 },
+    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 720 },
+    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
+    // MRI Standards
+    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 120 },
+    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    // MAMMO Standards
+    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
+    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
+  ];
+
+  for (const s of standardSlas) {
+    await prisma.slaConfiguration.upsert({
+      where: {
+        modalityCode_triageLevel_urgencyLevel: {
+          modalityCode: s.modalityCode,
+          triageLevel: s.triageLevel,
+          urgencyLevel: s.urgencyLevel,
+        },
+      },
+      update: { targetTatMinutes: s.targetTatMinutes },
+      create: s,
+    });
+  }
+
+  revalidatePath("/");
+  revalidatePath("/simulator");
+  return { success: true, count: standardSlas.length };
+}
+
+// 20. ACTION: Update Modality Department Room Location & Details
+export async function updateModalityDetailsAction(formData: FormData) {
+  const modalityCode = formData.get("modalityCode") as string;
+  const departmentRoom = (formData.get("departmentRoom") as string) || "";
+  const isActive = formData.get("isActive") === "true";
+
+  if (!modalityCode) {
+    return { success: false, message: "Missing modality code." };
+  }
+
+  await prisma.modality.update({
+    where: { modalityCode },
+    data: {
+      departmentRoom: departmentRoom.trim() || null,
+      isActive,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/simulator");
+  return { success: true, modalityCode, departmentRoom, isActive };
+}
+
+// 21. ACTION: Fast Toggle Modality Operational Status
+export async function toggleModalityStatusAction(modalityCode: string, isActive: boolean) {
+  if (!modalityCode) return { success: false };
+
+  await prisma.modality.update({
+    where: { modalityCode },
+    data: { isActive },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/simulator");
+  return { success: true, modalityCode, isActive };
+}
+
+// 22. ACTION: Register New Interpreting Radiologist
+export async function createRadiologistAction(formData: FormData) {
+  const fullName = (formData.get("fullName") as string)?.trim();
+  const subspecialty = (formData.get("subspecialty") as string)?.trim() || null;
+  const licenseNumber = (formData.get("licenseNumber") as string)?.trim() || null;
+
+  if (!fullName) {
+    return { success: false, message: "Physician name is required." };
+  }
+
+  const created = await prisma.radiologist.create({
+    data: {
+      fullName,
+      subspecialty,
+      licenseNumber,
+      isActive: true,
+    },
+  });
+
+  revalidatePath("/");
+  return { success: true, radiologistId: created.radiologistId };
+}
+
+// 23. ACTION: Toggle Radiologist Duty Status
+export async function toggleRadiologistStatusAction(radiologistId: string, isActive: boolean) {
+  if (!radiologistId) return { success: false };
+
+  await prisma.radiologist.update({
+    where: { radiologistId },
+    data: { isActive },
+  });
+
+  revalidatePath("/");
+  return { success: true, radiologistId, isActive };
 }
 

@@ -3,23 +3,30 @@ import {
   getSevenDayStaffAnalytics,
   getTwelveMonthTatTrend,
   getModalityTatOverview,
+  getConfigurationsAction,
 } from "./actions";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [data, sevenDayAnalytics, twelveMonthTrend, modalityTatOverview] =
-    await Promise.all([
-      getDashboardData(),
-      getSevenDayStaffAnalytics(),
-      getTwelveMonthTatTrend(),
-      getModalityTatOverview(),
-    ]);
+  const [
+    data,
+    sevenDayAnalytics,
+    twelveMonthTrend,
+    modalityTatOverview,
+    configurationsData,
+  ] = await Promise.all([
+    getDashboardData(),
+    getSevenDayStaffAnalytics(),
+    getTwelveMonthTatTrend(),
+    getModalityTatOverview(),
+    getConfigurationsAction(),
+  ]);
 
   const prevMonth =
-    twelveMonthTrend.length >= 2
-      ? twelveMonthTrend[twelveMonthTrend.length - 2]
+    twelveMonthTrend.months.length >= 2
+      ? twelveMonthTrend.months[twelveMonthTrend.months.length - 2]
       : null;
 
   return (
@@ -29,6 +36,7 @@ export default async function DashboardPage() {
       twelveMonthTrend={twelveMonthTrend}
       modalityTatOverview={modalityTatOverview}
       prevMonth={prevMonth}
+      configurationsData={configurationsData}
     />
   );
 }
