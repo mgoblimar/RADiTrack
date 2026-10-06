@@ -312,8 +312,8 @@ export function ExaminationsHub({ queue, finalizedCount: initialFinalizedCount }
                 )}
                 {statusTab === "finalized" && (
                   <>
-                    <th className="px-4 py-3">Completed $T_1$</th>
-                    <th className="px-4 py-3">Signed $T_2$</th>
+                    <th className="px-4 py-3">Completed (T₁)</th>
+                    <th className="px-4 py-3">Signed (T₂)</th>
                     <th className="px-4 py-3 text-right">Actual TAT</th>
                     <th className="px-4 py-3 text-center">SLA Compliance</th>
                   </>
@@ -410,7 +410,7 @@ export function ExaminationsHub({ queue, finalizedCount: initialFinalizedCount }
                               type="submit"
                               className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-2.5 py-1 rounded-lg text-xs transition border border-emerald-500/40"
                             >
-                              Sign ($T_2$)
+                              Sign (T₂)
                             </button>
                           </form>
                         </div>
@@ -496,7 +496,7 @@ export function ExaminationsHub({ queue, finalizedCount: initialFinalizedCount }
                               type="submit"
                               className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-2 py-0.5 rounded text-xs transition"
                             >
-                              Sign ($T_2$)
+                              Sign (T₂)
                             </button>
                           </form>
                         )}

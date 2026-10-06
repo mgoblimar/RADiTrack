@@ -798,8 +798,9 @@ export async function getTwelveMonthTatTrend(
   });
   const yearSet = new Set(distinctExams.map((e) => new Date(e.studyDate).getFullYear()));
   const currentYear = now.getFullYear();
-  yearSet.add(currentYear);
-  yearSet.add(currentYear - 1);
+  for (let y = currentYear - 6; y <= currentYear + 1; y++) {
+    yearSet.add(y);
+  }
   const availableYears = Array.from(yearSet).sort((a, b) => b - a);
 
   return {
@@ -850,6 +851,8 @@ export interface ModalityTatStats {
   volume: number;
 }
 
+export type ModalityTemporalPeriod = "ALL" | "7D" | "MONTH" | "YEAR";
+
 export interface ModalityTatOverviewItem {
   modality: string;
   name: string;
@@ -858,7 +861,125 @@ export interface ModalityTatOverviewItem {
   routine: ModalityTatStats;
 }
 
-export async function getModalityTatOverview(): Promise<ModalityTatOverviewItem[]> {
+export interface MultiPeriodModalityTatOverview {
+  currentPeriod: ModalityTemporalPeriod;
+  periods: {
+    ALL: ModalityTatOverviewItem[];
+    "7D": ModalityTatOverviewItem[];
+    MONTH: ModalityTatOverviewItem[];
+    YEAR: ModalityTatOverviewItem[];
+  };
+}
+
+export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOverview> {
+  const modalities = await prisma.modality.findMany({
+    include: {
+      slaConfigs: true,
+      examinations: {
+        where: {
+          report: { reportSignedAt: { not: null } },
+          statusCode: { not: "CANCELLED" },
+        },
+        include: { report: true },
+      },
+    },
+    orderBy: { modalityCode: "asc" },
+  });
+
+  const now = new Date();
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+
+  const buildPeriodData = (period: ModalityTemporalPeriod): ModalityTatOverviewItem[] => {
+    return modalities.map((m) => {
+      const periodExams = m.examinations.filter((e) => {
+        if (period === "ALL") return true;
+        const examDate = e.studyDate
+          ? new Date(e.studyDate)
+          : e.report?.reportSignedAt
+          ? new Date(e.report.reportSignedAt)
+          : null;
+        if (!examDate) return false;
+        if (period === "7D") return examDate >= sevenDaysAgo && examDate <= now;
+        if (period === "MONTH") return examDate >= startOfMonth && examDate <= now;
+        if (period === "YEAR") return examDate >= startOfYear && examDate <= now;
+        return true;
+      });
+
+      const calcStats = (exams: typeof m.examinations, isStat: boolean | null): ModalityTatStats => {
+        const filtered = exams.filter((e) => {
+          if (isStat === true) return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
+          if (isStat === false) return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+          return true;
+        });
+
+        const tatList = filtered
+          .map((e) => e.report?.tatExamToSignMinutes || 0)
+          .filter((v) => v > 0);
+
+        const avgTat =
+          tatList.length > 0
+            ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
+            : 0;
+
+        // Select matching target from SLA rules
+        const sla = m.slaConfigs.find((s) => {
+          if (isStat === true) return s.urgencyLevel === UrgencyLevel.STAT || s.triageLevel === TriageLevel.ER;
+          if (isStat === false) return s.urgencyLevel === UrgencyLevel.ROUTINE;
+          return true;
+        });
+
+        // Default fallback targets if specific rule not matched
+        const defaultTarget =
+          m.modalityCode === ModalityCode.CT
+            ? (isStat ? 60 : 1440)
+            : m.modalityCode === ModalityCode.XRAY
+            ? (isStat ? 30 : 480)
+            : 120;
+
+        return {
+          avgTat,
+          target: sla?.targetTatMinutes || defaultTarget,
+          volume: filtered.length,
+        };
+      };
+
+      return {
+        modality: m.modalityCode,
+        name: m.modalityName,
+        all: calcStats(periodExams, null),
+        emergency: calcStats(periodExams, true),
+        routine: calcStats(periodExams, false),
+      };
+    });
+  };
+
+  return {
+    currentPeriod: "ALL",
+    periods: {
+      ALL: buildPeriodData("ALL"),
+      "7D": buildPeriodData("7D"),
+      MONTH: buildPeriodData("MONTH"),
+      YEAR: buildPeriodData("YEAR"),
+    },
+  };
+}
+
+// 8B. ACTION: Fetch Modality TAT Overview for Custom Date Range
+export async function fetchModalityTatCustomRangeAction(
+  startDateStr: string,
+  endDateStr: string
+): Promise<ModalityTatOverviewItem[]> {
+  const partsStart = startDateStr.split("-").map(Number);
+  const start = new Date(partsStart[0], partsStart[1] - 1, partsStart[2], 0, 0, 0, 0);
+
+  const partsEnd = endDateStr.split("-").map(Number);
+  const end = new Date(partsEnd[0], partsEnd[1] - 1, partsEnd[2], 23, 59, 59, 999);
+
   const modalities = await prisma.modality.findMany({
     include: {
       slaConfigs: true,
@@ -874,6 +995,16 @@ export async function getModalityTatOverview(): Promise<ModalityTatOverviewItem[
   });
 
   return modalities.map((m) => {
+    const periodExams = m.examinations.filter((e) => {
+      const examDate = e.studyDate
+        ? new Date(e.studyDate)
+        : e.report?.reportSignedAt
+        ? new Date(e.report.reportSignedAt)
+        : null;
+      if (!examDate) return false;
+      return examDate >= start && examDate <= end;
+    });
+
     const calcStats = (exams: typeof m.examinations, isStat: boolean | null): ModalityTatStats => {
       const filtered = exams.filter((e) => {
         if (isStat === true) return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
@@ -890,14 +1021,12 @@ export async function getModalityTatOverview(): Promise<ModalityTatOverviewItem[
           ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
           : 0;
 
-      // Select matching target from SLA rules
       const sla = m.slaConfigs.find((s) => {
         if (isStat === true) return s.urgencyLevel === UrgencyLevel.STAT || s.triageLevel === TriageLevel.ER;
         if (isStat === false) return s.urgencyLevel === UrgencyLevel.ROUTINE;
         return true;
       });
 
-      // Default fallback targets if specific rule not matched
       const defaultTarget =
         m.modalityCode === ModalityCode.CT
           ? (isStat ? 60 : 1440)
@@ -915,9 +1044,9 @@ export async function getModalityTatOverview(): Promise<ModalityTatOverviewItem[
     return {
       modality: m.modalityCode,
       name: m.modalityName,
-      all: calcStats(m.examinations, null),
-      emergency: calcStats(m.examinations, true),
-      routine: calcStats(m.examinations, false),
+      all: calcStats(periodExams, null),
+      emergency: calcStats(periodExams, true),
+      routine: calcStats(periodExams, false),
     };
   });
 }

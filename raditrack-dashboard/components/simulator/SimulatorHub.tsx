@@ -99,7 +99,7 @@ export function SimulatorHub({ initialQueue, totalExamsCount }: SimulatorHubProp
             QCGH RIS & Modality Simulator
           </h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-1">
-            Simulate modality acquisitions ($T_1$) and test radiologist sign-offs ($T_2$) to stress-test the TAT monitoring system.
+            Simulate modality acquisitions (T₁) and test radiologist sign-offs (T₂) to stress-test the TAT monitoring system.
           </p>
         </div>
 
@@ -344,7 +344,7 @@ export function SimulatorHub({ initialQueue, totalExamsCount }: SimulatorHubProp
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/20 text-xs flex items-center justify-center gap-2"
             >
               <CheckCircle2 className="h-4 w-4" />
-              <span>Auto-Sign Oldest Backlog Study ($T_2$)</span>
+              <span>Auto-Sign Oldest Backlog Study (T₂)</span>
             </button>
           </div>
         </div>
@@ -437,7 +437,7 @@ export function SimulatorHub({ initialQueue, totalExamsCount }: SimulatorHubProp
                         type="submit"
                         className="bg-emerald-600/80 hover:bg-emerald-500 text-white font-semibold px-2.5 py-1 rounded-lg text-xs transition border border-emerald-500/40"
                       >
-                        Sign-Off ($T_2$)
+                        Sign-Off (T₂)
                       </button>
                     </form>
                   </td>
