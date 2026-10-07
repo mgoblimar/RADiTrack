@@ -11,7 +11,7 @@ import {
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60; // Automated re-render every 60 seconds (Client-confirmed TV heartbeat)
+export const revalidate = 60;
 
 export default async function PatientActivityPage() {
   const data = await getPublicActivityData();
@@ -19,170 +19,281 @@ export default async function PatientActivityPage() {
   const volumeDiff = data.todayGrandTotal - data.yesterdayGrandTotal;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans selection:bg-sky-500 selection:text-white">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Kiosk / TV Screen Header */}
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-800 pb-6 gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-sky-400 text-xs font-semibold tracking-wider uppercase mb-1">
-              <Activity className="h-4 w-4 animate-pulse" />
-              Department of Radiology • Live Public Monitor
+    <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 md:px-8 lg:px-10">
+      <div className="mx-auto max-w-7xl space-y-8">
+        {/* =========================================================
+            HEADER
+            ========================================================= */}
+        <header className="flex flex-col gap-5 border-b border-border pb-7 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-qc-blue">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-qc-yellow/25">
+                <Activity className="h-4 w-4" />
+              </span>
+
+              <span>Department of Radiology · Live Public Monitor</span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+
+            <h1 className="text-3xl font-extrabold tracking-tight text-qc-navy md:text-4xl">
               Radiology Activity Today
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              {data.asOfDate} • 24-Hour Continuous Service Coverage
+
+            <p className="text-sm font-medium text-muted-foreground">
+              {data.asOfDate} · 24-hour continuous service coverage
             </p>
           </div>
 
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-2.5 bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-full shadow-inner">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
-              <span className="text-xs text-slate-300 font-medium">
-                Live Sync: {data.lastUpdatedTime}
+          <div className="flex flex-col items-start gap-3 md:items-end">
+            <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-qc-yellow" />
+
+              <span className="text-xs font-semibold text-qc-navy">
+                Live sync: {data.lastUpdatedTime}
               </span>
             </div>
+
             <Link
               href="/"
-              className="text-xs text-slate-500 hover:text-slate-300 transition underline underline-offset-4"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-qc-blue"
             >
-              Staff Portal Access →
+              Staff portal access →
             </Link>
           </div>
         </header>
 
-        {/* Grand Total Comparison Banner */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Today Volume */}
-          <div className="bg-gradient-to-br from-sky-950/60 to-slate-900 border border-sky-800/50 p-6 rounded-2xl shadow-xl">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
-              <span>Total Examinations Completed Today</span>
-              <Users className="h-5 w-5 text-sky-400" />
-            </div>
-            <div className="text-5xl font-black text-white mt-3 tracking-tight">
-              {data.todayGrandTotal}
-            </div>
-            <div className="text-xs text-sky-300 mt-2 font-medium">
-              Patients served across all imaging suites today
+        {/* =========================================================
+            SUMMARY CARDS
+            ========================================================= */}
+        <section className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          {/* Today's Volume */}
+          <div className="rounded-3xl border border-border bg-qc-navy p-6 shadow-[0_14px_35px_rgba(5,6,64,0.10)]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-white/70">
+                  Total examinations today
+                </p>
+
+                <p className="text-5xl font-extrabold tracking-tight text-white">
+                  {data.todayGrandTotal}
+                </p>
+
+                <p className="text-sm leading-relaxed text-white/65">
+                  Patients served across all imaging suites today
+                </p>
+              </div>
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-yellow text-qc-navy">
+                <Users className="h-5 w-5" />
+              </div>
             </div>
           </div>
 
-          {/* Yesterday Volume Baseline */}
-          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-lg">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
-              <span>Yesterday's Total Volume</span>
-              <Clock className="h-5 w-5 text-slate-400" />
-            </div>
-            <div className="text-5xl font-bold text-slate-300 mt-3 tracking-tight">
-              {data.yesterdayGrandTotal}
-            </div>
-            <div className="text-xs text-slate-400 mt-2">
-              Previous 24-hour baseline
+          {/* Yesterday's Volume */}
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-muted-foreground">
+                  Yesterday's total volume
+                </p>
+
+                <p className="text-5xl font-extrabold tracking-tight text-qc-navy">
+                  {data.yesterdayGrandTotal}
+                </p>
+
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Previous 24-hour baseline
+                </p>
+              </div>
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-qc-blue">
+                <Clock className="h-5 w-5" />
+              </div>
             </div>
           </div>
 
-          {/* Day-Over-Day Shift Indicator */}
-          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-lg flex flex-col justify-between">
-            <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
-              Day-Over-Day Shift Volume
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              {volumeDiff > 0 ? (
-                <span className="flex items-center gap-1 text-emerald-400 text-3xl font-bold">
-                  <ArrowUpRight className="h-8 w-8" /> +{volumeDiff}
-                </span>
-              ) : volumeDiff < 0 ? (
-                <span className="flex items-center gap-1 text-sky-400 text-3xl font-bold">
-                  <ArrowDownRight className="h-8 w-8" /> {volumeDiff}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-slate-400 text-3xl font-bold">
-                  <Minus className="h-8 w-8" /> Same
-                </span>
-              )}
-            </div>
-            <div className="text-xs text-slate-400 mt-2">
-              {volumeDiff > 0
-                ? "Higher patient volume compared to yesterday"
-                : volumeDiff < 0
-                ? "Lower patient volume compared to yesterday"
-                : "Equal volume to previous day"}
+          {/* Day-over-Day */}
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex h-full flex-col justify-between gap-6">
+              <div>
+                <p className="text-sm font-semibold text-muted-foreground">
+                  Day-over-day volume
+                </p>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Compared with yesterday
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {volumeDiff > 0 ? (
+                  <div className="flex items-center gap-2 text-qc-blue">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-qc-yellow/30">
+                      <ArrowUpRight className="h-5 w-5" />
+                    </span>
+
+                    <span className="text-3xl font-extrabold tracking-tight">
+                      +{volumeDiff}
+                    </span>
+                  </div>
+                ) : volumeDiff < 0 ? (
+                  <div className="flex items-center gap-2 text-qc-orange">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50">
+                      <ArrowDownRight className="h-5 w-5" />
+                    </span>
+
+                    <span className="text-3xl font-extrabold tracking-tight">
+                      {volumeDiff}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted">
+                      <Minus className="h-5 w-5" />
+                    </span>
+
+                    <span className="text-3xl font-extrabold tracking-tight">
+                      Same
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {volumeDiff > 0
+                  ? "Higher examination volume compared with yesterday."
+                  : volumeDiff < 0
+                    ? "Lower examination volume compared with yesterday."
+                    : "Examination volume is the same as the previous day."}
+              </p>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Modality Breakdown Grid (Proposal Page 5) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              Breakdown by Imaging Modality & Patient Origin
-            </h2>
-            <span className="text-xs text-slate-400">
-              Aggregated statistics by OPD • IN (Inpatient) • ER
-            </span>
+        {/* =========================================================
+            MODALITY BREAKDOWN
+            ========================================================= */}
+        <section className="space-y-5">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-qc-blue">
+                Imaging workload
+              </p>
+
+              <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-qc-navy">
+                Breakdown by modality & patient origin
+              </h2>
+            </div>
+
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-right">
+              Aggregated statistics across OPD, inpatient, and emergency
+              examinations.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {data.modalities.map((item) => (
               <div
                 key={item.modalityCode}
-                className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition space-y-4 shadow-md"
+                className="group rounded-3xl border border-border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                  <div>
-                    <span className="text-[11px] font-mono font-semibold text-sky-400 uppercase tracking-wider">
+                {/* Modality Header */}
+                <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
+                  <div className="space-y-1">
+                    <span className="inline-flex rounded-full bg-qc-blue/10 px-2.5 py-1 text-[11px] font-bold tracking-wide text-qc-blue">
                       {item.modalityCode}
                     </span>
-                    <h3 className="text-base font-bold text-white">
+
+                    <h3 className="text-lg font-bold text-qc-navy">
                       {item.modalityName}
                     </h3>
                   </div>
+
                   <div className="text-right">
-                    <div className="text-2xl font-black text-white">
+                    <div className="text-3xl font-extrabold tracking-tight text-qc-navy">
                       {item.today.total}
                     </div>
-                    <span className="text-[10px] text-slate-400">Today</span>
+
+                    <span className="text-xs font-medium text-muted-foreground">
+                      today
+                    </span>
                   </div>
                 </div>
 
-                {/* Today vs Yesterday Breakdown */}
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  {/* Today Column */}
-                  <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60 space-y-2">
-                    <span className="text-[10px] font-bold text-sky-300 uppercase tracking-wider block">
-                      Today ({item.today.total})
-                    </span>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">OPD:</span>
-                      <strong className="text-white">{item.today.opd}</strong>
+                {/* Today / Yesterday */}
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Today */}
+                  <div className="rounded-2xl bg-qc-cream-dark/45 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-xs font-bold text-qc-blue">
+                        Today
+                      </span>
+
+                      <span className="text-xs font-extrabold text-qc-navy">
+                        {item.today.total}
+                      </span>
                     </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Inpatient:</span>
-                      <strong className="text-white">{item.today.in}</strong>
-                    </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">ER:</span>
-                      <strong className="text-rose-300">{item.today.er}</strong>
+
+                    <div className="space-y-2.5 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">OPD</span>
+                        <strong className="font-bold text-qc-navy">
+                          {item.today.opd}
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">
+                          Inpatient
+                        </span>
+                        <strong className="font-bold text-qc-navy">
+                          {item.today.in}
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">ER</span>
+                        <strong className="font-bold text-qc-red">
+                          {item.today.er}
+                        </strong>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Yesterday Column */}
-                  <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800/40 space-y-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Yesterday ({item.yesterday.total})
-                    </span>
-                    <div className="flex justify-between text-slate-400">
-                      <span>OPD:</span>
-                      <span>{item.yesterday.opd}</span>
+                  {/* Yesterday */}
+                  <div className="rounded-2xl border border-border bg-background/60 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-xs font-bold text-muted-foreground">
+                        Yesterday
+                      </span>
+
+                      <span className="text-xs font-extrabold text-qc-navy">
+                        {item.yesterday.total}
+                      </span>
                     </div>
-                    <div className="flex justify-between text-slate-400">
-                      <span>Inpatient:</span>
-                      <span>{item.yesterday.in}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                      <span>ER:</span>
-                      <span>{item.yesterday.er}</span>
+
+                    <div className="space-y-2.5 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">OPD</span>
+                        <span className="font-semibold text-qc-navy">
+                          {item.yesterday.opd}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">
+                          Inpatient
+                        </span>
+                        <span className="font-semibold text-qc-navy">
+                          {item.yesterday.in}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">ER</span>
+                        <span className="font-semibold text-qc-navy">
+                          {item.yesterday.er}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -191,11 +302,20 @@ export default async function PatientActivityPage() {
           </div>
         </section>
 
-        {/* Privacy & Zero-PII Guarantee Banner */}
-        <footer className="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-4 flex items-center gap-3.5 text-xs text-emerald-300">
-          <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
-          <p>
-            <strong>Strict Zero-PII Compliance:</strong> This display is strictly for department workload monitoring and waiting area information. No patient-identifiable data (names, identification numbers, clinical findings, or individual turnaround times) is processed or displayed.
+        {/* =========================================================
+            PRIVACY / ZERO-PII NOTICE
+            ========================================================= */}
+        <footer className="flex items-start gap-3 rounded-2xl border border-qc-blue/15 bg-qc-blue/5 px-5 py-4 text-sm text-qc-navy">
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+
+          <p className="leading-relaxed">
+            <strong className="font-extrabold">Strict Zero-PII compliance:</strong>{" "}
+            This display is intended only for department workload monitoring
+            and waiting-area information. No patient-identifiable data such as
+            names, identification numbers, clinical findings, or individual
+            turnaround times is processed or displayed.
           </p>
         </footer>
       </div>

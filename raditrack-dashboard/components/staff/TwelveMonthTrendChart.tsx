@@ -1,490 +1,989 @@
 "use client";
 
-import { useState, useTransition, useMemo, useRef, useEffect } from "react";
 import {
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+
+import {
   Area,
   AreaChart,
+  CartesianGrid,
   Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
+
 import {
-  TrendingUp,
-  TrendingDown,
   Calendar,
-  Layers,
-  Clock,
-  Zap,
-  BarChart2,
+  CalendarDays,
+  Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CalendarDays,
-  ChevronDown,
+  Layers,
+  TrendingDown,
+  TrendingUp,
   X,
-  Check,
 } from "lucide-react";
-import { fetchYearlyTrendAction, TwelveMonthTrendResult } from "@/app/actions";
+
+import {
+  fetchYearlyTrendAction,
+  TwelveMonthTrendResult,
+} from "@/app/actions";
 
 interface Props {
   data: TwelveMonthTrendResult;
 }
 
-export function TwelveMonthTrendChart({ data: initialData }: Props) {
-  const [data, setData] = useState<TwelveMonthTrendResult>(initialData);
-  const [selectedPeriod, setSelectedPeriod] = useState<string>(initialData.selectedPeriod || "rolling");
-  const [comparePriorYear, setComparePriorYear] = useState<boolean>(true);
-  const [isPending, startTransition] = useTransition();
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+// =========================================================
+// RADiTrack palette
+// =========================================================
 
-  // Close dropdown on click outside or escape key
+const QC_NAVY = "#050E40";
+const QC_BLUE = "#18298C";
+const QC_YELLOW = "#F2CB49";
+const QC_RED = "#A60808";
+const QC_PURPLE = "#7652B8";
+const QC_MUTED = "#64748B";
+const QC_GRID = "#E2E8F0";
+
+// =========================================================
+// Component
+// =========================================================
+
+export function TwelveMonthTrendChart({
+  data: initialData,
+}: Props) {
+  const [data, setData] =
+    useState<TwelveMonthTrendResult>(
+      initialData,
+    );
+
+  const [selectedPeriod, setSelectedPeriod] =
+    useState<string>(
+      initialData.selectedPeriod || "rolling",
+    );
+
+  const [comparePriorYear, setComparePriorYear] =
+    useState(true);
+
+  const [isPending, startTransition] =
+    useTransition();
+
+  const [isSettingsOpen, setIsSettingsOpen] =
+    useState(false);
+
+  const settingsRef =
+    useRef<HTMLDivElement>(null);
+
+  // =========================================================
+  // Close settings popover
+  // =========================================================
+
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
+    const handleClickOutside = (
+      event: MouseEvent,
+    ) => {
+      if (
+        settingsRef.current &&
+        !settingsRef.current.contains(
+          event.target as Node,
+        )
+      ) {
+        setIsSettingsOpen(false);
       }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsDropdownOpen(false);
-      }
-    }
-    if (isDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isDropdownOpen]);
 
-  const handleSelectPeriod = (period: string) => {
+    const handleKeyDown = (
+      event: KeyboardEvent,
+    ) => {
+      if (event.key === "Escape") {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    if (isSettingsOpen) {
+      document.addEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
+
+      document.addEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+    }
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
+
+      document.removeEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+    };
+  }, [isSettingsOpen]);
+
+  // =========================================================
+  // Select historical period
+  // =========================================================
+
+  const handleSelectPeriod = (
+    period: string,
+  ) => {
     setSelectedPeriod(period);
+
     startTransition(async () => {
       try {
-        const result = await fetchYearlyTrendAction(period);
+        const result =
+          await fetchYearlyTrendAction(
+            period,
+          );
+
         setData(result);
-      } catch (err) {
-        console.error("Failed to fetch yearly trend:", err);
+      } catch (error) {
+        console.error(
+          "Failed to fetch yearly trend:",
+          error,
+        );
       }
     });
   };
 
-  // Step year backwards or forwards
+  // =========================================================
+  // Resolve current target year
+  // =========================================================
+
   const currentTargetYear = useMemo(() => {
-    if (selectedPeriod === "rolling") return new Date().getFullYear();
-    const parsed = parseInt(selectedPeriod, 10);
-    return isNaN(parsed) ? new Date().getFullYear() : parsed;
+    if (selectedPeriod === "rolling") {
+      return new Date().getFullYear();
+    }
+
+    const parsed = Number.parseInt(
+      selectedPeriod,
+      10,
+    );
+
+    return Number.isNaN(parsed)
+      ? new Date().getFullYear()
+      : parsed;
   }, [selectedPeriod]);
 
-  const handleStepYear = (step: number) => {
-    const target = currentTargetYear + step;
-    handleSelectPeriod(String(target));
+  // =========================================================
+  // Step year
+  // =========================================================
+
+  const handleStepYear = (
+    step: number,
+  ) => {
+    handleSelectPeriod(
+      String(
+        currentTargetYear + step,
+      ),
+    );
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const curItem = payload.find((p: any) => p.dataKey === "avgTatHours");
-      const priItem = payload.find((p: any) => p.dataKey === "priorYearAvgTatHours");
-      const dataPoint = curItem?.payload;
+  // =========================================================
+  // Format annual TAT
+  // =========================================================
 
-      return (
-        <div className="bg-slate-950/95 border border-slate-800 rounded-xl p-3 shadow-xl text-xs space-y-2 min-w-[220px]">
-          <div className="font-bold text-white border-b border-slate-800/80 pb-1.5 flex items-center justify-between">
-            <span>{dataPoint?.fullMonth || label}</span>
-            <span className="text-[10px] text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
-              {dataPoint?.monthLabel}
-            </span>
-          </div>
+  const formatAnnualTat = (
+    hours: number,
+    minutes: number,
+  ) => {
+    if (hours >= 1) {
+      return `${hours} hrs`;
+    }
 
-          <div className="space-y-1.5">
-            {curItem && (
-              <div className="flex items-center justify-between">
-                <span className="text-sky-400 flex items-center gap-1.5 font-medium">
-                  <span className="h-2 w-2 rounded-full bg-sky-400" />
-                  {data.selectedPeriodLabel}:
-                </span>
-                <span className="font-mono font-bold text-white">
-                  {curItem.value}h{" "}
-                  <span className="text-slate-400 font-normal">
-                    ({dataPoint?.totalFinalized ?? 0} scans)
-                  </span>
-                </span>
-              </div>
-            )}
+    return `${minutes} mins`;
+  };
 
-            {comparePriorYear && priItem && priItem.value > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-purple-400 flex items-center gap-1.5 font-medium">
-                  <span className="h-2 w-2 rounded-full bg-purple-400" />
-                  {data.priorPeriodLabel}:
-                </span>
-                <span className="font-mono font-bold text-slate-300">
-                  {priItem.value}h{" "}
-                  <span className="text-slate-400 font-normal">
-                    ({dataPoint?.priorYearTotalFinalized ?? 0} scans)
-                  </span>
-                </span>
-              </div>
-            )}
+  // =========================================================
+  // Custom tooltip
+  // =========================================================
 
-            {comparePriorYear && priItem && curItem && priItem.value > 0 && curItem.value > 0 && (
-              <div className="border-t border-slate-800/80 pt-1 flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">YoY Variance:</span>
-                <span
-                  className={`font-semibold ${
-                    curItem.value < priItem.value
-                      ? "text-emerald-400"
-                      : curItem.value > priItem.value
-                      ? "text-rose-400"
-                      : "text-slate-400"
-                  }`}
-                >
-                  {curItem.value < priItem.value
-                    ? `-${Math.abs(
-                        Number((((priItem.value - curItem.value) / priItem.value) * 100).toFixed(1))
-                      )}% faster`
-                    : `+${Math.abs(
-                        Number((((curItem.value - priItem.value) / priItem.value) * 100).toFixed(1))
-                      )}% longer`}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: any) => {
+    if (
+      !active ||
+      !payload ||
+      payload.length === 0
+    ) {
+      return null;
+    }
+
+    const currentItem = payload.find(
+      (item: any) =>
+        item.dataKey === "avgTatHours",
+    );
+
+    const priorItem = payload.find(
+      (item: any) =>
+        item.dataKey ===
+        "priorYearAvgTatHours",
+    );
+
+    const point =
+      currentItem?.payload ||
+      priorItem?.payload;
+
+    if (!point) {
+      return null;
+    }
+
+    const currentValue =
+      Number(currentItem?.value ?? 0);
+
+    const priorValue =
+      Number(priorItem?.value ?? 0);
+
+    let yoyChange: number | null =
+      null;
+
+    if (
+      comparePriorYear &&
+      priorValue > 0 &&
+      currentValue > 0
+    ) {
+      yoyChange = Number(
+        (
+          ((currentValue -
+            priorValue) /
+            priorValue) *
+          100
+        ).toFixed(1),
       );
     }
-    return null;
-  };
 
-  return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5 shadow-sm">
-      {/* Header Bar with Period Selectors */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-sky-400" />
-              Multi-Year & 12-Month Historical TAT Trend
-            </h2>
-            {isPending && (
-              <span className="text-[11px] text-sky-400 bg-sky-950/60 border border-sky-800 px-2 py-0.5 rounded-full animate-pulse">
-                Updating Year...
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Analyzing {data.selectedPeriodLabel} • Compared against {data.priorPeriodLabel}.
+    return (
+      <div className="min-w-[230px] rounded-2xl border border-border bg-card p-3.5 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]">
+        {/* Header */}
+        <div className="border-b border-border pb-2.5">
+          <p className="font-extrabold text-qc-navy">
+            {point.fullMonth ||
+              label}
+          </p>
+
+          <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
+            Monthly TAT
           </p>
         </div>
 
-        {/* Consolidated Period & Baseline Dropdown */}
-        <div className="relative self-start sm:self-auto" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setIsDropdownOpen((prev) => !prev)}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium border transition shadow-sm ${
-              isDropdownOpen
-                ? "bg-sky-600 text-white border-sky-500 shadow-sky-950/40"
-                : "bg-slate-950/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
-            }`}
-            aria-expanded={isDropdownOpen}
-          >
-            <CalendarDays className="h-3.5 w-3.5 text-sky-400" />
-            <span className="font-semibold">Period & Baseline</span>
-            <span className="text-slate-400 text-[11px]">
-              ({data.selectedPeriodLabel} • {comparePriorYear ? "YoY On" : "YoY Off"})
-            </span>
-            <ChevronDown
-              className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
-                isDropdownOpen ? "rotate-180 text-white" : ""
-              }`}
-            />
-          </button>
+        <div className="space-y-2.5 pt-2.5">
+          {/* Current */}
+          {currentItem && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-1.5 font-semibold text-qc-blue">
+                <span className="h-2 w-2 rounded-full bg-qc-blue" />
+                {data.selectedPeriodLabel}
+              </span>
 
-          {/* Floating Settings Popover */}
-          {isDropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 z-30 bg-slate-900 border border-slate-700/90 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                  <Calendar className="h-3.5 w-3.5 text-sky-400" />
-                  <span>Trend Period & Comparison</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsDropdownOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+              <span className="font-mono font-extrabold text-qc-navy">
+                {currentValue}h
+                <span className="ml-1 font-sans text-[10px] font-medium text-muted-foreground">
+                  (
+                  {point.totalFinalized ??
+                    0}{" "}
+                  scans)
+                </span>
+              </span>
+            </div>
+          )}
+
+          {/* Prior */}
+          {comparePriorYear &&
+            priorItem &&
+            priorValue > 0 && (
+              <div className="flex items-center justify-between gap-4">
+                <span className="flex items-center gap-1.5 font-semibold text-qc-purple">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{
+                      backgroundColor:
+                        QC_PURPLE,
+                    }}
+                  />
+                  {data.priorPeriodLabel}
+                </span>
+
+                <span className="font-mono font-extrabold text-qc-navy">
+                  {priorValue}h
+                  <span className="ml-1 font-sans text-[10px] font-medium text-muted-foreground">
+                    (
+                    {point.priorYearTotalFinalized ??
+                      0}{" "}
+                    scans)
+                  </span>
+                </span>
+              </div>
+            )}
+
+          {/* YoY */}
+          {yoyChange !== null && (
+            <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5">
+              <span className="text-muted-foreground">
+                YoY change
+              </span>
+
+              <span
+                className={`font-extrabold ${
+                  yoyChange < 0
+                    ? "text-qc-blue"
+                    : yoyChange > 0
+                      ? "text-qc-red"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {yoyChange < 0
+                  ? `${Math.abs(yoyChange)}% faster`
+                  : yoyChange > 0
+                    ? `+${yoyChange}% longer`
+                    : "No change"}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <section className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+      {/* =======================================================
+          HEADER
+          ======================================================= */}
+
+      <div className="border-b border-border px-4 py-4 sm:px-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Title */}
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-extrabold tracking-tight text-qc-navy sm:text-lg">
+                  Historical TAT trend
+                </h2>
+
+                <span className="rounded-full bg-qc-blue/5 px-2 py-0.5 text-[9px] font-extrabold text-qc-blue">
+                  12 months
+                </span>
+
+                {isPending && (
+                  <span className="rounded-full bg-qc-yellow/20 px-2 py-0.5 text-[9px] font-extrabold text-qc-navy">
+                    Updating…
+                  </span>
+                )}
               </div>
 
-              {/* Section 1: Time Horizon Mode */}
-              <div className="space-y-2">
-                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Analysis Window
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleSelectPeriod("rolling")}
-                  className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-left transition flex items-center justify-between ${
-                    selectedPeriod === "rolling"
-                      ? "bg-indigo-600 text-white font-semibold"
-                      : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
-                  }`}
-                >
-                  <span>🔄 Past 12 Months (Rolling Window)</span>
-                  {selectedPeriod === "rolling" && <Check className="h-3.5 w-3.5" />}
-                </button>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {data.selectedPeriodLabel}
+                {comparePriorYear
+                  ? ` · compared with ${data.priorPeriodLabel}`
+                  : ""}
+              </p>
+            </div>
+          </div>
 
-                {/* Calendar Year Selector */}
-                <div className="pt-1 space-y-1.5">
-                  <div className="text-[11px] text-slate-400 font-medium">Or Select Calendar Year:</div>
-                  <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 gap-1">
+          {/* Settings */}
+          <div
+            ref={settingsRef}
+            className="relative self-start sm:self-auto"
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setIsSettingsOpen(
+                  (previous) =>
+                    !previous,
+                )
+              }
+              className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-extrabold transition-all ${
+                isSettingsOpen
+                  ? "border-qc-navy bg-qc-navy text-white"
+                  : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
+              }`}
+              aria-expanded={
+                isSettingsOpen
+              }
+              aria-haspopup="dialog"
+            >
+              <CalendarDays
+                className={`h-3.5 w-3.5 ${
+                  isSettingsOpen
+                    ? "text-qc-yellow"
+                    : "text-qc-blue"
+                }`}
+              />
+
+              <span>View options</span>
+
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${
+                  isSettingsOpen
+                    ? "rotate-180"
+                    : ""
+                }`}
+              />
+            </button>
+
+            {/* =================================================
+                SETTINGS POPOVER
+                ================================================= */}
+
+            {isSettingsOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-[330px] rounded-3xl border border-border bg-card p-4 shadow-[0_20px_50px_rgba(5,14,64,0.14)] animate-in fade-in zoom-in-95 duration-150">
+                <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-qc-blue" />
+
+                    <span className="text-sm font-extrabold text-qc-navy">
+                      Trend settings
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIsSettingsOpen(
+                        false,
+                      )
+                    }
+                    className="flex h-7 w-7 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-qc-navy"
+                    aria-label="Close trend settings"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Rolling */}
+                <div>
+                  <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                    Analysis window
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSelectPeriod(
+                        "rolling",
+                      )
+                    }
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-[11px] font-bold transition-colors ${
+                      selectedPeriod ===
+                      "rolling"
+                        ? "bg-qc-yellow text-qc-navy"
+                        : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+                    }`}
+                  >
+                    <span>
+                      Rolling 12 months
+                    </span>
+
+                    {selectedPeriod ===
+                      "rolling" && (
+                      <Check className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Calendar year */}
+                <div className="mt-4 border-t border-border pt-4">
+                  <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                    Calendar year
+                  </p>
+
+                  <div className="flex items-center rounded-2xl border border-border bg-background p-1.5">
                     <button
                       type="button"
-                      onClick={() => handleStepYear(-1)}
-                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
-                      title="Previous Year"
+                      onClick={() =>
+                        handleStepYear(-1)
+                      }
+                      className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-qc-navy"
+                      title="Previous year"
                     >
-                      <ChevronLeft className="h-3.5 w-3.5" />
+                      <ChevronLeft className="h-4 w-4" />
                     </button>
 
                     <select
-                      value={selectedPeriod === "rolling" ? String(new Date().getFullYear()) : selectedPeriod}
-                      onChange={(e) => handleSelectPeriod(e.target.value)}
-                      className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer px-1 py-1 flex-1"
+                      value={
+                        selectedPeriod ===
+                        "rolling"
+                          ? String(
+                              new Date().getFullYear(),
+                            )
+                          : selectedPeriod
+                      }
+                      onChange={(event) =>
+                        handleSelectPeriod(
+                          event.target.value,
+                        )
+                      }
+                      className="flex-1 bg-transparent px-2 text-center text-xs font-extrabold text-qc-navy outline-none"
                     >
-                      {data.availableYears.map((yr) => (
-                        <option key={yr} value={String(yr)} className="bg-slate-950 text-white">
-                          📅 Calendar Year {yr}
-                        </option>
-                      ))}
+                      {data.availableYears.map(
+                        (year) => (
+                          <option
+                            key={year}
+                            value={String(
+                              year,
+                            )}
+                          >
+                            Calendar Year{" "}
+                            {year}
+                          </option>
+                        ),
+                      )}
                     </select>
 
                     <button
                       type="button"
-                      onClick={() => handleStepYear(1)}
-                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
-                      title="Next Year"
+                      onClick={() =>
+                        handleStepYear(1)
+                      }
+                      className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-qc-navy"
+                      title="Next year"
                     >
-                      <ChevronRight className="h-3.5 w-3.5" />
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
 
-                  {/* Year Quick Chips */}
-                  <div className="flex items-center gap-1.5 pt-1">
-                    {data.availableYears.map((yr) => (
-                      <button
-                        key={yr}
-                        type="button"
-                        onClick={() => handleSelectPeriod(String(yr))}
-                        className={`flex-1 py-1 rounded-lg text-xs font-semibold text-center transition ${
-                          selectedPeriod === String(yr)
-                            ? "bg-indigo-600 text-white"
-                            : "bg-slate-950 border border-slate-800 text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        {yr}
-                      </button>
-                    ))}
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
+                    {data.availableYears.map(
+                      (year) => (
+                        <button
+                          key={year}
+                          type="button"
+                          onClick={() =>
+                            handleSelectPeriod(
+                              String(year),
+                            )
+                          }
+                          className={`rounded-xl px-2 py-2 text-[10px] font-bold transition-colors ${
+                            selectedPeriod ===
+                            String(year)
+                              ? "bg-qc-blue text-white"
+                              : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+                          }`}
+                        >
+                          {year}
+                        </button>
+                      ),
+                    )}
                   </div>
                 </div>
-              </div>
 
-              {/* Section 2: Baseline Comparison */}
-              <div className="space-y-2 border-t border-slate-800 pt-3">
-                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Baseline Benchmark
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setComparePriorYear(!comparePriorYear)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition border ${
-                    comparePriorYear
-                      ? "bg-purple-950/70 border-purple-800 text-purple-200"
-                      : "bg-slate-950/70 border-slate-800 text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Layers className="h-3.5 w-3.5 text-purple-400" />
-                    Compare Prior Year Overlay
-                  </span>
-                  <span
-                    className={`h-4 w-4 rounded border flex items-center justify-center ${
-                      comparePriorYear ? "bg-purple-600 border-purple-500 text-white" : "border-slate-700 bg-slate-900"
+                {/* Prior year */}
+                <div className="mt-4 border-t border-border pt-4">
+                  <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                    Comparison
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setComparePriorYear(
+                        (previous) =>
+                          !previous,
+                      )
+                    }
+                    className={`flex w-full items-center justify-between rounded-2xl border px-3 py-2.5 text-xs font-bold transition-colors ${
+                      comparePriorYear
+                        ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
+                        : "border-border bg-background text-muted-foreground"
                     }`}
                   >
-                    {comparePriorYear && <Check className="h-3 w-3" />}
-                  </span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+                    <span className="flex items-center gap-2">
+                      <Layers className="h-3.5 w-3.5" />
+                      Prior-year baseline
+                    </span>
 
-      {/* DUAL ANNUAL COMPARISON SUITE (Top Summary Banner) */}
-      <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-xs">
-        {/* Left: Numerical Annual Averages */}
-        <div className="flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-sky-400 shrink-0" />
-            <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
-                {data.selectedPeriodLabel} Avg TAT
-              </span>
-              <span className="text-white font-bold text-sm">
-                {data.annualAvgTatHours >= 1
-                  ? `${data.annualAvgTatHours} hrs`
-                  : `${data.annualAvgTatMinutes} mins`}
-              </span>
-              <span className="text-[11px] text-slate-400 ml-1.5 font-normal">
-                ({data.annualTotalFinalized} finalized • {data.annualAvgTatMinutes}m)
-              </span>
-            </div>
-          </div>
-
-          {comparePriorYear && (
-            <div className="border-l border-slate-800 pl-6 flex items-center gap-2">
-              <Layers className="h-4 w-4 text-purple-400 shrink-0" />
-              <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
-                  {data.priorPeriodLabel} Avg TAT (Baseline)
-                </span>
-                <span className="text-slate-300 font-bold text-sm">
-                  {data.priorAnnualAvgTatHours >= 1
-                    ? `${data.priorAnnualAvgTatHours} hrs`
-                    : `${data.priorAnnualAvgTatMinutes} mins`}
-                </span>
-                <span className="text-[11px] text-slate-400 ml-1.5 font-normal">
-                  ({data.priorAnnualTotalFinalized} finalized • {data.priorAnnualAvgTatMinutes}m)
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right: YoY Velocity Shift & Volume Badges */}
-        <div className="flex flex-wrap items-center gap-3">
-          {comparePriorYear && data.priorAnnualTotalFinalized > 0 && (
-            <>
-              {data.pctChangeTat !== 0 && (
-                <div
-                  className={`flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-xl border text-xs shadow-sm ${
-                    data.pctChangeTat < 0
-                      ? "bg-emerald-950/60 border-emerald-800 text-emerald-400"
-                      : "bg-rose-950/60 border-rose-800 text-rose-400"
-                  }`}
-                >
-                  {data.pctChangeTat < 0 ? (
-                    <TrendingDown className="h-4 w-4" />
-                  ) : (
-                    <TrendingUp className="h-4 w-4" />
-                  )}
-                  <span>
-                    {Math.abs(data.pctChangeTat)}%{" "}
-                    {data.pctChangeTat < 0 ? "faster TAT velocity" : "longer TAT latency"} vs prior period
-                  </span>
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-md border ${
+                        comparePriorYear
+                          ? "border-qc-blue bg-qc-blue text-white"
+                          : "border-border bg-card"
+                      }`}
+                    >
+                      {comparePriorYear && (
+                        <Check className="h-3 w-3" />
+                      )}
+                    </span>
+                  </button>
                 </div>
-              )}
-
-              {data.pctChangeVolume !== 0 && (
-                <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 text-slate-300 px-3 py-1.5 rounded-xl text-xs">
-                  <BarChart2 className="h-3.5 w-3.5 text-sky-400" />
-                  <span>
-                    {data.pctChangeVolume > 0 ? `+${data.pctChangeVolume}%` : `${data.pctChangeVolume}%`} volume change
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-
-          {data.fastestMonth && (
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 text-slate-300 px-3 py-1.5 rounded-xl text-xs">
-              <Zap className="h-3.5 w-3.5 text-amber-400" />
-              <span>
-                Fastest: <strong className="text-white">{data.fastestMonth.monthLabel}</strong> (
-                {data.fastestMonth.avgTatHours}h)
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Recharts Multi-Year Area & Baseline Line Chart */}
-      <div className="h-80 w-full pt-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data.months} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="tatGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-            <XAxis dataKey="monthLabel" stroke="#94a3b8" fontSize={12} tickLine={false} />
-            <YAxis stroke="#94a3b8" fontSize={12} unit="h" tickLine={false} axisLine={false} />
-            <Tooltip content={<CustomTooltip />} />
-
-            {/* Selected Period Filled Area */}
-            <Area
-              type="monotone"
-              dataKey="avgTatHours"
-              stroke="#38bdf8"
-              strokeWidth={2.5}
-              fillOpacity={1}
-              fill="url(#tatGradient)"
-              name={data.selectedPeriodLabel}
-            />
-
-            {/* Prior Year Baseline Comparison Line (Overlay) */}
-            {comparePriorYear && (
-              <Line
-                type="monotone"
-                dataKey="priorYearAvgTatHours"
-                stroke="#c084fc"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                dot={{ r: 3, fill: "#c084fc" }}
-                name={data.priorPeriodLabel}
-              />
+              </div>
             )}
-          </AreaChart>
-        </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
-      {/* Chart Legend & Telemetry Indicators */}
-      <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 border-t border-slate-800 pt-3">
-        <div className="flex items-center gap-5">
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
-            <span className="text-slate-300 font-medium">{data.selectedPeriodLabel}</span>
+      {/* =======================================================
+          INSIGHT STRIP
+          ======================================================= */}
+
+      <div className="grid grid-cols-1 gap-3 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4 sm:px-5">
+        {/* Current average */}
+        <div className="rounded-2xl border border-border bg-background p-3.5">
+          <p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+            Current avg TAT
+          </p>
+
+          <p className="mt-1 text-xl font-extrabold tracking-tight text-qc-navy">
+            {formatAnnualTat(
+              data.annualAvgTatHours,
+              data.annualAvgTatMinutes,
+            )}
+          </p>
+
+          <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
+            {data.annualTotalFinalized} finalized
+          </p>
+        </div>
+
+        {/* Prior average */}
+        <div className="rounded-2xl border border-border bg-background p-3.5">
+          <p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+            Prior-year avg
+          </p>
+
+          {comparePriorYear ? (
+            <>
+              <p className="mt-1 text-xl font-extrabold tracking-tight text-qc-blue">
+                {formatAnnualTat(
+                  data.priorAnnualAvgTatHours,
+                  data.priorAnnualAvgTatMinutes,
+                )}
+              </p>
+
+              <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
+                {data.priorAnnualTotalFinalized} finalized
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-xl font-extrabold text-muted-foreground">
+              —
+            </p>
+          )}
+        </div>
+
+        {/* YoY movement */}
+        <div className="rounded-2xl border border-border bg-background p-3.5">
+          <p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+            TAT movement
+          </p>
+
+          {comparePriorYear &&
+          data.priorAnnualTotalFinalized >
+            0 ? (
+            <div className="mt-1 flex items-center gap-2">
+              {data.pctChangeTat <
+              0 ? (
+                <TrendingDown className="h-4 w-4 text-qc-blue" />
+              ) : data.pctChangeTat >
+                0 ? (
+                <TrendingUp className="h-4 w-4 text-qc-red" />
+              ) : null}
+
+              <span
+                className={`text-xl font-extrabold ${
+                  data.pctChangeTat < 0
+                    ? "text-qc-blue"
+                    : data.pctChangeTat > 0
+                      ? "text-qc-red"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {data.pctChangeTat ===
+                0
+                  ? "—"
+                  : `${Math.abs(
+                      data.pctChangeTat,
+                    )}%`}
+              </span>
+            </div>
+          ) : (
+            <p className="mt-1 text-xl font-extrabold text-muted-foreground">
+              —
+            </p>
+          )}
+
+          <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
+            {comparePriorYear
+              ? data.pctChangeTat <
+                0
+                ? "faster than prior year"
+                : data.pctChangeTat >
+                    0
+                  ? "longer than prior year"
+                  : "no change"
+              : "comparison off"}
+          </p>
+        </div>
+
+        {/* Volume */}
+        <div className="rounded-2xl border border-qc-yellow/20 bg-qc-yellow/10 p-3.5">
+          <p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+            Annual volume
+          </p>
+
+          <p className="mt-1 text-xl font-extrabold tracking-tight text-qc-navy">
+            {data.annualTotalFinalized}
+          </p>
+
+          <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
+            finalized examinations
+          </p>
+        </div>
+      </div>
+
+      {/* =======================================================
+          SECONDARY INSIGHTS
+          ======================================================= */}
+
+      {(data.fastestMonth ||
+        data.peakVolumeMonth ||
+        data.pctChangeVolume !== 0) && (
+        <div className="border-y border-border bg-background/60 px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[10px] font-semibold text-muted-foreground">
+            {data.fastestMonth && (
+              <span>
+                Fastest month:{" "}
+                <strong className="text-qc-navy">
+                  {
+                    data.fastestMonth
+                      .monthLabel
+                  }
+                </strong>{" "}
+                ·{" "}
+                {
+                  data.fastestMonth
+                    .avgTatHours
+                }
+                h
+              </span>
+            )}
+
+            {data.peakVolumeMonth && (
+              <span>
+                Peak volume:{" "}
+                <strong className="text-qc-navy">
+                  {
+                    data.peakVolumeMonth
+                      .monthLabel
+                  }
+                </strong>{" "}
+                ·{" "}
+                {
+                  data.peakVolumeMonth
+                    .volume
+                }{" "}
+                scans
+              </span>
+            )}
+
+            {data.pctChangeVolume !==
+              0 &&
+              comparePriorYear && (
+                <span>
+                  Volume change:{" "}
+                  <strong
+                    className={
+                      data.pctChangeVolume >
+                      0
+                        ? "text-qc-blue"
+                        : "text-qc-red"
+                    }
+                  >
+                    {data.pctChangeVolume >
+                    0
+                      ? `+${data.pctChangeVolume}%`
+                      : `${data.pctChangeVolume}%`}
+                  </strong>
+                </span>
+              )}
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================
+          TREND CHART
+          ======================================================= */}
+
+      <div className="px-4 py-4 sm:px-5 sm:py-5">
+        <div className="h-[285px] w-full sm:h-[310px]">
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+          >
+            <AreaChart
+              data={data.months}
+              margin={{
+                top: 8,
+                right: 8,
+                left: -8,
+                bottom: 0,
+              }}
+            >
+              <defs>
+                <linearGradient
+                  id="raditrackHistoricalGradient"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="5%"
+                    stopColor={QC_BLUE}
+                    stopOpacity={0.18}
+                  />
+
+                  <stop
+                    offset="95%"
+                    stopColor={QC_BLUE}
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={QC_GRID}
+                vertical={false}
+              />
+
+              <XAxis
+                dataKey="monthLabel"
+                stroke={QC_MUTED}
+                fontSize={10}
+                fontWeight={600}
+                tickLine={false}
+                axisLine={false}
+                dy={6}
+              />
+
+              <YAxis
+                stroke={QC_MUTED}
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                width={42}
+                tickFormatter={(value) =>
+                  `${value}h`
+                }
+              />
+
+              <Tooltip
+                content={
+                  <CustomTooltip />
+                }
+              />
+
+              {/* Current period */}
+              <Area
+                type="monotone"
+                dataKey="avgTatHours"
+                stroke={QC_BLUE}
+                strokeWidth={2.5}
+                fill="url(#raditrackHistoricalGradient)"
+                fillOpacity={1}
+                name={
+                  data.selectedPeriodLabel
+                }
+                dot={{
+                  r: 2.5,
+                  fill: QC_BLUE,
+                  strokeWidth: 0,
+                }}
+                activeDot={{
+                  r: 4,
+                }}
+              />
+
+              {/* Prior period */}
+              {comparePriorYear && (
+                <Line
+                  type="monotone"
+                  dataKey="priorYearAvgTatHours"
+                  stroke={QC_PURPLE}
+                  strokeWidth={1.8}
+                  strokeDasharray="5 5"
+                  dot={{
+                    r: 2.5,
+                    fill: QC_PURPLE,
+                    strokeWidth: 0,
+                  }}
+                  activeDot={{
+                    r: 4,
+                  }}
+                  name={
+                    data.priorPeriodLabel
+                  }
+                />
+              )}
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* =======================================================
+          LEGEND / FOOTER
+          ======================================================= */}
+
+      <div className="flex flex-col gap-3 border-t border-border px-4 py-3.5 text-[10px] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <span className="flex items-center gap-1.5 font-semibold text-qc-navy">
+            <span className="h-2.5 w-2.5 rounded-full bg-qc-blue" />
+            {data.selectedPeriodLabel}
           </span>
+
           {comparePriorYear && (
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-4 border-t-2 border-dashed border-purple-400" />
-              <span className="text-purple-300 font-medium">{data.priorPeriodLabel} (YoY Baseline)</span>
+            <span
+              className="flex items-center gap-1.5 font-semibold"
+              style={{
+                color: QC_PURPLE,
+              }}
+            >
+              <span
+                className="h-0 w-5 border-t-2 border-dashed"
+                style={{
+                  borderColor:
+                    QC_PURPLE,
+                }}
+              />
+              {data.priorPeriodLabel}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-[11px] text-slate-500">
-          {data.peakVolumeMonth && (
-            <span>
-              Peak Ingestion: <strong className="text-slate-300">{data.peakVolumeMonth.monthLabel}</strong> (
-              {data.peakVolumeMonth.volume} scans)
-            </span>
-          )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] font-semibold text-muted-foreground">
           <span>
-            Annual Total: <strong className="text-slate-300">{data.annualTotalFinalized} finalized</strong>
+            {selectedPeriod ===
+            "rolling"
+              ? "Rolling 12 months"
+              : `Calendar year ${selectedPeriod}`}
+          </span>
+
+          <span>
+            {data.annualTotalFinalized}{" "}
+            finalized
           </span>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
