@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useRef, useEffect } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -12,7 +12,6 @@ import {
   Cell,
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Clock,
@@ -21,6 +20,9 @@ import {
   Zap,
   RotateCcw,
   CalendarDays,
+  ChevronDown,
+  X,
+  Check,
 } from "lucide-react";
 import {
   fetchModalityTatCustomRangeAction,
@@ -38,6 +40,30 @@ type ExtendedTemporalPeriod = ModalityTemporalPeriod | "CUSTOM";
 export function TatOverviewChart({ data }: Props) {
   const [temporalPeriod, setTemporalPeriod] = useState<ExtendedTemporalPeriod>("ALL");
   const [urgencyFilter, setUrgencyFilter] = useState<"ALL" | "EMERGENCY" | "ROUTINE">("ALL");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside or escape key
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsFilterOpen(false);
+      }
+    }
+    if (isFilterOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isFilterOpen]);
 
   // Local ISO string for today (YYYY-MM-DD)
   const todayIso = useMemo(() => {
@@ -121,9 +147,31 @@ export function TatOverviewChart({ data }: Props) {
       ? [...activeModalitiesWithScans].sort((a, b) => a.avgTat - b.avgTat)[0]
       : null;
 
+  // Human-readable labels
+  const temporalLabels: Record<ExtendedTemporalPeriod, string> = {
+    ALL: "All Time",
+    "7D": "Past 7 Days",
+    MONTH: "This Month",
+    YEAR: "This Year",
+    CUSTOM: "Custom Range",
+  };
+
+  const urgencyLabels: Record<"ALL" | "EMERGENCY" | "ROUTINE", string> = {
+    ALL: "All Scans",
+    EMERGENCY: "STAT / ER",
+    ROUTINE: "Routine",
+  };
+
+  const isFiltered = temporalPeriod !== "ALL" || urgencyFilter !== "ALL";
+
+  const handleResetFilters = () => {
+    setTemporalPeriod("ALL");
+    setUrgencyFilter("ALL");
+  };
+
   return (
     <Card className="bg-slate-800/40 border-slate-700/80 text-slate-100 shadow-md">
-      <CardHeader className="flex flex-col lg:flex-row lg:items-center lg:justify-between pb-4 gap-4">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 gap-4">
         <div>
           <div className="flex items-center gap-2">
             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
@@ -144,195 +192,175 @@ export function TatOverviewChart({ data }: Props) {
           </CardDescription>
         </div>
 
-        {/* Dual Control Toggles: Temporal Window & Urgency */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Temporal Period Selector */}
-          <div className="flex flex-wrap items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-700/70">
-            <Calendar className="h-3.5 w-3.5 text-slate-400 ml-1.5" />
-            <Button
-              size="xs"
-              variant={temporalPeriod === "ALL" ? "default" : "ghost"}
-              onClick={() => setTemporalPeriod("ALL")}
-              className={
-                temporalPeriod === "ALL"
-                  ? "bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs"
-                  : "text-slate-400 hover:text-white text-xs"
-              }
+        {/* Consolidated Single Filter Dropdown */}
+        <div className="relative self-start sm:self-auto" ref={filterDropdownRef}>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen((prev) => !prev)}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium border transition shadow-sm ${
+                isFilterOpen
+                  ? "bg-sky-600 text-white border-sky-500 shadow-sky-950/40"
+                  : isFiltered
+                  ? "bg-sky-950/70 border-sky-800 text-sky-200 hover:bg-sky-900/60"
+                  : "bg-slate-900/80 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:text-white"
+              }`}
+              aria-expanded={isFilterOpen}
             >
-              All Time
-            </Button>
-            <Button
-              size="xs"
-              variant={temporalPeriod === "7D" ? "default" : "ghost"}
-              onClick={() => setTemporalPeriod("7D")}
-              className={
-                temporalPeriod === "7D"
-                  ? "bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs"
-                  : "text-slate-400 hover:text-white text-xs"
-              }
-            >
-              Past 7 Days
-            </Button>
-            <Button
-              size="xs"
-              variant={temporalPeriod === "MONTH" ? "default" : "ghost"}
-              onClick={() => setTemporalPeriod("MONTH")}
-              className={
-                temporalPeriod === "MONTH"
-                  ? "bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs"
-                  : "text-slate-400 hover:text-white text-xs"
-              }
-            >
-              This Month
-            </Button>
-            <Button
-              size="xs"
-              variant={temporalPeriod === "YEAR" ? "default" : "ghost"}
-              onClick={() => setTemporalPeriod("YEAR")}
-              className={
-                temporalPeriod === "YEAR"
-                  ? "bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs"
-                  : "text-slate-400 hover:text-white text-xs"
-              }
-            >
-              This Year
-            </Button>
-            <Button
-              size="xs"
-              variant={temporalPeriod === "CUSTOM" ? "default" : "ghost"}
-              onClick={() => {
-                if (!customDataset) {
-                  handleFetchCustomRange(customStartDate, customEndDate);
-                } else {
-                  setTemporalPeriod("CUSTOM");
-                }
-              }}
-              className={
-                temporalPeriod === "CUSTOM"
-                  ? "bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs"
-                  : "text-slate-400 hover:text-white text-xs"
-              }
-            >
-              <CalendarDays className="h-3.5 w-3.5 mr-1 text-sky-300" />
-              Custom Range
-            </Button>
+              <Filter className={`h-3.5 w-3.5 ${isFiltered ? "text-sky-400" : "text-slate-400"}`} />
+              <span className="font-semibold">Filter Chart</span>
+              <span className="text-slate-400 text-[11px]">
+                ({temporalLabels[temporalPeriod]} • {urgencyLabels[urgencyFilter]})
+              </span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                  isFilterOpen ? "rotate-180 text-white" : ""
+                }`}
+              />
+            </button>
+
+            {isFiltered && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                title="Reset filters to All Time & All Scans"
+                className="p-1.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Clinical Urgency Filter */}
-          <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-700/70">
-            <Filter className="h-3.5 w-3.5 text-slate-400 ml-1.5" />
-            <Button
-              size="xs"
-              variant={urgencyFilter === "ALL" ? "default" : "ghost"}
-              onClick={() => setUrgencyFilter("ALL")}
-              className={
-                urgencyFilter === "ALL"
-                  ? "bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs"
-                  : "text-slate-400 hover:text-white text-xs"
-              }
-            >
-              All Scans
-            </Button>
-            <Button
-              size="xs"
-              variant={urgencyFilter === "EMERGENCY" ? "default" : "ghost"}
-              onClick={() => setUrgencyFilter("EMERGENCY")}
-              className={
-                urgencyFilter === "EMERGENCY"
-                  ? "bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs"
-                  : "text-slate-400 hover:text-white text-xs"
-              }
-            >
-              STAT / ER
-            </Button>
-            <Button
-              size="xs"
-              variant={urgencyFilter === "ROUTINE" ? "default" : "ghost"}
-              onClick={() => setUrgencyFilter("ROUTINE")}
-              className={
-                urgencyFilter === "ROUTINE"
-                  ? "bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs"
-                  : "text-slate-400 hover:text-white text-xs"
-              }
-            >
-              Routine
-            </Button>
-          </div>
+          {/* Floating Filter Popover */}
+          {isFilterOpen && (
+            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 z-30 bg-slate-900 border border-slate-700/90 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                  <Filter className="h-3.5 w-3.5 text-sky-400" />
+                  <span>Modality Chart Filters</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Section 1: Temporal Period */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3 text-sky-400" />
+                    Time Window
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(["ALL", "7D", "MONTH", "YEAR"] as ExtendedTemporalPeriod[]).map((period) => (
+                    <button
+                      key={period}
+                      type="button"
+                      onClick={() => setTemporalPeriod(period)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition flex items-center justify-between ${
+                        temporalPeriod === period
+                          ? "bg-indigo-600 text-white font-semibold"
+                          : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <span>{temporalLabels[period]}</span>
+                      {temporalPeriod === period && <Check className="h-3 w-3" />}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom Range Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!customDataset) {
+                      handleFetchCustomRange(customStartDate, customEndDate);
+                    } else {
+                      setTemporalPeriod("CUSTOM");
+                    }
+                  }}
+                  className={`w-full mt-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition flex items-center justify-between ${
+                    temporalPeriod === "CUSTOM"
+                      ? "bg-sky-600 text-white font-semibold"
+                      : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <CalendarDays className="h-3.5 w-3.5 text-sky-300" />
+                    Custom Calendar Range
+                  </span>
+                  {temporalPeriod === "CUSTOM" && <Check className="h-3 w-3" />}
+                </button>
+
+                {/* Custom Range Picker Inputs (when custom is active) */}
+                {temporalPeriod === "CUSTOM" && (
+                  <div className="p-2.5 bg-slate-950 border border-sky-900/60 rounded-xl space-y-2 mt-2 animate-in fade-in duration-100">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-slate-400 text-[11px] w-10">From:</span>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => {
+                          setCustomStartDate(e.target.value);
+                          if (e.target.value && customEndDate) {
+                            handleFetchCustomRange(e.target.value, customEndDate);
+                          }
+                        }}
+                        className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-full [color-scheme:dark]"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-slate-400 text-[11px] w-10">To:</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => {
+                          setCustomEndDate(e.target.value);
+                          if (customStartDate && e.target.value) {
+                            handleFetchCustomRange(customStartDate, e.target.value);
+                          }
+                        }}
+                        className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-full [color-scheme:dark]"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section 2: Clinical Urgency */}
+              <div className="space-y-1.5 border-t border-slate-800 pt-3">
+                <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-sky-400" />
+                  Clinical Urgency
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["ALL", "EMERGENCY", "ROUTINE"] as const).map((urgency) => (
+                    <button
+                      key={urgency}
+                      type="button"
+                      onClick={() => setUrgencyFilter(urgency)}
+                      className={`px-2 py-1.5 rounded-lg text-xs font-medium text-center transition ${
+                        urgencyFilter === urgency
+                          ? "bg-sky-500 text-slate-950 font-bold"
+                          : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      {urgencyLabels[urgency]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Custom Calendar Date Range Picker Toolbar (Appears when Custom Range is active) */}
-        {temporalPeriod === "CUSTOM" && (
-          <div className="bg-slate-950/80 border border-sky-900/50 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in duration-150">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="text-sky-400 font-semibold flex items-center gap-1.5">
-                <CalendarDays className="h-4 w-4" />
-                Custom Calendar Range:
-              </span>
-              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1">
-                <span className="text-slate-500 text-[11px]">From:</span>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => {
-                    setCustomStartDate(e.target.value);
-                    if (e.target.value && customEndDate) {
-                      handleFetchCustomRange(e.target.value, customEndDate);
-                    }
-                  }}
-                  className="bg-transparent text-white text-xs font-mono focus:outline-none cursor-pointer"
-                />
-              </div>
-
-              <span className="text-slate-500">to</span>
-
-              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1">
-                <span className="text-slate-500 text-[11px]">To:</span>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => {
-                    setCustomEndDate(e.target.value);
-                    if (customStartDate && e.target.value) {
-                      handleFetchCustomRange(customStartDate, e.target.value);
-                    }
-                  }}
-                  className="bg-transparent text-white text-xs font-mono focus:outline-none cursor-pointer"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                size="xs"
-                variant="ghost"
-                onClick={() => {
-                  const now = new Date();
-                  now.setDate(now.getDate() - 30);
-                  const y = now.getFullYear();
-                  const m = String(now.getMonth() + 1).padStart(2, "0");
-                  const d = String(now.getDate()).padStart(2, "0");
-                  handleFetchCustomRange(`${y}-${m}-${d}`, todayIso);
-                }}
-                className="text-[11px] text-slate-400 hover:text-white"
-              >
-                Last 30 Days
-              </Button>
-              <Button
-                size="xs"
-                variant="outline"
-                onClick={() => handleFetchCustomRange(customStartDate, customEndDate)}
-                disabled={isPending}
-                className="text-xs bg-slate-900 border-slate-700 text-sky-300 hover:bg-slate-800"
-              >
-                <RotateCcw className="h-3 w-3 mr-1" />
-                Refresh Range
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Active Period Telemetry Bar */}
         <div className="flex flex-wrap items-center justify-between text-xs bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-slate-300 gap-2">
           <div className="flex items-center gap-3">
@@ -433,8 +461,8 @@ export function TatOverviewChart({ data }: Props) {
             </span>
           </div>
           <span className="text-[11px] text-slate-500">
-            Window: <strong className="text-slate-300">{temporalPeriod}</strong> • Urgency:{" "}
-            <strong className="text-slate-300">{urgencyFilter}</strong>
+            Window: <strong className="text-slate-300">{temporalLabels[temporalPeriod]}</strong> • Urgency:{" "}
+            <strong className="text-slate-300">{urgencyLabels[urgencyFilter]}</strong>
           </span>
         </div>
       </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useRef, useEffect } from "react";
 import { ModalityCode } from "@/lib/enums";
 import { fetchSevenDayAnalyticsAction } from "@/app/actions";
 import {
@@ -15,6 +15,11 @@ import {
   Layers,
   Columns2,
   Maximize2,
+  ChevronDown,
+  X,
+  Check,
+  Settings2,
+  Filter,
 } from "lucide-react";
 
 interface DayRow {
@@ -57,8 +62,31 @@ interface Props {
 export function SevenDayTatTable({ analytics: initialAnalytics }: Props) {
   const [activeTab, setActiveTab] = useState<string>("ALL");
   const [mode, setMode] = useState<"rolling" | "static">("rolling");
-  // Side-by-side view requested by user as primary comparison layout
   const [viewLayout, setViewLayout] = useState<"sideBySide" | "single">("sideBySide");
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const optionsDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside or escape key
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (optionsDropdownRef.current && !optionsDropdownRef.current.contains(event.target as Node)) {
+        setIsOptionsOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOptionsOpen(false);
+      }
+    }
+    if (isOptionsOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOptionsOpen]);
 
   // Local ISO string for today (YYYY-MM-DD)
   const todayIso = useMemo(() => {
@@ -88,6 +116,8 @@ export function SevenDayTatTable({ analytics: initialAnalytics }: Props) {
     { key: ModalityCode.MRI, label: "MRI" },
     { key: ModalityCode.MAMMO, label: "Mammogram" },
   ];
+
+  const currentTabLabel = tabs.find((t) => t.key === activeTab)?.label || "All Modalities";
 
   // Helper to trigger refetch when anchor or mode changes
   const handleFetch = (newAnchor: string, newMode: "rolling" | "static") => {
@@ -158,85 +188,68 @@ export function SevenDayTatTable({ analytics: initialAnalytics }: Props) {
                 <tr
                   key={row.isoDate + row.dayLabel}
                   className={`hover:bg-slate-800/40 transition ${
-                    isToday ? "bg-indigo-950/40 border-l-4 border-l-indigo-500" : ""
+                    isToday ? "bg-indigo-950/30 font-medium" : ""
                   }`}
                 >
-                  <td className="px-3 py-2.5 font-medium text-white whitespace-nowrap">
+                  <td className="px-3 py-2.5 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
-                      <span className={`font-semibold ${isToday ? "text-indigo-200" : ""}`}>
-                        {row.formattedDate}
-                      </span>
-                      <span className="text-[10px] text-slate-400 bg-slate-950 px-1 py-0.5 rounded border border-slate-800">
-                        {row.dayLabel}
-                      </span>
+                      <span className="font-semibold text-white">{row.dayLabel}</span>
+                      <span className="text-[11px] text-slate-400">({row.formattedDate})</span>
                       {isToday && (
-                        <span className="text-[9px] bg-indigo-600 text-white font-bold px-1.5 py-0.5 rounded shadow-sm tracking-wider flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                          TODAY
+                        <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[10px] px-1.5 py-0.2 rounded font-semibold">
+                          Today
                         </span>
                       )}
                     </div>
                   </td>
-
                   <td className="px-2 py-2.5 text-center font-bold text-white">
                     {row.totalExams}
                   </td>
-
-                  <td className="px-2 py-2.5 text-center">
-                    <div className="flex items-center justify-center gap-1 text-[10px]">
-                      <span className="bg-sky-950/80 text-sky-300 border border-sky-800 px-1 py-0.5 rounded">
-                        O:{row.opdCount}
-                      </span>
-                      <span className="bg-amber-950/80 text-amber-300 border border-amber-800 px-1 py-0.5 rounded">
-                        I:{row.inCount}
-                      </span>
-                      <span className="bg-rose-950/80 text-rose-300 border border-rose-800 px-1 py-0.5 rounded">
-                        E:{row.erCount}
-                      </span>
-                    </div>
+                  <td className="px-2 py-2.5 text-center whitespace-nowrap text-[11px] text-slate-400">
+                    <span className="text-sky-400 font-medium">{row.opdCount}</span>
+                    <span className="mx-1 text-slate-600">•</span>
+                    <span className="text-indigo-400 font-medium">{row.inCount}</span>
+                    <span className="mx-1 text-slate-600">•</span>
+                    <span className="text-amber-400 font-medium">{row.erCount}</span>
                   </td>
-
-                  <td className="px-2 py-2.5 text-center font-medium text-emerald-400 whitespace-nowrap">
-                    <span className="inline-flex items-center justify-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      {row.finalizedCount}
+                  <td className="px-2 py-2.5 text-center">
+                    <span className="text-emerald-400 font-semibold">{row.finalizedCount}</span>
+                  </td>
+                  <td className="px-2 py-2.5 text-center">
+                    <span className={row.pendingCount > 0 ? "text-amber-400 font-semibold" : "text-slate-500"}>
+                      {row.pendingCount}
                     </span>
                   </td>
-
-                  <td className="px-2 py-2.5 text-center font-medium whitespace-nowrap">
-                    {row.pendingCount > 0 ? (
-                      <span className="text-amber-400 bg-amber-950/60 border border-amber-800/80 px-1.5 py-0.5 rounded text-[10px] font-semibold">
-                        {row.pendingCount}
-                      </span>
+                  <td className="px-3 py-2.5 text-right font-mono font-medium">
+                    {row.finalizedCount === 0 ? (
+                      <span className="text-slate-500 text-[11px]">No data</span>
                     ) : (
-                      <span className="text-slate-500 text-[10px]">0</span>
-                    )}
-                  </td>
-
-                  <td
-                    className={`px-3 py-2.5 text-right font-mono font-semibold whitespace-nowrap ${
-                      isPrior ? "text-purple-300" : "text-indigo-300"
-                    }`}
-                  >
-                    {row.avgTatMinutes > 0 ? (
-                      <span>
-                        {row.avgTatHours >= 1
-                          ? `${row.avgTatHours}h`
-                          : `${row.avgTatMinutes}m`}
+                      <span
+                        className={
+                          row.avgTatMinutes > 120
+                            ? "text-rose-400 font-bold"
+                            : isPrior
+                            ? "text-purple-300"
+                            : "text-indigo-300 font-semibold"
+                        }
+                      >
+                        {row.avgTatHours >= 1 ? `${row.avgTatHours}h` : `${row.avgTatMinutes}m`}
                       </span>
-                    ) : (
-                      <span className="text-slate-500">—</span>
                     )}
                   </td>
                 </tr>
               );
             })}
           </tbody>
-          <tfoot className="bg-slate-950 text-[11px] font-semibold border-t border-slate-800 text-slate-400">
+          <tfoot className="bg-slate-950/80 font-semibold text-slate-300 border-t border-slate-800">
             <tr>
-              <td className="px-3 py-2 text-white">7-Day Total</td>
+              <td className="px-3 py-2">
+                <span className="text-[11px] uppercase tracking-wider text-slate-400">
+                  {isPrior ? "Prior 7D Totals" : "Active 7D Totals"}
+                </span>
+              </td>
               <td className="px-2 py-2 text-center text-white font-bold">{totalVolume}</td>
-              <td className="px-2 py-2 text-center text-[10px] text-slate-400">7 Days Sum</td>
+              <td className="px-2 py-2 text-center text-[10px] text-slate-500">Totals</td>
               <td className="px-2 py-2 text-center text-emerald-400 font-bold">{totalFinalized}</td>
               <td className="px-2 py-2 text-center text-amber-400 font-bold">{totalPending}</td>
               <td
@@ -261,8 +274,8 @@ export function SevenDayTatTable({ analytics: initialAnalytics }: Props) {
 
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-sm">
-      {/* Top Header: Title & Dual Mode Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-800 pb-5">
+      {/* Top Header: Title & Consolidated Options Dropdown */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
           <div className="flex items-center gap-2.5">
             <Calendar className="h-5 w-5 text-indigo-400" />
@@ -282,126 +295,175 @@ export function SevenDayTatTable({ analytics: initialAnalytics }: Props) {
           </p>
         </div>
 
-        {/* Mode Toggle & Calendar Selector Toolbar */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Mode Switcher */}
-          <div className="flex items-center p-1 bg-slate-950 border border-slate-800 rounded-xl text-xs">
-            <button
-              type="button"
-              onClick={() => handleFetch(anchorDate, "rolling")}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-                mode === "rolling"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
+        {/* Consolidated Single Table Options Dropdown */}
+        <div className="relative self-start sm:self-auto" ref={optionsDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsOptionsOpen((prev) => !prev)}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium border transition shadow-sm ${
+              isOptionsOpen
+                ? "bg-sky-600 text-white border-sky-500 shadow-sky-950/40"
+                : "bg-slate-950/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+            }`}
+            aria-expanded={isOptionsOpen}
+          >
+            <Settings2 className="h-3.5 w-3.5 text-sky-400" />
+            <span className="font-semibold">Table Options</span>
+            <span className="text-slate-400 text-[11px]">
+              ({currentTabLabel} • {viewLayout === "sideBySide" ? "Side-by-Side" : "Single"})
+            </span>
+            <ChevronDown
+              className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                isOptionsOpen ? "rotate-180 text-white" : ""
               }`}
-            >
-              🔄 Rolling 7 Days
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFetch(anchorDate, "static")}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-                mode === "static"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              📆 Static Week (Mon–Sun)
-            </button>
-          </div>
-
-          {/* Calendar Anchor & Step Navigation */}
-          <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-xs">
-            <button
-              type="button"
-              onClick={() => stepAnchor(-7)}
-              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition mr-1"
-              title="Previous 7 Days"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-
-            <input
-              type="date"
-              value={anchorDate}
-              onChange={(e) => {
-                if (e.target.value) handleFetch(e.target.value, mode);
-              }}
-              className="bg-transparent text-white text-xs font-mono focus:outline-none px-1 cursor-pointer"
             />
+          </button>
 
-            <button
-              type="button"
-              onClick={() => stepAnchor(7)}
-              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition ml-1"
-              title="Next 7 Days"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+          {/* Floating Table Options Popover */}
+          {isOptionsOpen && (
+            <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 z-30 bg-slate-900 border border-slate-700/90 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                  <Filter className="h-3.5 w-3.5 text-sky-400" />
+                  <span>7-Day Table Configuration</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOptionsOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
 
-            <button
-              type="button"
-              onClick={handleResetToday}
-              className="p-1 text-slate-400 hover:text-sky-400 rounded hover:bg-slate-800 transition ml-1"
-              title="Reset to Today"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-            </button>
-          </div>
+              {/* Section 1: Modality Selection */}
+              <div className="space-y-1.5">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Modality Focus
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition flex items-center justify-between ${
+                        activeTab === tab.key
+                          ? "bg-indigo-600 text-white font-semibold"
+                          : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <span className="truncate">{tab.label}</span>
+                      {activeTab === tab.key && <Check className="h-3 w-3 shrink-0 ml-1" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {/* Layout View Switcher: Side-by-Side vs Single Table */}
-          <div className="flex items-center p-1 bg-slate-950 border border-slate-800 rounded-xl text-xs">
-            <button
-              type="button"
-              onClick={() => setViewLayout("sideBySide")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition ${
-                viewLayout === "sideBySide"
-                  ? "bg-sky-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-              title="Side-by-Side Comparison Layout"
-            >
-              <Columns2 className="h-3.5 w-3.5" />
-              Side-by-Side
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewLayout("single")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition ${
-                viewLayout === "single"
-                  ? "bg-sky-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-              title="Single Full-Width Table View"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-              Single Table
-            </button>
-          </div>
-        </div>
-      </div>
+              {/* Section 2: Mode & Date Anchor */}
+              <div className="space-y-2 border-t border-slate-800 pt-3">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Time Window & Date Anchor
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleFetch(anchorDate, "rolling")}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium text-center transition ${
+                      mode === "rolling"
+                        ? "bg-indigo-600 text-white font-semibold"
+                        : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                    }`}
+                  >
+                    🔄 Rolling 7 Days
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFetch(anchorDate, "static")}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium text-center transition ${
+                      mode === "static"
+                        ? "bg-indigo-600 text-white font-semibold"
+                        : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                    }`}
+                  >
+                    📆 Mon–Sun Week
+                  </button>
+                </div>
 
-      {/* Modality Filter Pills */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={`text-xs px-3 py-1.5 rounded-xl font-medium transition ${
-                activeTab === tab.key
-                  ? "bg-indigo-600 text-white shadow-sm font-semibold"
-                  : "bg-slate-950/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+                {/* Date Stepper */}
+                <div className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs">
+                  <span className="text-slate-400 text-[11px]">Anchor:</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => stepAnchor(-7)}
+                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                      title="Previous 7 Days"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <input
+                      type="date"
+                      value={anchorDate}
+                      onChange={(e) => {
+                        if (e.target.value) handleFetch(e.target.value, mode);
+                      }}
+                      className="bg-transparent text-white text-xs font-mono focus:outline-none px-1 cursor-pointer [color-scheme:dark]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => stepAnchor(7)}
+                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                      title="Next 7 Days"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetToday}
+                      className="p-1 text-slate-400 hover:text-sky-400 rounded hover:bg-slate-800 transition ml-1"
+                      title="Reset to Today"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-        <div className="text-xs text-slate-400">
-          Showing: <strong className="text-white">{tabs.find((t) => t.key === activeTab)?.label}</strong>
+              {/* Section 3: Layout Switcher */}
+              <div className="space-y-1.5 border-t border-slate-800 pt-3">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Layout Presentation
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setViewLayout("sideBySide")}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                      viewLayout === "sideBySide"
+                        ? "bg-sky-600 text-white shadow-sm"
+                        : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                    }`}
+                  >
+                    <Columns2 className="h-3.5 w-3.5" />
+                    Side-by-Side
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewLayout("single")}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                      viewLayout === "single"
+                        ? "bg-sky-600 text-white shadow-sm"
+                        : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                    }`}
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    Single Table
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -444,115 +506,81 @@ export function SevenDayTatTable({ analytics: initialAnalytics }: Props) {
           </div>
         </div>
 
-        {/* Right: Velocity Percentage Shift Badge */}
-        <div>
-          {currentData.currentFinalizedCount === 0 ? (
-            <span className="text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
-              No finalized exams in window
-            </span>
-          ) : currentData.priorFinalizedCount === 0 ? (
-            <span className="text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
-              No prior finalized baseline
-            </span>
-          ) : currentData.pctChange !== 0 ? (
-            currentData.pctChange > 0 ? (
-              <span className="flex items-center gap-1.5 text-rose-400 font-semibold bg-rose-950/60 border border-rose-800 px-3 py-1.5 rounded-xl shadow-sm">
-                <TrendingUp className="h-4 w-4" />
-                <span>{Math.abs(currentData.pctChange)}% longer TAT than prior week</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-800 px-3 py-1.5 rounded-xl shadow-sm">
+        {/* Right: Comparative Delta Badge */}
+        <div className="flex items-center gap-3">
+          {currentData.pctChange !== 0 && (
+            <div
+              className={`flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-xl border text-xs shadow-sm ${
+                currentData.pctChange < 0
+                  ? "bg-emerald-950/60 border-emerald-800 text-emerald-400"
+                  : "bg-rose-950/60 border-rose-800 text-rose-400"
+              }`}
+            >
+              {currentData.pctChange < 0 ? (
                 <TrendingDown className="h-4 w-4" />
-                <span>{Math.abs(currentData.pctChange)}% faster TAT than prior week</span>
+              ) : (
+                <TrendingUp className="h-4 w-4" />
+              )}
+              <span>
+                {Math.abs(currentData.pctChange)}%{" "}
+                {currentData.pctChange < 0 ? "faster TAT velocity" : "longer TAT latency"} vs prior
+                period
               </span>
-            )
-          ) : (
-            <span className="text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
-              Consistent with prior 7-day average
-            </span>
+            </div>
           )}
+
+          <div className="text-slate-400">
+            Modality: <strong className="text-white">{currentTabLabel}</strong>
+          </div>
         </div>
       </div>
 
-      {/* SIDE-BY-SIDE COMPARISON LAYOUT */}
+      {/* Main Table Body: Side-by-Side Comparison vs Single Table View */}
       {viewLayout === "sideBySide" ? (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 animate-in fade-in duration-200">
-          {/* LEFT COLUMN: SELECTED 7-DAY WINDOW */}
-          <div className="space-y-3 bg-slate-950/40 p-3.5 rounded-2xl border border-indigo-900/40">
-            <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-indigo-950/80 border border-indigo-800 text-indigo-400">
-                  <Calendar className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                    Selected 7-Day Window
-                  </h3>
-                  <span className="text-[11px] text-slate-400 font-medium">
-                    {firstDay} to {lastDay}
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-indigo-300 font-mono">
-                  {currentData.currentAvgTatHours >= 1
-                    ? `${currentData.currentAvgTatHours} hrs`
-                    : `${currentData.currentAvgTatMinutes} mins`}
-                </span>
-                <span className="text-[10px] text-slate-400 block font-normal">
-                  {currentData.currentTotalVolume} exams
-                </span>
-              </div>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Column A: Active 7-Day Period */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-semibold px-1">
+              <span className="text-indigo-400 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-indigo-400" />
+                Active 7 Days ({firstDay} – {lastDay})
+              </span>
+              <span className="text-slate-400">
+                Total Exams: <strong className="text-white">{currentData.currentTotalVolume}</strong>
+              </span>
             </div>
             {renderTable(currentData.dayRows, false)}
           </div>
 
-          {/* RIGHT COLUMN: PRIOR 7-DAY BASELINE WINDOW */}
-          <div className="space-y-3 bg-slate-950/40 p-3.5 rounded-2xl border border-purple-900/40">
-            <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-purple-950/80 border border-purple-800 text-purple-400">
-                  <Layers className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                    Prior 7-Day Baseline Window
-                  </h3>
-                  <span className="text-[11px] text-slate-400 font-medium">
-                    {priorFirstDay} to {priorLastDay}
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-purple-300 font-mono">
-                  {currentData.priorAvgTatHours >= 1
-                    ? `${currentData.priorAvgTatHours} hrs`
-                    : `${currentData.priorAvgTatMinutes} mins`}
-                </span>
-                <span className="text-[10px] text-slate-400 block font-normal">
-                  {currentData.priorTotalVolume} exams
-                </span>
-              </div>
+          {/* Column B: Preceding 7-Day Period (Baseline) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-semibold px-1">
+              <span className="text-purple-400 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-purple-400" />
+                Prior 7-Day Baseline ({priorFirstDay} – {priorLastDay})
+              </span>
+              <span className="text-slate-400">
+                Total Exams: <strong className="text-white">{currentData.priorTotalVolume}</strong>
+              </span>
             </div>
             {currentData.priorDayRows && currentData.priorDayRows.length > 0 ? (
               renderTable(currentData.priorDayRows, true)
             ) : (
-              <div className="p-8 text-center text-xs text-slate-500 border border-slate-800 rounded-xl bg-slate-900/40">
-                No prior week records recorded for this timeframe.
+              <div className="border border-slate-800 rounded-xl p-8 text-center text-slate-500 text-xs">
+                No baseline data available for preceding 7-day period.
               </div>
             )}
           </div>
         </div>
       ) : (
-        /* SINGLE TABLE FULL-WIDTH VIEW */
-        <div className="space-y-3 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-indigo-400" />
-              Selected 7-Day Window Detail ({firstDay} to {lastDay})
-            </h3>
-            <span className="text-xs text-slate-400">
-              Total Volume: <strong className="text-white">{currentData.currentTotalVolume} exams</strong>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs font-semibold px-1">
+            <span className="text-indigo-400 flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-indigo-400" />
+              Active 7 Days ({firstDay} – {lastDay})
+            </span>
+            <span className="text-slate-400">
+              Total Exams: <strong className="text-white">{currentData.currentTotalVolume}</strong>
             </span>
           </div>
           {renderTable(currentData.dayRows, false)}

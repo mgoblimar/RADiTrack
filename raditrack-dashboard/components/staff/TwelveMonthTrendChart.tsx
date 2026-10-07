@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useRef, useEffect } from "react";
 import {
   ResponsiveContainer,
   XAxis,
@@ -19,10 +19,12 @@ import {
   Clock,
   Zap,
   BarChart2,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CalendarDays,
+  ChevronDown,
+  X,
+  Check,
 } from "lucide-react";
 import { fetchYearlyTrendAction, TwelveMonthTrendResult } from "@/app/actions";
 
@@ -35,6 +37,30 @@ export function TwelveMonthTrendChart({ data: initialData }: Props) {
   const [selectedPeriod, setSelectedPeriod] = useState<string>(initialData.selectedPeriod || "rolling");
   const [comparePriorYear, setComparePriorYear] = useState<boolean>(true);
   const [isPending, startTransition] = useTransition();
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside or escape key
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsDropdownOpen(false);
+      }
+    }
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isDropdownOpen]);
 
   const handleSelectPeriod = (period: string) => {
     setSelectedPeriod(period);
@@ -138,7 +164,7 @@ export function TwelveMonthTrendChart({ data: initialData }: Props) {
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5 shadow-sm">
       {/* Header Bar with Period Selectors */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -156,87 +182,149 @@ export function TwelveMonthTrendChart({ data: initialData }: Props) {
           </p>
         </div>
 
-        {/* Year Calendar Picker Toolbar & Compare Toggle */}
-        <div className="flex flex-wrap items-center gap-2.5 text-xs">
-          {/* Quick Rolling 12M Button */}
+        {/* Consolidated Period & Baseline Dropdown */}
+        <div className="relative self-start sm:self-auto" ref={dropdownRef}>
           <button
             type="button"
-            onClick={() => handleSelectPeriod("rolling")}
-            className={`px-3 py-1.5 rounded-xl font-semibold border transition ${
-              selectedPeriod === "rolling"
-                ? "bg-indigo-600 border-indigo-500 text-white shadow-sm"
-                : "bg-slate-950 border-slate-800 text-slate-400 hover:text-white"
+            onClick={() => setIsDropdownOpen((prev) => !prev)}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium border transition shadow-sm ${
+              isDropdownOpen
+                ? "bg-sky-600 text-white border-sky-500 shadow-sky-950/40"
+                : "bg-slate-950/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
             }`}
+            aria-expanded={isDropdownOpen}
           >
-            🔄 Past 12M (Rolling)
+            <CalendarDays className="h-3.5 w-3.5 text-sky-400" />
+            <span className="font-semibold">Period & Baseline</span>
+            <span className="text-slate-400 text-[11px]">
+              ({data.selectedPeriodLabel} • {comparePriorYear ? "YoY On" : "YoY Off"})
+            </span>
+            <ChevronDown
+              className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                isDropdownOpen ? "rotate-180 text-white" : ""
+              }`}
+            />
           </button>
 
-          {/* Dedicated Calendar Year Selector */}
-          <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 gap-1">
-            <CalendarDays className="h-3.5 w-3.5 text-sky-400 mr-1" />
-            <button
-              type="button"
-              onClick={() => handleStepYear(-1)}
-              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
-              title="Previous Year"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
+          {/* Floating Settings Popover */}
+          {isDropdownOpen && (
+            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 z-30 bg-slate-900 border border-slate-700/90 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                  <Calendar className="h-3.5 w-3.5 text-sky-400" />
+                  <span>Trend Period & Comparison</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
 
-            <select
-              value={selectedPeriod === "rolling" ? String(new Date().getFullYear()) : selectedPeriod}
-              onChange={(e) => handleSelectPeriod(e.target.value)}
-              className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer px-1 py-0.5"
-            >
-              {data.availableYears.map((yr) => (
-                <option key={yr} value={String(yr)} className="bg-slate-950 text-white">
-                  📅 Year {yr}
-                </option>
-              ))}
-            </select>
+              {/* Section 1: Time Horizon Mode */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Analysis Window
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPeriod("rolling")}
+                  className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-left transition flex items-center justify-between ${
+                    selectedPeriod === "rolling"
+                      ? "bg-indigo-600 text-white font-semibold"
+                      : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                  }`}
+                >
+                  <span>🔄 Past 12 Months (Rolling Window)</span>
+                  {selectedPeriod === "rolling" && <Check className="h-3.5 w-3.5" />}
+                </button>
 
-            <button
-              type="button"
-              onClick={() => handleStepYear(1)}
-              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
-              title="Next Year"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
+                {/* Calendar Year Selector */}
+                <div className="pt-1 space-y-1.5">
+                  <div className="text-[11px] text-slate-400 font-medium">Or Select Calendar Year:</div>
+                  <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleStepYear(-1)}
+                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                      title="Previous Year"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
 
-          {/* Quick Year Pill Shortcuts for Most Recent Years */}
-          <div className="hidden sm:flex items-center p-1 bg-slate-950 border border-slate-800 rounded-xl">
-            {data.availableYears.slice(0, 3).map((yr) => (
-              <button
-                key={yr}
-                type="button"
-                onClick={() => handleSelectPeriod(String(yr))}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
-                  selectedPeriod === String(yr)
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                {yr}
-              </button>
-            ))}
-          </div>
+                    <select
+                      value={selectedPeriod === "rolling" ? String(new Date().getFullYear()) : selectedPeriod}
+                      onChange={(e) => handleSelectPeriod(e.target.value)}
+                      className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer px-1 py-1 flex-1"
+                    >
+                      {data.availableYears.map((yr) => (
+                        <option key={yr} value={String(yr)} className="bg-slate-950 text-white">
+                          📅 Calendar Year {yr}
+                        </option>
+                      ))}
+                    </select>
 
-          {/* Toggle Prior Year Comparison Overlay */}
-          <button
-            type="button"
-            onClick={() => setComparePriorYear(!comparePriorYear)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-semibold transition ${
-              comparePriorYear
-                ? "bg-purple-950/80 border-purple-800 text-purple-200"
-                : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
-            }`}
-            title="Toggle previous year overlay line"
-          >
-            <Layers className="h-3.5 w-3.5 text-purple-400" />
-            <span>Compare Prior Year</span>
-          </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStepYear(1)}
+                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                      title="Next Year"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Year Quick Chips */}
+                  <div className="flex items-center gap-1.5 pt-1">
+                    {data.availableYears.map((yr) => (
+                      <button
+                        key={yr}
+                        type="button"
+                        onClick={() => handleSelectPeriod(String(yr))}
+                        className={`flex-1 py-1 rounded-lg text-xs font-semibold text-center transition ${
+                          selectedPeriod === String(yr)
+                            ? "bg-indigo-600 text-white"
+                            : "bg-slate-950 border border-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        {yr}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Baseline Comparison */}
+              <div className="space-y-2 border-t border-slate-800 pt-3">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Baseline Benchmark
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setComparePriorYear(!comparePriorYear)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition border ${
+                    comparePriorYear
+                      ? "bg-purple-950/70 border-purple-800 text-purple-200"
+                      : "bg-slate-950/70 border-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Layers className="h-3.5 w-3.5 text-purple-400" />
+                    Compare Prior Year Overlay
+                  </span>
+                  <span
+                    className={`h-4 w-4 rounded border flex items-center justify-center ${
+                      comparePriorYear ? "bg-purple-600 border-purple-500 text-white" : "border-slate-700 bg-slate-900"
+                    }`}
+                  >
+                    {comparePriorYear && <Check className="h-3 w-3" />}
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
