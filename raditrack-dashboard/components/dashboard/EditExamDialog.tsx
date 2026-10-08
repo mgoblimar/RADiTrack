@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { Pencil, X, Save } from "lucide-react";
 import { updateExaminationAction } from "@/app/actions";
-import { ModalityCode, TriageLevel, UrgencyLevel } from "@/lib/enums";
+import {
+  ModalityCode,
+  TriageLevel,
+  UrgencyLevel,
+} from "@/lib/enums";
 
 interface EditExamDialogProps {
   item: {
@@ -16,46 +20,93 @@ interface EditExamDialogProps {
   };
 }
 
-export function EditExamDialog({ item }: EditExamDialogProps) {
+export function EditExamDialog({
+  item,
+}: EditExamDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <>
-      {/* Trigger Button */}
+      {/* =========================================================
+          TRIGGER BUTTON
+          ========================================================= */}
+
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="p-1.5 rounded-md text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition"
+        className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all duration-150 hover:bg-qc-blue/10 hover:text-qc-blue"
         title="Edit Examination Details"
+        aria-label="Edit examination details"
       >
         <Pencil className="h-3.5 w-3.5" />
       </button>
 
-      {/* Modal Overlay */}
+      {/* =========================================================
+          MODAL
+          ========================================================= */}
+
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-left">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-qc-navy/45 p-4 backdrop-blur-[3px] animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-exam-title"
+        >
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-border bg-card p-6 text-left shadow-[0_24px_70px_rgba(5,6,64,0.18)]">
+            {/* =====================================================
+                CLOSE BUTTON
+                ===================================================== */}
+
             <button
+              type="button"
               onClick={() => setIsOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
+              disabled={isSubmitting}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Close dialog"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
 
-            <div className="mb-5">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Pencil className="h-4 w-4 text-sky-400" />
-                Edit Examination Details
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Correct typing mistakes for unfinalized record ({item.identifier})
-              </p>
+            {/* =====================================================
+                HEADER
+                ===================================================== */}
+
+            <div className="pr-8">
+              <div className="flex items-start gap-3.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-blue/10 text-qc-blue">
+                  <Pencil className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h3
+                    id="edit-exam-title"
+                    className="text-lg font-extrabold tracking-tight text-qc-navy"
+                  >
+                    Edit examination details
+                  </h3>
+
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Correct information for this unfinalized examination.
+                  </p>
+
+                  <div className="mt-2 inline-flex max-w-full items-center rounded-full bg-qc-blue/5 px-2.5 py-1">
+                    <span className="truncate font-mono text-[11px] font-bold text-qc-blue">
+                      {item.identifier}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* =====================================================
+                FORM
+                ===================================================== */}
 
             <form
               action={async (formData: FormData) => {
                 setIsSubmitting(true);
+
                 try {
                   await updateExaminationAction(formData);
                   setIsOpen(false);
@@ -63,99 +114,189 @@ export function EditExamDialog({ item }: EditExamDialogProps) {
                   setIsSubmitting(false);
                 }
               }}
-              className="space-y-4"
+              className="mt-6 space-y-5"
             >
-              <input type="hidden" name="examId" value={item.examId} />
+              <input
+                type="hidden"
+                name="examId"
+                value={item.examId}
+              />
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Accession Identifier
+              {/* ===================================================
+                  ACCESSION IDENTIFIER
+                  =================================================== */}
+
+              <div className="space-y-2">
+                <label
+                  htmlFor={`identifier-${item.examId}`}
+                  className="block text-sm font-bold text-qc-navy"
+                >
+                  Accession identifier
                 </label>
+
                 <input
+                  id={`identifier-${item.examId}`}
                   type="text"
                   name="examinationIdentifier"
                   defaultValue={item.identifier}
                   required
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500 font-mono"
+                  className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 font-mono text-sm font-semibold text-qc-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-qc-blue/40 focus:bg-card focus:ring-2 focus:ring-qc-blue/10"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+              {/* ===================================================
+                  MODALITY + TRIAGE
+                  =================================================== */}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label
+                    htmlFor={`modality-${item.examId}`}
+                    className="block text-sm font-bold text-qc-navy"
+                  >
                     Modality
                   </label>
+
                   <select
+                    id={`modality-${item.examId}`}
                     name="modalityCode"
                     defaultValue={item.modalityCode}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                    className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-colors focus:border-qc-blue/40 focus:bg-card focus:ring-2 focus:ring-qc-blue/10"
                   >
-                    <option value={ModalityCode.XRAY}>X-ray</option>
-                    <option value={ModalityCode.US}>Ultrasound</option>
-                    <option value={ModalityCode.CT}>CT-Scan</option>
-                    <option value={ModalityCode.MRI}>MRI</option>
-                    <option value={ModalityCode.MAMMO}>Mammogram</option>
+                    <option value={ModalityCode.XRAY}>
+                      X-ray
+                    </option>
+
+                    <option value={ModalityCode.US}>
+                      Ultrasound
+                    </option>
+
+                    <option value={ModalityCode.CT}>
+                      CT-Scan
+                    </option>
+
+                    <option value={ModalityCode.MRI}>
+                      MRI
+                    </option>
+
+                    <option value={ModalityCode.MAMMO}>
+                      Mammogram
+                    </option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Triage Origin
+                <div className="space-y-2">
+                  <label
+                    htmlFor={`triage-${item.examId}`}
+                    className="block text-sm font-bold text-qc-navy"
+                  >
+                    Triage origin
                   </label>
+
                   <select
+                    id={`triage-${item.examId}`}
                     name="triageLevel"
                     defaultValue={item.triageLevel}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                    className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-colors focus:border-qc-blue/40 focus:bg-card focus:ring-2 focus:ring-qc-blue/10"
                   >
-                    <option value={TriageLevel.OPD}>OPD (Outpatient)</option>
-                    <option value={TriageLevel.IN}>Inpatient (Wards/ICU)</option>
-                    <option value={TriageLevel.ER}>ER (Emergency)</option>
+                    <option value={TriageLevel.OPD}>
+                      OPD (Outpatient)
+                    </option>
+
+                    <option value={TriageLevel.IN}>
+                      Inpatient (Wards/ICU)
+                    </option>
+
+                    <option value={TriageLevel.ER}>
+                      ER (Emergency)
+                    </option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Clinical Priority / Urgency
+              {/* ===================================================
+                  URGENCY
+                  =================================================== */}
+
+              <div className="space-y-2">
+                <label
+                  htmlFor={`urgency-${item.examId}`}
+                  className="block text-sm font-bold text-qc-navy"
+                >
+                  Clinical priority / urgency
                 </label>
+
                 <select
+                  id={`urgency-${item.examId}`}
                   name="urgencyLevel"
                   defaultValue={item.urgencyLevel}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                  className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-colors focus:border-qc-blue/40 focus:bg-card focus:ring-2 focus:ring-qc-blue/10"
                 >
-                  <option value={UrgencyLevel.ROUTINE}>ROUTINE (Standard Queue)</option>
-                  <option value={UrgencyLevel.STAT}>STAT (Emergency Immediate)</option>
+                  <option value={UrgencyLevel.ROUTINE}>
+                    ROUTINE (Standard Queue)
+                  </option>
+
+                  <option value={UrgencyLevel.STAT}>
+                    STAT (Emergency Immediate)
+                  </option>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Operational Notes (Optional)
+              {/* ===================================================
+                  NOTES
+                  =================================================== */}
+
+              <div className="space-y-2">
+                <label
+                  htmlFor={`notes-${item.examId}`}
+                  className="block text-sm font-bold text-qc-navy"
+                >
+                  Operational notes
+                  <span className="ml-1 font-medium text-muted-foreground">
+                    (optional)
+                  </span>
                 </label>
+
                 <input
+                  id={`notes-${item.examId}`}
                   type="text"
                   name="notes"
                   defaultValue={item.notes || ""}
                   placeholder="e.g. Corrected ward room from 302 to 304"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+                  className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-sm font-medium text-qc-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-qc-blue/40 focus:bg-card focus:ring-2 focus:ring-qc-blue/10"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              {/* ===================================================
+                  ACTION FOOTER
+                  =================================================== */}
+
+              <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-end">
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition"
+                  disabled={isSubmitting}
+                  className="rounded-2xl px-4 py-2.5 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold px-4 py-1.5 rounded-lg text-xs transition shadow-sm disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-qc-yellow px-4 py-2.5 text-sm font-extrabold text-qc-navy shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-[#eac13d] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <Save className="h-3.5 w-3.5" />
-                  {isSubmitting ? "Saving..." : "Save Changes"}
+                  {isSubmitting ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-qc-navy/25 border-t-qc-navy" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      Save changes
+                    </>
+                  )}
                 </button>
               </div>
             </form>

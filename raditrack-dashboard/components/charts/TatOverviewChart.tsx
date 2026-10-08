@@ -1,29 +1,39 @@
 "use client";
 
-import { useState, useTransition, useMemo, useRef, useEffect } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+
 import {
   ResponsiveContainer,
-  BarChart,
   Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
+  BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Line,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import {
+  BarChart3,
+  Calendar,
+  CalendarDays,
+  Check,
+  ChevronDown,
   Clock,
   Filter,
-  Calendar,
-  Zap,
   RotateCcw,
-  CalendarDays,
-  ChevronDown,
   X,
-  Check,
+  Zap,
 } from "lucide-react";
+
 import {
   fetchModalityTatCustomRangeAction,
   type ModalityTatOverviewItem,
@@ -32,440 +42,965 @@ import {
 } from "@/app/actions";
 
 interface Props {
-  data?: ModalityTatOverviewItem[] | MultiPeriodModalityTatOverview;
+  data?:
+    | ModalityTatOverviewItem[]
+    | MultiPeriodModalityTatOverview;
 }
 
-type ExtendedTemporalPeriod = ModalityTemporalPeriod | "CUSTOM";
+type ExtendedTemporalPeriod =
+  | ModalityTemporalPeriod
+  | "CUSTOM";
 
-export function TatOverviewChart({ data }: Props) {
-  const [temporalPeriod, setTemporalPeriod] = useState<ExtendedTemporalPeriod>("ALL");
-  const [urgencyFilter, setUrgencyFilter] = useState<"ALL" | "EMERGENCY" | "ROUTINE">("ALL");
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const filterDropdownRef = useRef<HTMLDivElement>(null);
+type UrgencyFilter =
+  | "ALL"
+  | "EMERGENCY"
+  | "ROUTINE";
 
-  // Close dropdown on click outside or escape key
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
-        setIsFilterOpen(false);
-      }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsFilterOpen(false);
-      }
-    }
-    if (isFilterOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isFilterOpen]);
+// =========================================================
+// RADiTrack chart palette
+// =========================================================
 
-  // Local ISO string for today (YYYY-MM-DD)
+const QC_NAVY = "#050E40";
+const QC_BLUE = "#18298C";
+const QC_YELLOW = "#F2CB49";
+const QC_RED = "#A60808";
+const QC_MUTED = "#94A3B8";
+const QC_GRID = "#E2E8F0";
+const QC_EMPTY = "#CBD5E1";
+
+export function TatOverviewChart({
+  data,
+}: Props) {
+  // =========================================================
+  // Filter state
+  // =========================================================
+
+  const [temporalPeriod, setTemporalPeriod] =
+    useState<ExtendedTemporalPeriod>("ALL");
+
+  const [urgencyFilter, setUrgencyFilter] =
+    useState<UrgencyFilter>("ALL");
+
+  const [isFilterOpen, setIsFilterOpen] =
+    useState(false);
+
+  const filterDropdownRef =
+    useRef<HTMLDivElement>(null);
+
+  // =========================================================
+  // Date state
+  // =========================================================
+
   const todayIso = useMemo(() => {
     const now = new Date();
+
     const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
+    const m = String(
+      now.getMonth() + 1,
+    ).padStart(2, "0");
+    const d = String(
+      now.getDate(),
+    ).padStart(2, "0");
+
     return `${y}-${m}-${d}`;
   }, []);
 
   const defaultStartIso = useMemo(() => {
     const now = new Date();
-    now.setDate(now.getDate() - 14);
+
+    now.setDate(
+      now.getDate() - 14,
+    );
+
     const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
+    const m = String(
+      now.getMonth() + 1,
+    ).padStart(2, "0");
+    const d = String(
+      now.getDate(),
+    ).padStart(2, "0");
+
     return `${y}-${m}-${d}`;
   }, []);
 
-  // Custom Calendar Date Range state
-  const [customStartDate, setCustomStartDate] = useState(defaultStartIso);
-  const [customEndDate, setCustomEndDate] = useState(todayIso);
-  const [customDataset, setCustomDataset] = useState<ModalityTatOverviewItem[] | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [customStartDate, setCustomStartDate] =
+    useState(defaultStartIso);
 
-  // Helper to fetch custom range
-  const handleFetchCustomRange = (start: string, end: string) => {
+  const [customEndDate, setCustomEndDate] =
+    useState(todayIso);
+
+  const [customDataset, setCustomDataset] =
+    useState<ModalityTatOverviewItem[] | null>(
+      null,
+    );
+
+  const [isPending, startTransition] =
+    useTransition();
+
+  // =========================================================
+  // Close filter popover
+  // =========================================================
+
+  useEffect(() => {
+    const handleClickOutside = (
+      event: MouseEvent,
+    ) => {
+      if (
+        filterDropdownRef.current &&
+        !filterDropdownRef.current.contains(
+          event.target as Node,
+        )
+      ) {
+        setIsFilterOpen(false);
+      }
+    };
+
+    const handleKeyDown = (
+      event: KeyboardEvent,
+    ) => {
+      if (event.key === "Escape") {
+        setIsFilterOpen(false);
+      }
+    };
+
+    if (isFilterOpen) {
+      document.addEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
+
+      document.addEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+    }
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
+
+      document.removeEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+    };
+  }, [isFilterOpen]);
+
+  // =========================================================
+  // Custom range fetch
+  // =========================================================
+
+  const handleFetchCustomRange = (
+    start: string,
+    end: string,
+  ) => {
     setCustomStartDate(start);
     setCustomEndDate(end);
     setTemporalPeriod("CUSTOM");
+
     startTransition(async () => {
       try {
-        const res = await fetchModalityTatCustomRangeAction(start, end);
-        setCustomDataset(res);
-      } catch (err) {
-        console.error("Failed to fetch custom modality TAT range:", err);
+        const result =
+          await fetchModalityTatCustomRangeAction(
+            start,
+            end,
+          );
+
+        setCustomDataset(result);
+      } catch (error) {
+        console.error(
+          "Failed to fetch custom modality TAT range:",
+          error,
+        );
       }
     });
   };
 
-  // Resolve datasets across either custom range, multi-period structure, or raw array
-  let activeDataset: ModalityTatOverviewItem[] = [];
+  // =========================================================
+  // Resolve active dataset
+  // =========================================================
 
-  if (temporalPeriod === "CUSTOM" && customDataset) {
+  let activeDataset: ModalityTatOverviewItem[] =
+    [];
+
+  if (
+    temporalPeriod === "CUSTOM" &&
+    customDataset
+  ) {
     activeDataset = customDataset;
   } else if (data) {
-    if ("periods" in data && data.periods) {
-      const key = temporalPeriod === "CUSTOM" ? "ALL" : temporalPeriod;
-      activeDataset = data.periods[key] || data.periods.ALL || [];
+    if (
+      "periods" in data &&
+      data.periods
+    ) {
+      const key =
+        temporalPeriod === "CUSTOM"
+          ? "ALL"
+          : temporalPeriod;
+
+      activeDataset =
+        data.periods[key] ??
+        data.periods.ALL ??
+        [];
     } else if (Array.isArray(data)) {
       activeDataset = data;
     }
   }
 
-  // Compute live display data dynamically based on the active urgency filter
-  const displayData = activeDataset.map((d) => {
-    const stats =
-      urgencyFilter === "EMERGENCY"
-        ? d.emergency
-        : urgencyFilter === "ROUTINE"
-        ? d.routine
-        : d.all;
+  // =========================================================
+  // Resolve modality statistics
+  // =========================================================
 
-    return {
-      modality: d.modality,
-      name: d.name,
-      avgTat: stats.avgTat,
-      target: stats.target,
-      volume: stats.volume,
-    };
-  });
+  const displayData = activeDataset.map(
+    (item) => {
+      const stats =
+        urgencyFilter === "EMERGENCY"
+          ? item.emergency
+          : urgencyFilter === "ROUTINE"
+            ? item.routine
+            : item.all;
 
-  // Calculate quick summary metrics for the active period
-  const totalVolume = displayData.reduce((acc, curr) => acc + curr.volume, 0);
-  const activeModalitiesWithScans = displayData.filter((d) => d.volume > 0);
-  const breachedCount = activeModalitiesWithScans.filter((d) => d.avgTat > d.target).length;
+      return {
+        modality: item.modality,
+        name: item.name,
+        avgTat: stats.avgTat,
+        target: stats.target,
+        volume: stats.volume,
+      };
+    },
+  );
 
-  // Find fastest modality
+  // =========================================================
+  // Summary metrics
+  // =========================================================
+
+  const totalVolume =
+    displayData.reduce(
+      (sum, item) =>
+        sum + item.volume,
+      0,
+    );
+
+  const modalitiesWithScans =
+    displayData.filter(
+      (item) => item.volume > 0,
+    );
+
+  const breachedCount =
+    modalitiesWithScans.filter(
+      (item) =>
+        item.avgTat > item.target,
+    ).length;
+
   const fastest =
-    activeModalitiesWithScans.length > 0
-      ? [...activeModalitiesWithScans].sort((a, b) => a.avgTat - b.avgTat)[0]
+    modalitiesWithScans.length > 0
+      ? [...modalitiesWithScans].sort(
+          (a, b) =>
+            a.avgTat - b.avgTat,
+        )[0]
       : null;
 
-  // Human-readable labels
-  const temporalLabels: Record<ExtendedTemporalPeriod, string> = {
-    ALL: "All Time",
-    "7D": "Past 7 Days",
-    MONTH: "This Month",
-    YEAR: "This Year",
-    CUSTOM: "Custom Range",
+  // =========================================================
+  // Labels
+  // =========================================================
+
+  const temporalLabels: Record<
+    ExtendedTemporalPeriod,
+    string
+  > = {
+    ALL: "All time",
+    "7D": "Past 7 days",
+    MONTH: "This month",
+    YEAR: "This year",
+    CUSTOM: "Custom range",
   };
 
-  const urgencyLabels: Record<"ALL" | "EMERGENCY" | "ROUTINE", string> = {
-    ALL: "All Scans",
+  const urgencyLabels: Record<
+    UrgencyFilter,
+    string
+  > = {
+    ALL: "All scans",
     EMERGENCY: "STAT / ER",
     ROUTINE: "Routine",
   };
 
-  const isFiltered = temporalPeriod !== "ALL" || urgencyFilter !== "ALL";
+  const isFiltered =
+    temporalPeriod !== "ALL" ||
+    urgencyFilter !== "ALL";
+
+  // =========================================================
+  // Reset filters
+  // =========================================================
 
   const handleResetFilters = () => {
     setTemporalPeriod("ALL");
     setUrgencyFilter("ALL");
+    setIsFilterOpen(false);
+  };
+
+  // =========================================================
+  // Bar colors
+  // =========================================================
+
+  const getBarColor = (
+    volume: number,
+    avgTat: number,
+    target: number,
+  ) => {
+    if (volume === 0) {
+      return QC_EMPTY;
+    }
+
+    if (avgTat > target) {
+      return QC_RED;
+    }
+
+    return QC_BLUE;
+  };
+
+  // =========================================================
+  // Custom tooltip
+  // =========================================================
+
+  const ChartTooltip = ({
+    active,
+    payload,
+    label,
+  }: any) => {
+    if (
+      !active ||
+      !payload ||
+      payload.length === 0
+    ) {
+      return null;
+    }
+
+    const point =
+      payload[0]?.payload;
+
+    if (!point) {
+      return null;
+    }
+
+    const isBreach =
+      point.volume > 0 &&
+      point.avgTat > point.target;
+
+    return (
+      <div className="min-w-[210px] rounded-2xl border border-border bg-white p-3.5 text-xs shadow-[0_14px_35px_rgba(5,14,64,0.14)]">
+        <div className="border-b border-border pb-2">
+          <p className="font-extrabold text-qc-navy">
+            {point.name || label}
+          </p>
+
+          <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
+            {point.modality}
+          </p>
+        </div>
+
+        <div className="space-y-2 pt-2.5">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground">
+              Average TAT
+            </span>
+
+            <strong
+              className={
+                isBreach
+                  ? "text-qc-red"
+                  : "text-qc-blue"
+              }
+            >
+              {point.avgTat}m
+            </strong>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground">
+              SLA target
+            </span>
+
+            <strong className="text-qc-navy">
+              {point.target}m
+            </strong>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground">
+              Finalized
+            </span>
+
+            <strong className="text-qc-navy">
+              {point.volume}
+            </strong>
+          </div>
+
+          <div className="border-t border-border pt-2">
+            {point.volume === 0 ? (
+              <span className="font-bold text-muted-foreground">
+                No finalized scans
+              </span>
+            ) : isBreach ? (
+              <span className="font-extrabold text-qc-red">
+                Above SLA target
+              </span>
+            ) : (
+              <span className="font-extrabold text-qc-blue">
+                Within SLA
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <Card className="bg-slate-800/40 border-slate-700/80 text-slate-100 shadow-md">
-      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-              <Clock className="h-5 w-5 text-sky-400" />
-              Modality Turnaround Time (TAT) vs SLA Target
-            </CardTitle>
-            <Badge variant="outline" className="border-sky-500/40 text-sky-300 text-xs">
-              Live Recharts
-            </Badge>
-            {isPending && (
-              <span className="text-[11px] text-sky-400 bg-sky-950/60 border border-sky-800 px-2 py-0.5 rounded-full animate-pulse">
-                Filtering...
-              </span>
-            )}
-          </div>
-          <CardDescription className="text-xs text-slate-400 mt-1">
-            Comparing average minutes from examination completion (T₁) to radiologist report sign-off (T₂).
-          </CardDescription>
-        </div>
+    <section className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+      {/* =======================================================
+          HEADER
+          ======================================================= */}
 
-        {/* Consolidated Single Filter Dropdown */}
-        <div className="relative self-start sm:self-auto" ref={filterDropdownRef}>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsFilterOpen((prev) => !prev)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium border transition shadow-sm ${
-                isFilterOpen
-                  ? "bg-sky-600 text-white border-sky-500 shadow-sky-950/40"
-                  : isFiltered
-                  ? "bg-sky-950/70 border-sky-800 text-sky-200 hover:bg-sky-900/60"
-                  : "bg-slate-900/80 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:text-white"
-              }`}
-              aria-expanded={isFilterOpen}
-            >
-              <Filter className={`h-3.5 w-3.5 ${isFiltered ? "text-sky-400" : "text-slate-400"}`} />
-              <span className="font-semibold">Filter Chart</span>
-              <span className="text-slate-400 text-[11px]">
-                ({temporalLabels[temporalPeriod]} • {urgencyLabels[urgencyFilter]})
-              </span>
-              <ChevronDown
-                className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
-                  isFilterOpen ? "rotate-180 text-white" : ""
-                }`}
-              />
-            </button>
+      <div className="border-b border-border px-5 py-4 sm:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Title */}
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
+              <BarChart3 className="h-4 w-4" />
+            </div>
 
-            {isFiltered && (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                title="Reset filters to All Time & All Scans"
-                className="p-1.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-400 hover:text-white hover:bg-slate-800 transition"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-extrabold tracking-tight text-qc-navy sm:text-lg">
+                  TAT by modality
+                </h2>
 
-          {/* Floating Filter Popover */}
-          {isFilterOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 z-30 bg-slate-900 border border-slate-700/90 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                  <Filter className="h-3.5 w-3.5 text-sky-400" />
-                  <span>Modality Chart Filters</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsFilterOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
+                <span className="rounded-full bg-qc-blue/5 px-2 py-0.5 text-[9px] font-extrabold text-qc-blue">
+                  SLA comparison
+                </span>
 
-              {/* Section 1: Temporal Period */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3 text-sky-400" />
-                    Time Window
+                {isPending && (
+                  <span className="rounded-full bg-qc-yellow/20 px-2 py-0.5 text-[9px] font-extrabold text-qc-navy">
+                    Updating…
                   </span>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(["ALL", "7D", "MONTH", "YEAR"] as ExtendedTemporalPeriod[]).map((period) => (
-                    <button
-                      key={period}
-                      type="button"
-                      onClick={() => setTemporalPeriod(period)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition flex items-center justify-between ${
-                        temporalPeriod === period
-                          ? "bg-indigo-600 text-white font-semibold"
-                          : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
-                      }`}
-                    >
-                      <span>{temporalLabels[period]}</span>
-                      {temporalPeriod === period && <Check className="h-3 w-3" />}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Custom Range Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!customDataset) {
-                      handleFetchCustomRange(customStartDate, customEndDate);
-                    } else {
-                      setTemporalPeriod("CUSTOM");
-                    }
-                  }}
-                  className={`w-full mt-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition flex items-center justify-between ${
-                    temporalPeriod === "CUSTOM"
-                      ? "bg-sky-600 text-white font-semibold"
-                      : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <CalendarDays className="h-3.5 w-3.5 text-sky-300" />
-                    Custom Calendar Range
-                  </span>
-                  {temporalPeriod === "CUSTOM" && <Check className="h-3 w-3" />}
-                </button>
-
-                {/* Custom Range Picker Inputs (when custom is active) */}
-                {temporalPeriod === "CUSTOM" && (
-                  <div className="p-2.5 bg-slate-950 border border-sky-900/60 rounded-xl space-y-2 mt-2 animate-in fade-in duration-100">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-slate-400 text-[11px] w-10">From:</span>
-                      <input
-                        type="date"
-                        value={customStartDate}
-                        onChange={(e) => {
-                          setCustomStartDate(e.target.value);
-                          if (e.target.value && customEndDate) {
-                            handleFetchCustomRange(e.target.value, customEndDate);
-                          }
-                        }}
-                        className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-full [color-scheme:dark]"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-slate-400 text-[11px] w-10">To:</span>
-                      <input
-                        type="date"
-                        value={customEndDate}
-                        onChange={(e) => {
-                          setCustomEndDate(e.target.value);
-                          if (customStartDate && e.target.value) {
-                            handleFetchCustomRange(customStartDate, e.target.value);
-                          }
-                        }}
-                        className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-full [color-scheme:dark]"
-                      />
-                    </div>
-                  </div>
                 )}
               </div>
 
-              {/* Section 2: Clinical Urgency */}
-              <div className="space-y-1.5 border-t border-slate-800 pt-3">
-                <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-sky-400" />
-                  Clinical Urgency
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Average report turnaround against
+                target.
+              </p>
+            </div>
+          </div>
+
+          {/* Filter controls */}
+          <div
+            ref={filterDropdownRef}
+            className="relative shrink-0"
+          >
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setIsFilterOpen(
+                    (previous) =>
+                      !previous,
+                  )
+                }
+                className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-extrabold transition-all ${
+                  isFilterOpen
+                    ? "border-qc-navy bg-qc-navy text-white"
+                    : isFiltered
+                      ? "border-qc-blue/20 bg-qc-blue/5 text-qc-blue"
+                      : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
+                }`}
+                aria-expanded={
+                  isFilterOpen
+                }
+                aria-haspopup="dialog"
+              >
+                <Filter
+                  className={`h-3.5 w-3.5 ${
+                    isFilterOpen
+                      ? "text-qc-yellow"
+                      : isFiltered
+                        ? "text-qc-blue"
+                        : "text-muted-foreground"
+                  }`}
+                />
+
+                <span>Filters</span>
+
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${
+                    isFilterOpen
+                      ? "rotate-180"
+                      : ""
+                  }`}
+                />
+              </button>
+
+              {isFiltered && (
+                <button
+                  type="button"
+                  onClick={
+                    handleResetFilters
+                  }
+                  title="Reset chart filters"
+                  aria-label="Reset chart filters"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* ===================================================
+                FILTER POPOVER
+                =================================================== */}
+
+            {isFilterOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-[320px] rounded-3xl border border-border bg-card shadow-[0_20px_50px_rgba(5,14,64,0.14)] animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-qc-blue" />
+
+                    <span className="text-sm font-extrabold text-qc-navy">
+                      Chart filters
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIsFilterOpen(
+                        false,
+                      )
+                    }
+                    className="flex h-7 w-7 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-qc-navy"
+                    aria-label="Close filters"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(["ALL", "EMERGENCY", "ROUTINE"] as const).map((urgency) => (
+
+                <div className="space-y-4 p-4">
+                  {/* Time */}
+                  <div>
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-qc-blue" />
+
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                        Time window
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(
+                        [
+                          "ALL",
+                          "7D",
+                          "MONTH",
+                          "YEAR",
+                        ] as ExtendedTemporalPeriod[]
+                      ).map(
+                        (period) => (
+                          <button
+                            key={period}
+                            type="button"
+                            onClick={() =>
+                              setTemporalPeriod(
+                                period,
+                              )
+                            }
+                            className={`flex items-center justify-between rounded-xl px-2.5 py-2.5 text-[11px] font-bold transition-colors ${
+                              temporalPeriod ===
+                              period
+                                ? "bg-qc-yellow text-qc-navy"
+                                : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+                            }`}
+                          >
+                            <span>
+                              {
+                                temporalLabels[
+                                  period
+                                ]
+                              }
+                            </span>
+
+                            {temporalPeriod ===
+                              period && (
+                              <Check className="h-3 w-3" />
+                            )}
+                          </button>
+                        ),
+                      )}
+                    </div>
+
+                    {/* Custom */}
                     <button
-                      key={urgency}
                       type="button"
-                      onClick={() => setUrgencyFilter(urgency)}
-                      className={`px-2 py-1.5 rounded-lg text-xs font-medium text-center transition ${
-                        urgencyFilter === urgency
-                          ? "bg-sky-500 text-slate-950 font-bold"
-                          : "bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800"
+                      onClick={() => {
+                        if (
+                          !customDataset
+                        ) {
+                          handleFetchCustomRange(
+                            customStartDate,
+                            customEndDate,
+                          );
+                        } else {
+                          setTemporalPeriod(
+                            "CUSTOM",
+                          );
+                        }
+                      }}
+                      className={`mt-1.5 flex w-full items-center justify-between rounded-xl px-2.5 py-2.5 text-[11px] font-bold transition-colors ${
+                        temporalPeriod ===
+                        "CUSTOM"
+                          ? "bg-qc-blue text-white"
+                          : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
                       }`}
                     >
-                      {urgencyLabels[urgency]}
+                      <span className="flex items-center gap-1.5">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        Custom range
+                      </span>
+
+                      {temporalPeriod ===
+                        "CUSTOM" && (
+                        <Check className="h-3 w-3" />
+                      )}
                     </button>
-                  ))}
+
+                    {temporalPeriod ===
+                      "CUSTOM" && (
+                      <div className="mt-2 grid grid-cols-2 gap-2 rounded-2xl bg-background p-2.5">
+                        <label className="space-y-1">
+                          <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                            From
+                          </span>
+
+                          <input
+                            type="date"
+                            value={
+                              customStartDate
+                            }
+                            onChange={(event) =>
+                              handleFetchCustomRange(
+                                event.target
+                                  .value,
+                                customEndDate,
+                              )
+                            }
+                            className="h-9 w-full rounded-xl border border-border bg-card px-2 text-[10px] font-bold text-qc-navy outline-none focus:border-qc-blue/25"
+                          />
+                        </label>
+
+                        <label className="space-y-1">
+                          <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                            To
+                          </span>
+
+                          <input
+                            type="date"
+                            value={
+                              customEndDate
+                            }
+                            onChange={(event) =>
+                              handleFetchCustomRange(
+                                customStartDate,
+                                event.target
+                                  .value,
+                              )
+                            }
+                            className="h-9 w-full rounded-xl border border-border bg-card px-2 text-[10px] font-bold text-qc-navy outline-none focus:border-qc-blue/25"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Urgency */}
+                  <div className="border-t border-border pt-4">
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-qc-blue" />
+
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                        Priority
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(
+                        [
+                          "ALL",
+                          "EMERGENCY",
+                          "ROUTINE",
+                        ] as const
+                      ).map(
+                        (urgency) => (
+                          <button
+                            key={urgency}
+                            type="button"
+                            onClick={() =>
+                              setUrgencyFilter(
+                                urgency,
+                              )
+                            }
+                            className={`rounded-xl px-2 py-2.5 text-[10px] font-bold transition-colors ${
+                              urgencyFilter ===
+                              urgency
+                                ? "bg-qc-blue text-white"
+                                : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+                            }`}
+                          >
+                            {
+                              urgencyLabels[
+                                urgency
+                              ]
+                            }
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Active Period Telemetry Bar */}
-        <div className="flex flex-wrap items-center justify-between text-xs bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-slate-300 gap-2">
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-white">
-              {temporalPeriod === "ALL"
-                ? "All Recorded History"
-                : temporalPeriod === "7D"
-                ? "Past 7-Day Window"
-                : temporalPeriod === "MONTH"
-                ? "Current Calendar Month"
-                : temporalPeriod === "YEAR"
-                ? "Current Calendar Year"
-                : `Custom Range (${customStartDate} to ${customEndDate})`}
-              :
-            </span>
-            <span className="text-sky-300 font-bold">{totalVolume} finalized scans analyzed</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {fastest && (
-              <span className="text-emerald-300 flex items-center gap-1 font-medium">
-                <Zap className="h-3.5 w-3.5 text-emerald-400" />
-                Fastest: <strong className="text-white">{fastest.modality}</strong> ({fastest.avgTat}m)
-              </span>
             )}
-            <span className="text-slate-400">
-              SLA Status:{" "}
-              {breachedCount === 0 ? (
-                <strong className="text-emerald-400">100% Compliant</strong>
-              ) : (
-                <strong className="text-rose-400">{breachedCount} Breaching</strong>
-              )}
-            </span>
           </div>
         </div>
+      </div>
 
-        {/* Recharts Bar Chart */}
-        <div className="h-72 w-full pt-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={displayData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="modality" stroke="#94a3b8" fontSize={12} tickLine={false} />
-              <YAxis stroke="#94a3b8" fontSize={12} unit="m" tickLine={false} axisLine={false} />
-              <Tooltip
-                cursor={{ fill: "rgba(51, 65, 85, 0.3)" }}
-                contentStyle={{
-                  backgroundColor: "#0f172a",
-                  borderColor: "#334155",
-                  borderRadius: "10px",
-                  color: "#f8fafc",
-                  fontSize: "12px",
+      {/* =======================================================
+          COMPACT STATUS STRIP
+          ======================================================= */}
+
+      <div className="grid grid-cols-3 divide-x divide-border border-b border-border bg-background/60">
+        <div className="px-4 py-3 sm:px-5">
+          <p className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            Finalized
+          </p>
+
+          <p className="mt-0.5 text-sm font-extrabold text-qc-navy">
+            {totalVolume}
+          </p>
+        </div>
+
+        <div className="px-4 py-3 sm:px-5">
+          <p className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            Fastest
+          </p>
+
+          <p className="mt-0.5 truncate text-sm font-extrabold text-qc-blue">
+            {fastest
+              ? `${fastest.modality} · ${fastest.avgTat}m`
+              : "—"}
+          </p>
+        </div>
+
+        <div className="px-4 py-3 sm:px-5">
+          <p className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            SLA
+          </p>
+
+          <p
+            className={`mt-0.5 text-sm font-extrabold ${
+              breachedCount > 0
+                ? "text-qc-red"
+                : "text-qc-blue"
+            }`}
+          >
+            {breachedCount > 0
+              ? `${breachedCount} breach${
+                  breachedCount ===
+                  1
+                    ? ""
+                    : "es"
+                }`
+              : "All within target"}
+          </p>
+        </div>
+      </div>
+
+      {/* =======================================================
+          CHART
+          ======================================================= */}
+
+      <div className="px-4 py-4 sm:px-5 sm:py-5">
+        {displayData.length ===
+        0 ? (
+          <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <BarChart3 className="h-4 w-4" />
+            </div>
+
+            <p className="mt-3 text-sm font-extrabold text-qc-navy">
+              No modality data
+            </p>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              There are no finalized scans for this
+              filter.
+            </p>
+          </div>
+        ) : (
+          <div className="h-[270px] w-full sm:h-[290px]">
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
+              <ComposedChart
+                data={displayData}
+                margin={{
+                  top: 8,
+                  right: 8,
+                  left: -10,
+                  bottom: 0,
                 }}
-                formatter={(value: any, name: any, item: any) => {
-                  const vol = item?.payload?.volume ?? 0;
-                  const target = item?.payload?.target ?? 0;
-                  if (vol === 0) {
-                    return ["0 mins (No scans finalized in this period)", "Actual Avg TAT"];
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={QC_GRID}
+                  vertical={false}
+                />
+
+                <XAxis
+                  dataKey="modality"
+                  stroke={QC_MUTED}
+                  fontSize={11}
+                  fontWeight={700}
+                  tickLine={false}
+                  axisLine={false}
+                  dy={7}
+                />
+
+                <YAxis
+                  stroke={QC_MUTED}
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  width={42}
+                  tickFormatter={(value) =>
+                    `${value}m`
                   }
-                  return [
-                    `${value} mins (${vol} scans • Target: ${target}m)`,
-                    name === "avgTat" ? "Actual Avg TAT" : "SLA Target",
-                  ];
-                }}
-                labelFormatter={(label) => `Modality: ${label}`}
-              />
-              <Bar dataKey="avgTat" radius={[6, 6, 0, 0]}>
-                {displayData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={
-                      entry.volume === 0
-                        ? "#475569"
-                        : entry.avgTat > entry.target
-                        ? "#f87171"
-                        : "#38bdf8"
-                    }
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+                />
 
-        {/* Legend */}
-        <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-700/60">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
-              Within SLA Target
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-              SLA Breach Warning
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-              No Data in Period
-            </span>
+                <Tooltip
+                  content={
+                    <ChartTooltip />
+                  }
+                  cursor={{
+                    fill: "rgba(24, 41, 140, 0.04)",
+                  }}
+                />
+
+                {/* Actual TAT */}
+                <Bar
+                  dataKey="avgTat"
+                  name="Actual TAT"
+                  radius={[
+                    8,
+                    8,
+                    2,
+                    2,
+                  ]}
+                  maxBarSize={52}
+                >
+                  {displayData.map(
+                    (
+                      item,
+                      index,
+                    ) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={getBarColor(
+                          item.volume,
+                          item.avgTat,
+                          item.target,
+                        )}
+                      />
+                    ),
+                  )}
+                </Bar>
+
+                {/* SLA target */}
+                <Line
+                  type="monotone"
+                  dataKey="target"
+                  name="SLA target"
+                  stroke={QC_YELLOW}
+                  strokeWidth={2}
+                  dot={{
+                    r: 3,
+                    fill: QC_YELLOW,
+                    stroke: "#FFFFFF",
+                    strokeWidth: 1.5,
+                  }}
+                  activeDot={{
+                    r: 4,
+                    fill: QC_YELLOW,
+                    stroke: QC_NAVY,
+                    strokeWidth: 1.5,
+                  }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
-          <span className="text-[11px] text-slate-500">
-            Window: <strong className="text-slate-300">{temporalLabels[temporalPeriod]}</strong> • Urgency:{" "}
-            <strong className="text-slate-300">{urgencyLabels[urgencyFilter]}</strong>
+        )}
+      </div>
+
+      {/* =======================================================
+          LEGEND / FOOTER
+          ======================================================= */}
+
+      <div className="flex flex-col gap-2.5 border-t border-border px-4 py-3.5 text-[10px] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="flex items-center gap-1.5 font-semibold text-muted-foreground">
+            <span
+              className="h-2.5 w-2.5 rounded-sm"
+              style={{
+                backgroundColor:
+                  QC_BLUE,
+              }}
+            />
+            Actual TAT
+          </span>
+
+          <span className="flex items-center gap-1.5 font-semibold text-muted-foreground">
+            <span
+              className="h-0.5 w-4 rounded-full"
+              style={{
+                backgroundColor:
+                  QC_YELLOW,
+              }}
+            />
+            SLA target
+          </span>
+
+          <span className="flex items-center gap-1.5 font-semibold text-muted-foreground">
+            <span
+              className="h-2.5 w-2.5 rounded-sm"
+              style={{
+                backgroundColor:
+                  QC_RED,
+              }}
+            />
+            Above SLA
           </span>
         </div>
-      </CardContent>
-    </Card>
+
+        <span className="font-semibold text-muted-foreground">
+          {temporalLabels[
+            temporalPeriod
+          ]}{" "}
+          ·{" "}
+          {urgencyLabels[
+            urgencyFilter
+          ]}
+        </span>
+      </div>
+    </section>
   );
 }

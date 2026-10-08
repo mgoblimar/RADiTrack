@@ -1,19 +1,24 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import {
-  CalendarDays,
-  RotateCcw,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+
+import {
   Calendar,
-  ArrowRight,
-  Loader2,
-  Clock,
+  CalendarDays,
+  Check,
   CheckCircle2,
-  Activity,
   ChevronDown,
   Filter,
+  Loader2,
+  RotateCcw,
   X,
 } from "lucide-react";
+
 import { type KpiPreset } from "@/app/actions";
 
 export interface DateRangeFilterProps {
@@ -21,7 +26,10 @@ export interface DateRangeFilterProps {
   startDate: string;
   endDate: string;
   onPresetChange: (preset: KpiPreset) => void;
-  onCustomRangeApply: (startDate: string, endDate: string) => void;
+  onCustomRangeApply: (
+    startDate: string,
+    endDate: string,
+  ) => void;
   isPending?: boolean;
   telemetrySummary?: {
     presetLabel: string;
@@ -33,15 +41,42 @@ export interface DateRangeFilterProps {
   };
 }
 
-const PRESETS: { id: KpiPreset; label: string; description: string }[] = [
-  { id: "ALL", label: "All Time", description: "All historical exams in database" },
-  { id: "TODAY", label: "Today", description: "Current calendar day (00:00–23:59)" },
-  { id: "WEEK", label: "This Week", description: "Monday to Sunday active cohort" },
-  { id: "LAST_WEEK", label: "Last Week", description: "Preceding full calendar week" },
-  { id: "MONTH", label: "This Month", description: "1st of current month to today" },
-  { id: "LAST_MONTH", label: "Last Month", description: "Previous full calendar month" },
-  { id: "YEAR", label: "This Year", description: "January 1 to current date" },
-  { id: "CUSTOM", label: "Custom Range", description: "Specific calendar date interval" },
+const PRESETS: {
+  id: KpiPreset;
+  label: string;
+}[] = [
+  {
+    id: "ALL",
+    label: "All Time",
+  },
+  {
+    id: "TODAY",
+    label: "Today",
+  },
+  {
+    id: "WEEK",
+    label: "This Week",
+  },
+  {
+    id: "LAST_WEEK",
+    label: "Last Week",
+  },
+  {
+    id: "MONTH",
+    label: "This Month",
+  },
+  {
+    id: "LAST_MONTH",
+    label: "Last Month",
+  },
+  {
+    id: "YEAR",
+    label: "This Year",
+  },
+  {
+    id: "CUSTOM",
+    label: "Custom",
+  },
 ];
 
 export function DateRangeFilter({
@@ -53,111 +88,268 @@ export function DateRangeFilter({
   isPending = false,
   telemetrySummary,
 }: DateRangeFilterProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [localStart, setLocalStart] = useState(startDate);
-  const [localEnd, setLocalEnd] = useState(endDate);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] =
+    useState(false);
 
-  // Close dropdown on click outside or escape key
+  const [localStart, setLocalStart] =
+    useState(startDate);
+
+  const [localEnd, setLocalEnd] =
+    useState(endDate);
+
+  const dropdownRef =
+    useRef<HTMLDivElement>(null);
+
+  // =========================================================
+  // Close popover when clicking outside
+  // =========================================================
+
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (
+      event: MouseEvent,
+    ) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(
+          event.target as Node,
+        )
+      ) {
         setIsOpen(false);
       }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
+    };
+
+    const handleKeyDown = (
+      event: KeyboardEvent,
+    ) => {
       if (event.key === "Escape") {
         setIsOpen(false);
       }
-    }
+    };
+
     if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
+
+      document.addEventListener(
+        "keydown",
+        handleKeyDown,
+      );
     }
+
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
+
+      document.removeEventListener(
+        "keydown",
+        handleKeyDown,
+      );
     };
   }, [isOpen]);
 
-  // Keep local dates synchronized when props change
+  // =========================================================
+  // Keep local date values synchronized
+  // =========================================================
+
   useEffect(() => {
     setLocalStart(startDate);
     setLocalEnd(endDate);
   }, [startDate, endDate]);
 
-  const activePresetObj = PRESETS.find((p) => p.id === currentPreset) || PRESETS[0];
+  // =========================================================
+  // Active preset
+  // =========================================================
 
-  const handleSelectPreset = (preset: KpiPreset) => {
+  const activePreset =
+    PRESETS.find(
+      (preset) =>
+        preset.id === currentPreset,
+    ) ?? PRESETS[0];
+
+  // =========================================================
+  // Preset selection
+  // =========================================================
+
+  const handleSelectPreset = (
+    preset: KpiPreset,
+  ) => {
+    if (isPending) {
+      return;
+    }
+
     if (preset === "CUSTOM") {
       onPresetChange("CUSTOM");
-      // Keep open so user can pick dates
-    } else {
-      onPresetChange(preset);
-      setIsOpen(false);
+      return;
     }
-  };
 
-  const handleApplyCustom = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (localStart && localEnd) {
-      onCustomRangeApply(localStart, localEnd);
-      setIsOpen(false);
-    }
-  };
-
-  const handleQuickPastDays = (days: number) => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - days + 1);
-
-    const formatIso = (d: Date) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    };
-
-    const sStr = formatIso(start);
-    const eStr = formatIso(end);
-    setLocalStart(sStr);
-    setLocalEnd(eStr);
-    onCustomRangeApply(sStr, eStr);
+    onPresetChange(preset);
     setIsOpen(false);
   };
 
+  // =========================================================
+  // Custom date range
+  // =========================================================
+
+  const handleApplyCustom = (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    if (!localStart || !localEnd) {
+      return;
+    }
+
+    if (localStart > localEnd) {
+      return;
+    }
+
+    onCustomRangeApply(
+      localStart,
+      localEnd,
+    );
+
+    setIsOpen(false);
+  };
+
+  // =========================================================
+  // Quick range helpers
+  // =========================================================
+
+  const handleQuickPastDays = (
+    days: number,
+  ) => {
+    const end = new Date();
+    const start = new Date();
+
+    start.setDate(
+      end.getDate() - days + 1,
+    );
+
+    const formatIso = (
+      date: Date,
+    ) => {
+      const year =
+        date.getFullYear();
+
+      const month = String(
+        date.getMonth() + 1,
+      ).padStart(2, "0");
+
+      const day = String(
+        date.getDate(),
+      ).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
+    };
+
+    const nextStart =
+      formatIso(start);
+
+    const nextEnd =
+      formatIso(end);
+
+    setLocalStart(nextStart);
+    setLocalEnd(nextEnd);
+
+    onCustomRangeApply(
+      nextStart,
+      nextEnd,
+    );
+
+    setIsOpen(false);
+  };
+
+  const handleReset = () => {
+    if (isPending) {
+      return;
+    }
+
+    onPresetChange("ALL");
+    setIsOpen(false);
+  };
+
+  const isCustom =
+    currentPreset === "CUSTOM";
+
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Consolidated Top-Level Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 rounded-2xl p-3 sm:px-4 shadow-sm backdrop-blur-sm">
-        {/* Left: Dropdown Trigger & Quick Clear */}
-        <div className="flex items-center gap-2">
+    <div
+      ref={dropdownRef}
+      className="relative"
+    >
+      {/* =====================================================
+          COMPACT FILTER BAR
+          ===================================================== */}
+
+      <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3">
+        {/* Left side */}
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue sm:flex">
+            <CalendarDays className="h-4 w-4" />
+          </div>
+
           <button
             type="button"
-            onClick={() => setIsOpen((prev) => !prev)}
-            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition shadow-sm ${
+            onClick={() =>
+              setIsOpen(
+                (previous) =>
+                  !previous,
+              )
+            }
+            disabled={isPending}
+            className={`group inline-flex min-w-0 items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-left transition-all duration-150 ${
               isOpen
-                ? "bg-sky-600 text-white border-sky-500 shadow-sky-950/50"
-                : currentPreset !== "ALL"
-                ? "bg-sky-950/60 text-sky-200 border-sky-800/80 hover:bg-sky-900/50 hover:text-white"
-                : "bg-slate-950/80 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                ? "border-qc-navy bg-qc-navy text-white"
+                : isCustom
+                  ? "border-qc-blue/20 bg-qc-blue/5 text-qc-blue hover:bg-qc-blue/10"
+                  : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
             }`}
             aria-expanded={isOpen}
             aria-haspopup="dialog"
           >
-            <CalendarDays className={`h-4 w-4 ${currentPreset !== "ALL" ? "text-sky-400" : "text-slate-400"}`} />
-            <span className="text-slate-400 font-normal">Time Window:</span>
-            <span className="font-bold text-white">
-              {currentPreset === "CUSTOM"
-                ? `${startDate} → ${endDate}`
-                : activePresetObj.label}
+            <CalendarDays
+              className={`h-4 w-4 shrink-0 ${
+                isOpen
+                  ? "text-qc-yellow"
+                  : isCustom
+                    ? "text-qc-blue"
+                    : "text-muted-foreground"
+              }`}
+            />
+
+            <span className="text-[11px] font-bold text-muted-foreground">
+              Window
             </span>
+
+            <span
+              className={`truncate text-sm font-extrabold ${
+                isOpen
+                  ? "text-white"
+                  : "text-qc-navy"
+              }`}
+            >
+              {isCustom
+                ? `${startDate} → ${endDate}`
+                : activePreset.label}
+            </span>
+
             {isPending ? (
-              <Loader2 className="h-3.5 w-3.5 text-sky-400 animate-spin ml-1" />
+              <Loader2
+                className={`h-4 w-4 shrink-0 animate-spin ${
+                  isOpen
+                    ? "text-qc-yellow"
+                    : "text-qc-blue"
+                }`}
+              />
             ) : (
               <ChevronDown
-                className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ml-0.5 ${
-                  isOpen ? "rotate-180 text-white" : ""
+                className={`h-4 w-4 shrink-0 transition-transform duration-150 ${
+                  isOpen
+                    ? "rotate-180 text-white"
+                    : "text-muted-foreground group-hover:text-qc-blue"
                 }`}
               />
             )}
@@ -166,146 +358,304 @@ export function DateRangeFilter({
           {currentPreset !== "ALL" && (
             <button
               type="button"
-              onClick={() => {
-                onPresetChange("ALL");
-                setIsOpen(false);
-              }}
-              title="Reset filter to All Time"
-              className="p-2 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              onClick={handleReset}
+              disabled={isPending}
+              title="Reset to All Time"
+              aria-label="Reset time window"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-background text-muted-foreground transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue disabled:opacity-50"
             >
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
 
-        {/* Right: Active Cohort Summary Badge (Single-line Compact) */}
+        {/* ===================================================
+            TELEMETRY
+            =================================================== */}
+
         {telemetrySummary && (
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <strong className="text-slate-200 font-medium">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-qc-yellow" />
+
+              <strong className="font-extrabold text-qc-navy">
                 {telemetrySummary.totalVolume.toLocaleString()}
-              </strong>{" "}
-              Scans
+              </strong>
+
+              <span className="text-muted-foreground">
+                scans
+              </span>
+            </div>
+
+            <span className="hidden text-border sm:inline">
+              /
             </span>
-            <span className="text-slate-700 hidden sm:inline">•</span>
-            <span className="flex items-center gap-1 text-emerald-400 font-medium">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-              {telemetrySummary.pctOnTime}% SLA
-            </span>
-            <span className="text-slate-700 hidden sm:inline">•</span>
-            <span className="text-slate-500 text-[11px] font-mono">
-              {telemetrySummary.dateRangeFormatted}
-            </span>
+
+            <div className="flex items-center gap-1.5 font-extrabold text-qc-blue">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+
+              {telemetrySummary.pctOnTime}%
+              <span className="font-semibold text-muted-foreground">
+                SLA
+              </span>
+            </div>
+
+            {telemetrySummary.pendingReadingCount >
+              0 && (
+              <>
+                <span className="hidden text-border sm:inline">
+                  /
+                </span>
+
+                <div className="font-extrabold text-qc-orange">
+                  {telemetrySummary.pendingReadingCount}
+                  <span className="ml-1 font-semibold text-muted-foreground">
+                    pending
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Floating Dropdown Popover */}
+      {/* =====================================================
+          FILTER POPOVER
+          ===================================================== */}
+
       {isOpen && (
-        <div className="absolute left-0 top-full mt-2 w-full sm:w-[500px] z-40 bg-slate-900 border border-slate-700/90 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-sky-400" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Select Dashboard Time Window
-              </h3>
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_20px_50px_rgba(5,14,64,0.12)] animate-in fade-in zoom-in-95 duration-150 sm:right-auto sm:w-[540px]">
+          {/* Popover header */}
+          <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
+                <Filter className="h-4 w-4" />
+              </div>
+
+              <div>
+                <h3 className="text-sm font-extrabold text-qc-navy">
+                  Time window
+                </h3>
+
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Select the period used by the dashboard
+                  metrics.
+                </p>
+              </div>
             </div>
+
             <button
               type="button"
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              onClick={() =>
+                setIsOpen(false)
+              }
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
+              aria-label="Close time window"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Preset Buttons Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-            {PRESETS.map((p) => {
-              const isActive = currentPreset === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => handleSelectPreset(p.id)}
-                  disabled={isPending}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium text-left transition flex flex-col justify-center ${
-                    isActive
-                      ? "bg-sky-600 text-white font-semibold ring-1 ring-sky-400 shadow-sm"
-                      : "bg-slate-950/80 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/80 hover:border-slate-700"
-                  } ${isPending ? "opacity-75 cursor-not-allowed" : ""}`}
-                >
-                  <span>{p.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          {/* =================================================
+              PRESET GRID
+              ================================================= */}
 
-          {/* Custom Date Range Section */}
-          <div className="border-t border-slate-800 pt-3">
-            <div className="text-[11px] font-semibold text-slate-400 mb-2 flex items-center justify-between">
-              <span>Custom Date Range</span>
-              <span className="text-[10px] text-slate-500">YYYY-MM-DD</span>
+          <div className="px-5 py-4">
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                Quick periods
+              </span>
+
+              {isPending && (
+                <span className="flex items-center gap-1.5 text-[10px] font-bold text-qc-blue">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Updating
+                </span>
+              )}
             </div>
 
-            <form onSubmit={handleApplyCustom} className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
-                  <span className="text-slate-400 font-medium">From:</span>
-                  <input
-                    type="date"
-                    value={localStart}
-                    onChange={(e) => setLocalStart(e.target.value)}
-                    className="bg-transparent text-white text-xs focus:outline-none w-full [color-scheme:dark]"
-                    required
-                  />
-                </div>
-                <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
-                  <span className="text-slate-400 font-medium">To:</span>
-                  <input
-                    type="date"
-                    value={localEnd}
-                    onChange={(e) => setLocalEnd(e.target.value)}
-                    className="bg-transparent text-white text-xs focus:outline-none w-full [color-scheme:dark]"
-                    required
-                  />
-                </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {PRESETS.map(
+                (preset) => {
+                  const isActive =
+                    currentPreset ===
+                    preset.id;
+
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() =>
+                        handleSelectPreset(
+                          preset.id,
+                        )
+                      }
+                      disabled={isPending}
+                      className={`flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition-all ${
+                        isActive
+                          ? "border-qc-blue/15 bg-qc-blue/10 text-qc-blue"
+                          : "border-border bg-background text-qc-navy hover:border-qc-blue/15 hover:bg-qc-blue/5"
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
+                    >
+                      <span>
+                        {preset.label}
+                      </span>
+
+                      {isActive && (
+                        <Check className="h-3.5 w-3.5 shrink-0" />
+                      )}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+          </div>
+
+          {/* =================================================
+              CUSTOM RANGE
+              ================================================= */}
+
+          {isCustom && (
+            <div className="border-t border-border bg-background/60 px-5 py-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5 text-qc-blue" />
+
+                <span className="text-xs font-extrabold text-qc-navy">
+                  Custom range
+                </span>
               </div>
 
-              {/* Quick Shortcuts & Apply Action */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <span className="text-slate-500">Quick:</span>
-                  {[
-                    { days: 7, label: "7D" },
-                    { days: 14, label: "14D" },
-                    { days: 30, label: "30D" },
-                    { days: 90, label: "90D" },
-                  ].map((q) => (
-                    <button
-                      key={q.days}
-                      type="button"
-                      onClick={() => handleQuickPastDays(q.days)}
-                      className="px-2 py-0.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 transition"
-                    >
-                      {q.label}
-                    </button>
-                  ))}
+              <form
+                onSubmit={
+                  handleApplyCustom
+                }
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <label className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 transition-colors focus-within:border-qc-blue/25">
+                    <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
+                      From
+                    </span>
+
+                    <input
+                      type="date"
+                      value={localStart}
+                      onChange={(event) =>
+                        setLocalStart(
+                          event.target.value,
+                        )
+                      }
+                      max={localEnd || undefined}
+                      required
+                      className="min-w-0 w-full bg-transparent text-xs font-bold text-qc-navy outline-none"
+                    />
+                  </label>
+
+                  <label className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 transition-colors focus-within:border-qc-blue/25">
+                    <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
+                      To
+                    </span>
+
+                    <input
+                      type="date"
+                      value={localEnd}
+                      onChange={(event) =>
+                        setLocalEnd(
+                          event.target.value,
+                        )
+                      }
+                      min={
+                        localStart ||
+                        undefined
+                      }
+                      required
+                      className="min-w-0 w-full bg-transparent text-xs font-bold text-qc-navy outline-none"
+                    />
+                  </label>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                      Quick
+                    </span>
+
+                    {[
+                      {
+                        days: 7,
+                        label: "7D",
+                      },
+                      {
+                        days: 14,
+                        label: "14D",
+                      },
+                      {
+                        days: 30,
+                        label: "30D",
+                      },
+                      {
+                        days: 90,
+                        label: "90D",
+                      },
+                    ].map((range) => (
+                      <button
+                        key={
+                          range.days
+                        }
+                        type="button"
+                        onClick={() =>
+                          handleQuickPastDays(
+                            range.days,
+                          )
+                        }
+                        className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-extrabold text-qc-navy transition-colors hover:border-qc-blue/15 hover:bg-qc-blue/5 hover:text-qc-blue"
+                      >
+                        {range.label}
+                      </button>
+                    ))}
+                  </div>
+
                   <button
                     type="submit"
-                    disabled={isPending}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition shadow-sm"
+                    disabled={
+                      isPending ||
+                      !localStart ||
+                      !localEnd ||
+                      localStart >
+                        localEnd
+                    }
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-qc-yellow px-4 py-2.5 text-xs font-extrabold text-qc-navy shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] disabled:pointer-events-none disabled:opacity-50"
                   >
-                    <Calendar className="h-3.5 w-3.5" />
-                    Apply Custom Range
+                    {isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Calendar className="h-3.5 w-3.5" />
+                    )}
+
+                    Apply range
                   </button>
                 </div>
-              </div>
-            </form>
+              </form>
+            </div>
+          )}
+
+          {/* =================================================
+              CURRENT RANGE FOOTER
+              ================================================= */}
+
+          <div className="border-t border-border px-5 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold text-muted-foreground">
+                {telemetrySummary?.dateRangeFormatted ??
+                  "All recorded scans"}
+              </span>
+
+              <span className="text-[10px] font-bold text-qc-navy">
+                {telemetrySummary?.finalizedCount ??
+                  0}{" "}
+                finalized
+              </span>
+            </div>
           </div>
         </div>
       )}

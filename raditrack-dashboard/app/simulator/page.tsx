@@ -7,11 +7,13 @@ export default async function SimulatorPage() {
   const data = await getDashboardData();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 font-sans">
-      <SimulatorHub
-        initialQueue={data.pendingReadingQueue}
-        totalExamsCount={data.totalVolume}
-      />
-    </div>
+    <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 md:px-8 lg:px-10">
+      <div className="mx-auto w-full max-w-[1600px]">
+        <SimulatorHub
+          initialQueue={data.pendingReadingQueue}
+          totalExamsCount={data.totalVolume}
+        />
+      </div>
+    </main>
   );
 }
