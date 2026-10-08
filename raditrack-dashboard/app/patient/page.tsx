@@ -9,6 +9,16 @@ import {
   Minus,
 } from "lucide-react";
 import Link from "next/link";
+import ModalityPieChart from "@/components/charts/ModalityPieChart";
+
+// scale page to device 
+// import type { Viewport } from 'next'
+
+// export const viewport: Viewport = {
+//   width: 'device-width',
+//   initialScale: 1,
+// }
+
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60; // Automated re-render every 60 seconds (Client-confirmed TV heartbeat)
@@ -19,8 +29,8 @@ export default async function PatientActivityPage() {
   const volumeDiff = data.todayGrandTotal - data.yesterdayGrandTotal;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans selection:bg-sky-500 selection:text-white">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <main className="w-full min-h-screen max-w-[98vw] mx-auto px-4 py-6 space-y-6 bg-slate-950 text-slate-100 p-6 md:p-10 font-sans selection:bg-sky-500 selection:text-white">
+      <div className="w-full mx-auto space-y-8">
         {/* Kiosk / TV Screen Header */}
         <header className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-800 pb-6 gap-4">
           <div>
@@ -32,9 +42,9 @@ export default async function PatientActivityPage() {
               Radiology Activity Today
             </h1>
             <p className="text-slate-400 text-sm mt-1">
-              {data.asOfDate} • 24-Hour Continuous Service Coverage
+              {data.asOfDate} • 24-Hour Continuous Service Coverage 
             </p>
-          </div>
+          </div> 
 
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2.5 bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-full shadow-inner">
@@ -53,40 +63,73 @@ export default async function PatientActivityPage() {
         </header>
 
         {/* Grand Total Comparison Banner */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           {/* Today Volume */}
-          <div className="bg-gradient-to-br from-sky-950/60 to-slate-900 border border-sky-800/50 p-6 rounded-2xl shadow-xl">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
-              <span>Total Examinations Completed Today</span>
-              <Users className="h-5 w-5 text-sky-400" />
+          <div className="bg-gradient-to-br from-sky-950/60 to-slate-900 border border-sky-800/50 p-6 rounded-2xl shadow-xl flex items-center justify-between">
+            <div>
+
+              <div className="flex items-center gap-2 max-w-[200px] text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+                <div className="flex items-center justify-center w-20 h-20 bg-white rounded-full shrink-0">
+                  <Users className="h-10 w-10 text-sky-400" />
+                </div>
+                <p className="text-xl font-bold text-white leading-snug max-w-[180px]">
+                Total Examinations Completed
+                </p>
+              </div>
+
+              <div className="text-[12px] text-sky-300 mt-3 font-medium">
+                Patients served across all suites
+              </div>
+
             </div>
-            <div className="text-5xl font-black text-white mt-3 tracking-tight">
+
+            <div className="text-6xl font-black text-white tracking-tight ml-4">
               {data.todayGrandTotal}
             </div>
-            <div className="text-xs text-sky-300 mt-2 font-medium">
-              Patients served across all imaging suites today
-            </div>
+
           </div>
 
           {/* Yesterday Volume Baseline */}
-          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-lg">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
-              <span>Yesterday's Total Volume</span>
-              <Clock className="h-5 w-5 text-slate-400" />
+          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-lg flex items-center justify-between">
+            <div>
+
+              <div className="flex items-center gap-2 max-w-[200px] text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+                <div className="flex items-center justify-center w-20 h-20 bg-white rounded-full shrink-0">
+                  <Clock className="h-10 w-10 text-slate-400" />
+                </div>
+                <p className="text-xl font-bold text-slate leading-snug max-w-[180px]">
+                    Yesterday's Total Volume
+                </p>
+              </div>
+
+              <div className="text-[12px] text-slate-400 mt-3">
+                Previous 24-hour baseline
+              </div>
             </div>
-            <div className="text-5xl font-bold text-slate-300 mt-3 tracking-tight">
+
+            <div className="text-6xl font-bold text-slate-300 tracking-tight ml-4">
               {data.yesterdayGrandTotal}
             </div>
-            <div className="text-xs text-slate-400 mt-2">
-              Previous 24-hour baseline
-            </div>
+            
           </div>
+            
 
           {/* Day-Over-Day Shift Indicator */}
-          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-lg flex flex-col justify-between">
-            <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
-              Day-Over-Day Shift Volume
+          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl shadow-lg flex items-center justify-between">
+            <div>
+                <p className="text-xl font-bold text-slate leading-snug max-w-[180px]">
+                  Day-Over-Day Shift Volume
+                </p>
+                <div className="text-[15px] text-slate-400 mt-3">
+                  {volumeDiff > 0
+                    ? "Higher patient volume compared to yesterday"
+                    : volumeDiff < 0
+                    ? "Lower patient volume compared to yesterday"
+                    : "Equal volume to previous day"}
+                </div>
             </div>
+
+
             <div className="flex items-center gap-2 mt-2">
               {volumeDiff > 0 ? (
                 <span className="flex items-center gap-1 text-emerald-400 text-3xl font-bold">
@@ -102,32 +145,17 @@ export default async function PatientActivityPage() {
                 </span>
               )}
             </div>
-            <div className="text-xs text-slate-400 mt-2">
-              {volumeDiff > 0
-                ? "Higher patient volume compared to yesterday"
-                : volumeDiff < 0
-                ? "Lower patient volume compared to yesterday"
-                : "Equal volume to previous day"}
-            </div>
+
           </div>
         </div>
 
         {/* Modality Breakdown Grid (Proposal Page 5) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              Breakdown by Imaging Modality & Patient Origin
-            </h2>
-            <span className="text-xs text-slate-400">
-              Aggregated statistics by OPD • IN (Inpatient) • ER
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
             {data.modalities.map((item) => (
               <div
                 key={item.modalityCode}
-                className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition space-y-4 shadow-md"
+                className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 hover:border-slate-700 transition space-y-4 shadow-md"
               >
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
                   <div>
@@ -138,18 +166,18 @@ export default async function PatientActivityPage() {
                       {item.modalityName}
                     </h3>
                   </div>
-                  <div className="text-right">
+                  {/*<div className="text-right">
                     <div className="text-2xl font-black text-white">
                       {item.today.total}
                     </div>
                     <span className="text-[10px] text-slate-400">Today</span>
-                  </div>
+                  </div>*/}
                 </div>
 
                 {/* Today vs Yesterday Breakdown */}
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   {/* Today Column */}
-                  <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60 space-y-2">
+                  <div className="p-3 rounded-xl border border-slate-800/60 space-y-2">
                     <span className="text-[10px] font-bold text-sky-300 uppercase tracking-wider block">
                       Today ({item.today.total})
                     </span>
@@ -189,7 +217,13 @@ export default async function PatientActivityPage() {
               </div>
             ))}
           </div>
+
+          <div className="lg:col-span-1">
+            <ModalityPieChart modalities={data.modalities} />
+          </div>
         </section>
+
+        
 
         {/* Privacy & Zero-PII Guarantee Banner */}
         <footer className="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-4 flex items-center gap-3.5 text-xs text-emerald-300">
