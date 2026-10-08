@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ModalityPieChart from "@/components/charts/ModalityPieChart";
+import AutoRefresh from "@/components/dashboard/AutoRefresh";
 
 // scale page to device 
 // import type { Viewport } from 'next'
@@ -23,18 +24,21 @@ import ModalityPieChart from "@/components/charts/ModalityPieChart";
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
+
+
 export default async function PatientActivityPage() {
   const data = await getPublicActivityData();
 
   const volumeDiff = data.todayGrandTotal - data.yesterdayGrandTotal;
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 md:px-8 lg:px-10">
-      <div className="mx-auto max-w-7xl space-y-8">
+    <main className="w-full min-h-screen bg-background px-6 py-6 text-foreground">
+      <AutoRefresh intervalMs={10000} /> 
+      <div className="mx-auto space-y-8">
         {/* =========================================================
             HEADER
             ========================================================= */}
-        <header className="flex flex-col gap-5 border-b border-border pb-7 md:flex-row md:items-end md:justify-between">
+        <header className="flex flex-col gap-5 border-b border-border pb-2 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-qc-blue">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-qc-yellow/25">
@@ -76,99 +80,65 @@ export default async function PatientActivityPage() {
             ========================================================= */}
         <section className="grid grid-cols-1 gap-5 md:grid-cols-3">
           {/* Today's Volume */}
-          <div className="rounded-3xl border border-border bg-qc-navy p-6 shadow-[0_14px_35px_rgba(5,6,64,0.10)]">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold text-white/70">
+          <div className="rounded-3xl border border-border bg-qc-navy p-6 shadow-[0_14px_35px_rgba(5,6,64,0.10)] flex items-center justify-between gap-4">
+            {/* Left Side: Icon + Label Container */}
+            <div className="space-y-1.5">
+              {/* Icon and Title Side-by-Side */}
+              <div className="flex items-center gap-3">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-qc-yellow text-qc-navy">
+                  <Users className="h-10 w-10" />
+                </div>
+                <p className="text-lg font-semibold text-white/70 uppercase tracking-wider max-w-[160px] leading-snug">
                   Total examinations today
                 </p>
-
-                <p className="text-5xl font-extrabold tracking-tight text-white">
-                  {data.todayGrandTotal}
-                </p>
-
-                <p className="text-sm leading-relaxed text-white/65">
-                  Patients served across all imaging suites today
-                </p>
               </div>
 
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-yellow text-qc-navy">
-                <Users className="h-5 w-5" />
-              </div>
+              {/* Subtitle / Description */}
+              <p className="text-xs leading-relaxed text-white/65">
+                Patients served across all imaging suites today
+              </p>
             </div>
+
+            {/* Right Side: Big Number */}
+            <p className="text-6xl font-extrabold tracking-tight text-white shrink-0 ml-4">
+              {data.todayGrandTotal}
+            </p>
           </div>
 
           {/* Yesterday's Volume */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold text-muted-foreground">
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm flex items-center justify-between gap-4">
+            {/* Left Side: Icon + Label + Subtitle */}
+            <div className="space-y-1.5">
+              {/* Icon and Title Side-by-Side */}
+              <div className="flex items-center gap-3">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-muted text-qc-blue">
+                  <Clock className="h-10 w-10" />
+                </div>
+                <p className="text-lg font-semibold text-muted-foreground uppercase tracking-wider max-w-[160px] leading-snug">
                   Yesterday's total volume
                 </p>
+              </div>  
 
-                <p className="text-5xl font-extrabold tracking-tight text-qc-navy">
-                  {data.yesterdayGrandTotal}
-                </p>
-
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Previous 24-hour baseline
-                </p>
-              </div>
-
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-qc-blue">
-                <Clock className="h-5 w-5" />
-              </div>
+              {/* Subtitle */}
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Previous 24-hour baseline
+              </p>
             </div>
+
+            {/* Right Side: Big Number */}
+            <p className="text-5xl font-extrabold tracking-tight text-qc-navy shrink-0 ml-4">
+              {data.yesterdayGrandTotal}
+            </p>
           </div>
             
 
           {/* Day-over-Day */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <div className="flex h-full flex-col justify-between gap-6">
-              <div>
-                <p className="text-sm font-semibold text-muted-foreground">
-                  Day-over-day volume
-                </p>
-
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Compared with yesterday
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {volumeDiff > 0 ? (
-                  <div className="flex items-center gap-2 text-qc-blue">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-qc-yellow/30">
-                      <ArrowUpRight className="h-5 w-5" />
-                    </span>
-
-                    <span className="text-3xl font-extrabold tracking-tight">
-                      +{volumeDiff}
-                    </span>
-                  </div>
-                ) : volumeDiff < 0 ? (
-                  <div className="flex items-center gap-2 text-qc-orange">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50">
-                      <ArrowDownRight className="h-5 w-5" />
-                    </span>
-
-                    <span className="text-3xl font-extrabold tracking-tight">
-                      {volumeDiff}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted">
-                      <Minus className="h-5 w-5" />
-                    </span>
-
-                    <span className="text-3xl font-extrabold tracking-tight">
-                      Same
-                    </span>
-                  </div>
-                )}
-              </div>
-
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm flex items-center justify-between gap-4">
+            {/* Left Side: Title + Subtitle */}
+            <div className="space-y-1.5">
+              <p className="text-lg font-semibold text-muted-foreground uppercase tracking-wider">
+                Day-over-day volume
+              </p>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {volumeDiff > 0
                   ? "Higher examination volume compared with yesterday."
@@ -177,14 +147,46 @@ export default async function PatientActivityPage() {
                     : "Examination volume is the same as the previous day."}
               </p>
             </div>
+
+            {/* Right Side: Circle Icon + Metric Badge */}
+            <div className="shrink-0 ml-4">
+              {volumeDiff > 0 ? (
+                <div className="flex items-center gap-2 text-qc-blue">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-qc-yellow/30">
+                    <ArrowUpRight className="h-5 w-5" />
+                  </span>
+                  <span className="text-5xl font-extrabold tracking-tight">
+                    +{volumeDiff}
+                  </span>
+                </div>
+              ) : volumeDiff < 0 ? (
+                <div className="flex items-center gap-2 text-qc-orange">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-50">
+                    <ArrowDownRight className="h-5 w-5" />
+                  </span>
+                  <span className="text-5xl font-extrabold tracking-tight">
+                    {volumeDiff}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
+                    <Minus className="h-5 w-5" />
+                  </span>
+                  <span className="text-5xl font-extrabold tracking-tight">
+                    Same
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
         {/* =========================================================
             MODALITY BREAKDOWN
             ========================================================= */}
-        <section className="space-y-5">
-          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+          {/*<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-sm font-semibold text-qc-blue">
                 Imaging workload
@@ -199,9 +201,9 @@ export default async function PatientActivityPage() {
               Aggregated statistics across OPD, inpatient, and emergency
               examinations.
             </p>
-          </div>
+          </div>*/}
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
             {data.modalities.map((item) => (
               <div
                 key={item.modalityCode}
@@ -214,12 +216,12 @@ export default async function PatientActivityPage() {
                       {item.modalityCode}
                     </span>
 
-                    <h3 className="text-lg font-bold text-qc-navy">
+                    <h3 className="text-sm font-bold text-qc-navy">
                       {item.modalityName}
                     </h3>
                   </div>
 
-                  <div className="text-right">
+                  {/*<div className="text-right">
                     <div className="text-3xl font-extrabold tracking-tight text-qc-navy">
                       {item.today.total}
                     </div>
@@ -227,7 +229,7 @@ export default async function PatientActivityPage() {
                     <span className="text-xs font-medium text-muted-foreground">
                       today
                     </span>
-                  </div>
+                  </div>*/}
                 </div>
 
                 {/* Today / Yesterday */}

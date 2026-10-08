@@ -20,10 +20,10 @@ export default function ModalityPieChart({ modalities }: { modalities: ModalityI
   const totalExams = chartData.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between h-full">
+    <div className="bg-card border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between h-full">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-bold text-white tracking-tight">
+        <h3 className="text-xl font-bold text-qc-navy tracking-tight">
           Recent Examinations
         </h3>
         <p className="text-xs text-slate-400 mt-0.5">
@@ -50,10 +50,10 @@ export default function ModalityPieChart({ modalities }: { modalities: ModalityI
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: "#0f172a",
+                backgroundColor: "#b7b7b7",
                 borderColor: "#334155",
                 borderRadius: "8px",
-                color: "#f8fafc",
+                color: "rgb(6, 72, 139)",
               }}
             />
           </PieChart>
@@ -61,7 +61,7 @@ export default function ModalityPieChart({ modalities }: { modalities: ModalityI
 
         {/* Center Total Overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-          <span className="text-2xl font-black text-white">{totalExams}</span>
+          <span className="text-2xl font-black text-">{totalExams}</span>
           <span className="text-[10px] text-slate-400 uppercase font-semibold">Total</span>
         </div>
       </div>
