@@ -386,3 +386,14 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Target 4K and large 1080p TV displays */
+@media screen and (min-width: 1920px) {
+  body {
+    font-size: 24px; /* Significantly bump up font sizes so they can be read from 10 feet away */
+  }
+  .container {
+    max-width: 1600px; /* Prevent text rows from stretching too wide */
+    margin: 0 auto;
+  }
+}

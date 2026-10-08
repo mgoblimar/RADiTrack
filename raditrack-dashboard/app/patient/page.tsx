@@ -9,6 +9,16 @@ import {
   Minus,
 } from "lucide-react";
 import Link from "next/link";
+import ModalityPieChart from "@/components/charts/ModalityPieChart";
+
+// scale page to device 
+// import type { Viewport } from 'next'
+
+// export const viewport: Viewport = {
+//   width: 'device-width',
+//   initialScale: 1,
+// }
+
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
@@ -41,7 +51,7 @@ export default async function PatientActivityPage() {
             <p className="text-sm font-medium text-muted-foreground">
               {data.asOfDate} · 24-hour continuous service coverage
             </p>
-          </div>
+          </div> 
 
           <div className="flex flex-col items-start gap-3 md:items-end">
             <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 shadow-sm">
@@ -110,6 +120,7 @@ export default async function PatientActivityPage() {
               </div>
             </div>
           </div>
+            
 
           {/* Day-over-Day */}
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
@@ -299,6 +310,10 @@ export default async function PatientActivityPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="lg:col-span-1">
+            <ModalityPieChart modalities={data.modalities} />
           </div>
         </section>
 
