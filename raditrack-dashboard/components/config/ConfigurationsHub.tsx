@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import {
-  Sliders,
   ShieldCheck,
   Clock,
   Building2,
@@ -143,94 +142,113 @@ export function ConfigurationsHub({
   // Shared styles
   // =========================================================
 
+  const panelBase =
+    "rounded-[28px] border border-white/70 bg-white/[0.78] shadow-[0_16px_45px_rgba(5,14,64,0.07)] backdrop-blur-xl";
+
+  const inputBase =
+    "w-full rounded-2xl border border-slate-200/80 bg-white/80 px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-all placeholder:text-slate-400 focus:border-qc-blue/30 focus:bg-white focus:ring-2 focus:ring-qc-blue/10";
+
   const tabButtonBase =
     "inline-flex shrink-0 items-center gap-2 rounded-2xl px-3.5 py-2.5 text-sm font-bold transition-all duration-150";
 
-  const panelBase =
-    "rounded-3xl border border-border bg-card shadow-sm";
-
-  const inputBase =
-    "w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-qc-blue/30 focus:bg-card focus:ring-2 focus:ring-qc-blue/10";
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* =========================================================
-          HEADER
+          WORKSPACE TABS
           ========================================================= */}
 
-      <section className={`${panelBase} p-5 sm:p-6`}>
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow">
-              <Sliders className="h-5 w-5" />
-            </div>
+      <div className={panelBase + " p-2"}>
+        <div className="overflow-x-auto">
+          <div className="flex min-w-max items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab("slas")}
+              className={`${tabButtonBase} ${
+                activeTab === "slas"
+                  ? "bg-qc-yellow text-qc-navy shadow-sm"
+                  : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
+              }`}
+            >
+              <Clock className="h-4 w-4" />
+              SLA Benchmarks
+            </button>
 
-            <div>
-              <p className="text-sm font-semibold text-qc-blue">
-                System configuration
-              </p>
+            <button
+              type="button"
+              onClick={() => setActiveTab("rooms")}
+              className={`${tabButtonBase} ${
+                activeTab === "rooms"
+                  ? "bg-qc-yellow text-qc-navy shadow-sm"
+                  : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
+              }`}
+            >
+              <Building2 className="h-4 w-4" />
+              Modality Rooms
 
-              <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-qc-navy">
-                Clinical configuration & SLA
-              </h2>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                  activeTab === "rooms"
+                    ? "bg-qc-navy/10 text-qc-navy"
+                    : "bg-qc-blue/10 text-qc-blue"
+                }`}
+              >
+                {modalities.length}
+              </span>
+            </button>
 
-              <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                Configure turnaround-time benchmarks, imaging
-                suites, interpreting staff, and data governance
-                settings for RADiTrack.
-              </p>
-
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-                <span className="rounded-full border border-border bg-background px-2.5 py-1">
-                  {governance.hospitalName}
-                </span>
-
-                <span className="rounded-full border border-border bg-background px-2.5 py-1">
-                  {governance.department}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (
-                confirm(
-                  "Are you sure you want to restore all SLA target benchmarks to hospital defaults?",
-                )
-              ) {
-                startTransition(async () => {
-                  const res =
-                    await resetDefaultSlasAction();
-
-                  if (res.success) {
-                    showFeedback(
-                      "All SLA benchmarks successfully restored to QCGH hospital standards!",
-                    );
-                  }
-                });
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTab("radiologists")
               }
-            }}
-            disabled={isPending}
-            className="inline-flex w-fit items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2.5 text-sm font-bold text-qc-navy transition-all hover:-translate-y-0.5 hover:border-qc-blue/20 hover:bg-qc-blue/5 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RotateCcw className="h-4 w-4 text-qc-orange" />
-            Reset SLA defaults
-          </button>
+              className={`${tabButtonBase} ${
+                activeTab === "radiologists"
+                  ? "bg-qc-yellow text-qc-navy shadow-sm"
+                  : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
+              }`}
+            >
+              <UserCheck className="h-4 w-4" />
+              Radiologists
+
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                  activeTab === "radiologists"
+                    ? "bg-qc-navy/10 text-qc-navy"
+                    : "bg-qc-blue/10 text-qc-blue"
+                }`}
+              >
+                {radiologists.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTab("governance")
+              }
+              className={`${tabButtonBase} ${
+                activeTab === "governance"
+                  ? "bg-qc-yellow text-qc-navy shadow-sm"
+                  : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
+              }`}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Data Governance
+            </button>
+          </div>
         </div>
-      </section>
+      </div>
 
       {/* =========================================================
-          FEEDBACK MESSAGE
+          FEEDBACK
           ========================================================= */}
 
       {statusMessage && (
         <div
-          className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm font-semibold animate-in fade-in ${
+          className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm backdrop-blur-xl ${
             statusMessage.type === "success"
-              ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
-              : "border-red-200 bg-red-50 text-qc-red"
+              ? "border-qc-blue/15 bg-qc-blue/[0.07] text-qc-blue"
+              : "border-red-200 bg-red-50/85 text-qc-red"
           }`}
         >
           <span
@@ -247,117 +265,64 @@ export function ConfigurationsHub({
             )}
           </span>
 
-          <span className="pt-1">
-            {statusMessage.text}
-          </span>
+          <span>{statusMessage.text}</span>
         </div>
       )}
-
-      {/* =========================================================
-          WORKSPACE TABS
-          ========================================================= */}
-
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max items-center gap-1.5 rounded-3xl border border-border bg-card p-2 shadow-sm">
-          <button
-            type="button"
-            onClick={() => setActiveTab("slas")}
-            className={`${tabButtonBase} ${
-              activeTab === "slas"
-                ? "bg-qc-yellow text-qc-navy shadow-sm"
-                : "text-muted-foreground hover:bg-background hover:text-qc-navy"
-            }`}
-          >
-            <Clock className="h-4 w-4" />
-            SLA benchmarks
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("rooms")}
-            className={`${tabButtonBase} ${
-              activeTab === "rooms"
-                ? "bg-qc-yellow text-qc-navy shadow-sm"
-                : "text-muted-foreground hover:bg-background hover:text-qc-navy"
-            }`}
-          >
-            <Building2 className="h-4 w-4" />
-            Modality rooms
-            <span className="rounded-full bg-qc-blue/10 px-2 py-0.5 text-[10px] font-extrabold text-qc-blue">
-              {modalities.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setActiveTab("radiologists")
-            }
-            className={`${tabButtonBase} ${
-              activeTab === "radiologists"
-                ? "bg-qc-yellow text-qc-navy shadow-sm"
-                : "text-muted-foreground hover:bg-background hover:text-qc-navy"
-            }`}
-          >
-            <UserCheck className="h-4 w-4" />
-            Radiologists
-            <span className="rounded-full bg-qc-blue/10 px-2 py-0.5 text-[10px] font-extrabold text-qc-blue">
-              {radiologists.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setActiveTab("governance")
-            }
-            className={`${tabButtonBase} ${
-              activeTab === "governance"
-                ? "bg-qc-yellow text-qc-navy shadow-sm"
-                : "text-muted-foreground hover:bg-background hover:text-qc-navy"
-            }`}
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Data governance
-          </button>
-        </div>
-      </div>
 
       {/* =========================================================
           TAB 1 — SLA BENCHMARKS
           ========================================================= */}
 
       {activeTab === "slas" && (
-        <div className="space-y-5">
+        <div className="space-y-4">
           <section
-            className={`${panelBase} p-5 sm:p-6`}
+            className={panelBase + " overflow-hidden"}
           >
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
-                    <Clock className="h-4 w-4" />
-                  </span>
+            <div className="relative border-b border-white/70 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-4 sm:px-6">
+              <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-qc-yellow/10" />
 
-                  <h3 className="text-lg font-extrabold text-qc-navy">
-                    Service level agreement matrix
+              <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
+                    Turnaround targets
+                  </p>
+
+                  <h3 className="mt-1 text-lg font-extrabold text-qc-navy">
+                    SLA BENCHMARK MATRIX
                   </h3>
                 </div>
 
-                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                  Maximum allowable turnaround time
-                  before an examination is flagged as an
-                  SLA breach.
-                </p>
-              </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "Are you sure you want to restore all SLA target benchmarks to hospital defaults?",
+                      )
+                    ) {
+                      startTransition(async () => {
+                        const res =
+                          await resetDefaultSlasAction();
 
-              <span className="w-fit rounded-full border border-qc-blue/15 bg-qc-blue/5 px-3 py-1.5 text-xs font-bold text-qc-blue">
-                Changes apply to dashboard metrics
-              </span>
+                        if (res.success) {
+                          showFeedback(
+                            "All SLA benchmarks successfully restored to QCGH hospital standards!",
+                          );
+                        }
+                      });
+                    }
+                  }}
+                  disabled={isPending}
+                  className="inline-flex w-fit items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/75 px-4 py-2.5 text-sm font-bold text-qc-navy shadow-sm transition-all hover:-translate-y-0.5 hover:border-qc-blue/20 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RotateCcw className="h-4 w-4 text-qc-orange" />
+                  Reset SLA defaults
+                </button>
+              </div>
             </div>
           </section>
 
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {modalities.map((m) => {
               const statSla =
                 m.slaConfigs.find(
@@ -383,30 +348,30 @@ export function ConfigurationsHub({
               return (
                 <section
                   key={m.modalityCode}
-                  className={`${panelBase} overflow-hidden`}
+                  className={panelBase + " overflow-hidden"}
                 >
                   {/* Modality header */}
-                  <div className="flex flex-col gap-3 border-b border-border bg-background px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="rounded-full bg-qc-navy px-2.5 py-1 font-mono text-xs font-extrabold text-qc-yellow">
+                  <div className="flex items-center justify-between gap-3 border-b border-white/70 bg-white/[0.62] px-5 py-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="rounded-xl bg-qc-navy px-2.5 py-1.5 font-mono text-[11px] font-extrabold text-qc-yellow">
                         {m.modalityCode}
                       </span>
 
-                      <div>
-                        <h4 className="text-sm font-extrabold text-qc-navy">
+                      <div className="min-w-0">
+                        <h4 className="truncate text-sm font-extrabold text-qc-navy">
                           {m.modalityName}
                         </h4>
 
-                        <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                        <p className="mt-0.5 truncate text-[11px] text-slate-500">
                           {m.departmentRoom ||
                             "Unassigned room"}{" "}
-                          · {m.totalExams} total scans
+                          · {m.totalExams} scans
                         </p>
                       </div>
                     </div>
 
                     <span
-                      className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${
                         m.isActive
                           ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
                           : "border-orange-200 bg-orange-50 text-qc-orange"
@@ -427,28 +392,21 @@ export function ConfigurationsHub({
                   </div>
 
                   {/* SLA rows */}
-                  <div className="space-y-3 p-5">
+                  <div className="space-y-2.5 p-4">
                     {/* STAT / ER */}
-                    <div className="rounded-2xl border border-red-100 bg-red-50/70 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-extrabold text-qc-red">
-                              STAT / ER
-                            </span>
+                    <div className="rounded-2xl border border-red-100/90 bg-red-50/70 px-4 py-3.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="rounded-lg bg-red-100 px-2 py-1 text-[10px] font-extrabold text-qc-red">
+                            STAT / ER
+                          </span>
 
-                            <span className="text-sm font-bold text-qc-navy">
-                              Emergency priority
-                            </span>
-                          </div>
-
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Highest-priority diagnostic
-                            workflow
-                          </p>
+                          <span className="truncate text-sm font-bold text-qc-navy">
+                            Emergency priority
+                          </span>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 sm:justify-end">
+                        <div className="flex shrink-0 items-center gap-3">
                           <span className="text-sm font-extrabold text-qc-red">
                             {statSla
                               ? formatDuration(
@@ -472,7 +430,7 @@ export function ConfigurationsHub({
                                   60,
                               })
                             }
-                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue"
+                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
                             title="Edit target benchmark"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -482,25 +440,19 @@ export function ConfigurationsHub({
                     </div>
 
                     {/* OPD */}
-                    <div className="rounded-2xl border border-qc-blue/10 bg-qc-blue/5 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-qc-blue/10 px-2 py-0.5 text-[10px] font-extrabold text-qc-blue">
-                              OPD
-                            </span>
+                    <div className="rounded-2xl border border-qc-blue/10 bg-qc-blue/5 px-4 py-3.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="rounded-lg bg-qc-blue/10 px-2 py-1 text-[10px] font-extrabold text-qc-blue">
+                            OPD
+                          </span>
 
-                            <span className="text-sm font-bold text-qc-navy">
-                              Routine outpatient
-                            </span>
-                          </div>
-
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Standard outpatient workflow
-                          </p>
+                          <span className="truncate text-sm font-bold text-qc-navy">
+                            Routine outpatient
+                          </span>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 sm:justify-end">
+                        <div className="flex shrink-0 items-center gap-3">
                           <span className="text-sm font-extrabold text-qc-blue">
                             {opdSla
                               ? formatDuration(
@@ -524,7 +476,7 @@ export function ConfigurationsHub({
                                   1440,
                               })
                             }
-                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue"
+                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
                             title="Edit target benchmark"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -534,25 +486,19 @@ export function ConfigurationsHub({
                     </div>
 
                     {/* INPATIENT */}
-                    <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-extrabold text-qc-orange">
-                              INPATIENT
-                            </span>
+                    <div className="rounded-2xl border border-orange-100 bg-orange-50/65 px-4 py-3.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="rounded-lg bg-orange-100 px-2 py-1 text-[10px] font-extrabold text-qc-orange">
+                            INPATIENT
+                          </span>
 
-                            <span className="text-sm font-bold text-qc-navy">
-                              Hospital ward / ICU
-                            </span>
-                          </div>
-
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Inpatient clinical workflow
-                          </p>
+                          <span className="truncate text-sm font-bold text-qc-navy">
+                            Hospital ward / ICU
+                          </span>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 sm:justify-end">
+                        <div className="flex shrink-0 items-center gap-3">
                           <span className="text-sm font-extrabold text-qc-orange">
                             {inSla
                               ? formatDuration(
@@ -576,7 +522,7 @@ export function ConfigurationsHub({
                                   1440,
                               })
                             }
-                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue"
+                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
                             title="Edit target benchmark"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -597,34 +543,31 @@ export function ConfigurationsHub({
           ========================================================= */}
 
       {activeTab === "rooms" && (
-        <section className={`${panelBase} overflow-hidden`}>
-          <div className="flex flex-col gap-3 border-b border-border bg-background px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
-                <Building2 className="h-4 w-4" />
-              </div>
-
+        <section
+          className={panelBase + " overflow-hidden"}
+        >
+          <div className="border-b border-white/70 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-4 sm:px-6">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-base font-extrabold text-qc-navy">
-                  Imaging suites & room locations
-                </h3>
-
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Manage modality assignments and
-                  operational availability.
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
+                  Imaging operations
                 </p>
-              </div>
-            </div>
 
-            <span className="text-xs font-bold text-muted-foreground">
-              {modalities.length} modalities
-            </span>
+                <h3 className="mt-0.5 text-lg font-extrabold text-qc-navy">
+                  MODALITY ROOMS
+                </h3>
+              </div>
+
+              <span className="shrink-0 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-3 py-1.5 text-[11px] font-extrabold text-qc-blue">
+                {modalities.length} modalities
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px] text-left">
-              <thead className="border-b border-border bg-card">
-                <tr className="text-[11px] font-bold text-muted-foreground">
+              <thead className="border-b border-slate-200/80 bg-white/[0.46]">
+                <tr className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500">
                   <th className="px-5 py-3.5">
                     Modality
                   </th>
@@ -638,7 +581,7 @@ export function ConfigurationsHub({
                   </th>
 
                   <th className="px-5 py-3.5">
-                    Recorded scans
+                    Scans
                   </th>
 
                   <th className="px-5 py-3.5">
@@ -651,14 +594,14 @@ export function ConfigurationsHub({
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-slate-200/70">
                 {modalities.map((m) => (
                   <tr
                     key={m.modalityCode}
                     className="transition-colors hover:bg-qc-blue/[0.025]"
                   >
                     <td className="px-5 py-4">
-                      <span className="rounded-full bg-qc-navy px-2.5 py-1 font-mono text-xs font-extrabold text-qc-yellow">
+                      <span className="rounded-xl bg-qc-navy px-2.5 py-1.5 font-mono text-[11px] font-extrabold text-qc-yellow">
                         {m.modalityCode}
                       </span>
                     </td>
@@ -671,18 +614,18 @@ export function ConfigurationsHub({
 
                     <td className="px-5 py-4">
                       {m.departmentRoom ? (
-                        <span className="text-sm font-medium text-muted-foreground">
+                        <span className="text-sm font-medium text-slate-600">
                           {m.departmentRoom}
                         </span>
                       ) : (
-                        <span className="text-xs italic text-muted-foreground">
+                        <span className="text-xs italic text-slate-400">
                           None assigned
                         </span>
                       )}
                     </td>
 
                     <td className="px-5 py-4">
-                      <span className="text-sm font-semibold text-muted-foreground">
+                      <span className="text-sm font-semibold text-slate-500">
                         {m.totalExams}
                       </span>
                     </td>
@@ -716,7 +659,7 @@ export function ConfigurationsHub({
                           onClick={() =>
                             setEditingModality(m)
                           }
-                          className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-qc-navy transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue"
+                          className="rounded-xl border border-slate-200/80 bg-white/70 px-3 py-2 text-xs font-bold text-qc-navy transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
                         >
                           Edit room
                         </button>
@@ -745,9 +688,9 @@ export function ConfigurationsHub({
                               },
                             );
                           }}
-                          className={`rounded-xl border px-3 py-2 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                          className={`rounded-xl border px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                             m.isActive
-                              ? "border-orange-200 bg-orange-50 text-qc-orange hover:bg-orange-100"
+                              ? "border-orange-200 bg-orange-50/80 text-qc-orange hover:bg-orange-100"
                               : "border-qc-blue/15 bg-qc-blue/5 text-qc-blue hover:bg-qc-blue/10"
                           }`}
                         >
@@ -770,42 +713,38 @@ export function ConfigurationsHub({
           ========================================================= */}
 
       {activeTab === "radiologists" && (
-        <section className={`${panelBase} overflow-hidden`}>
-          <div className="flex flex-col gap-4 border-b border-border bg-background px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
-                <UserCheck className="h-4 w-4" />
-              </div>
-
+        <section
+          className={panelBase + " overflow-hidden"}
+        >
+          <div className="border-b border-white/70 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-4 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-base font-extrabold text-qc-navy">
-                  Interpreting radiologists
-                </h3>
-
-                <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-                  Manage the attending roster responsible for
-                  diagnostic interpretation and report sign-off
-                  (T₂).
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
+                  Clinical staffing
                 </p>
-              </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                setIsAddingRadiologist(true)
-              }
-              className="inline-flex w-fit items-center gap-2 rounded-2xl bg-qc-yellow px-4 py-2.5 text-sm font-extrabold text-qc-navy shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#eac13d]"
-            >
-              <Plus className="h-4 w-4" />
-              Register radiologist
-            </button>
+                <h3 className="mt-0.5 text-lg font-extrabold text-qc-navy">
+                  RADIOLOGISTS
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setIsAddingRadiologist(true)
+                }
+                className="inline-flex w-fit items-center gap-2 rounded-2xl bg-qc-yellow px-4 py-2.5 text-sm font-extrabold text-qc-navy shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#eac13d]"
+              >
+                <Plus className="h-4 w-4" />
+                Register radiologist
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px] text-left">
-              <thead className="border-b border-border bg-card">
-                <tr className="text-[11px] font-bold text-muted-foreground">
+              <thead className="border-b border-slate-200/80 bg-white/[0.46]">
+                <tr className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500">
                   <th className="px-5 py-3.5">
                     Physician
                   </th>
@@ -832,7 +771,7 @@ export function ConfigurationsHub({
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-slate-200/70">
                 {radiologists.map((r) => (
                   <tr
                     key={r.radiologistId}
@@ -846,24 +785,24 @@ export function ConfigurationsHub({
 
                     <td className="px-5 py-4">
                       {r.subspecialty ? (
-                        <span className="text-sm font-medium text-muted-foreground">
+                        <span className="text-sm font-medium text-slate-600">
                           {r.subspecialty}
                         </span>
                       ) : (
-                        <span className="text-xs italic text-muted-foreground">
+                        <span className="text-xs italic text-slate-400">
                           General Radiology
                         </span>
                       )}
                     </td>
 
                     <td className="px-5 py-4">
-                      <span className="font-mono text-xs font-semibold text-muted-foreground">
+                      <span className="font-mono text-xs font-semibold text-slate-500">
                         {r.licenseNumber || "—"}
                       </span>
                     </td>
 
                     <td className="px-5 py-4">
-                      <span className="text-sm font-semibold text-muted-foreground">
+                      <span className="text-sm font-semibold text-slate-500">
                         {r.totalReports}
                       </span>
                     </td>
@@ -873,14 +812,14 @@ export function ConfigurationsHub({
                         className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${
                           r.isActive
                             ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
-                            : "border-border bg-background text-muted-foreground"
+                            : "border-slate-200 bg-white/70 text-slate-500"
                         }`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${
                             r.isActive
                               ? "bg-qc-blue"
-                              : "bg-muted-foreground"
+                              : "bg-slate-400"
                           }`}
                         />
 
@@ -916,9 +855,9 @@ export function ConfigurationsHub({
                               },
                             );
                           }}
-                          className={`rounded-xl border px-3 py-2 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                          className={`rounded-xl border px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                             r.isActive
-                              ? "border-border bg-background text-muted-foreground hover:bg-muted hover:text-qc-navy"
+                              ? "border-slate-200 bg-white/70 text-slate-500 hover:bg-white hover:text-qc-navy"
                               : "border-qc-blue/15 bg-qc-blue/5 text-qc-blue hover:bg-qc-blue/10"
                           }`}
                         >
@@ -941,123 +880,133 @@ export function ConfigurationsHub({
           ========================================================= */}
 
       {activeTab === "governance" && (
-        <div className="space-y-5">
-          <section
-            className={`${panelBase} overflow-hidden`}
-          >
-            <div className="border-b border-border bg-qc-navy px-5 py-5 text-white sm:px-6">
-              <div className="flex items-start gap-3.5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-yellow text-qc-navy">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
+        <section
+          className={panelBase + " overflow-hidden"}
+        >
+          <div className="border-b border-white/70 bg-white/[0.62] px-5 py-4 sm:px-6">
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
+                Privacy & compliance
+              </p>
 
-                <div>
-                  <h3 className="text-lg font-extrabold">
-                    Data governance & Zero-PII
-                  </h3>
-
-                  <p className="mt-1 max-w-3xl text-sm leading-relaxed text-white/65">
-                    RADiTrack&apos;s privacy-oriented architecture
-                    for radiology operations monitoring.
-                  </p>
-                </div>
-              </div>
+              <h3 className="mt-1 text-lg font-extrabold text-qc-navy">
+                DATA GOVERNANCE
+              </h3>
             </div>
+          </div>
 
-            <div className="space-y-6 p-5 sm:p-6">
-              <div className="rounded-2xl border border-qc-blue/15 bg-qc-blue/5 p-4">
-                <div className="flex items-center gap-2 text-sm font-extrabold text-qc-blue">
-                  <ShieldCheck className="h-4 w-4" />
+          <div className="divide-y divide-slate-200/70">
+            {/* Zero-PII */}
+            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-sm font-bold text-qc-navy">
+                  Zero-PII mode
+                </p>
 
-                  Zero-PII operational model
-                </div>
-
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  RADiTrack operates as a non-identifiable
-                  telemetry monitoring layer for the hospital
-                  radiology workflow. Direct patient identifiers
-                  are not part of the application&apos;s
-                  operational dashboard data model.
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Patient-identifying information is not used
+                  in the operational dashboard.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {/* Accession */}
-                <div className="rounded-2xl border border-border bg-background p-4">
-                  <div className="flex items-center gap-2 text-sm font-extrabold text-qc-navy">
-                    <Lock className="h-4 w-4 text-qc-blue" />
-                    De-identified accession keys
-                  </div>
-
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    Examination workflow records use accession
-                    identifiers rather than direct patient
-                    demographic fields.
-                  </p>
-                </div>
-
-                {/* Timestamp */}
-                <div className="rounded-2xl border border-border bg-background p-4">
-                  <div className="flex items-center gap-2 text-sm font-extrabold text-qc-navy">
-                    <Clock className="h-4 w-4 text-qc-blue" />
-                    Telemetry timestamp isolation
-                  </div>
-
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    Turnaround calculations track procedural
-                    timestamps between examination completion
-                    (T₁) and report sign-off (T₂).
-                  </p>
-                </div>
-
-                {/* Accreditation */}
-                <div className="rounded-2xl border border-border bg-background p-4">
-                  <div className="flex items-center gap-2 text-sm font-extrabold text-qc-navy">
-                    <Hospital className="h-4 w-4 text-qc-blue" />
-                    Department accreditation
-                  </div>
-
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    {governance.hospitalName} operates as a{" "}
-                    {governance.dohAccreditation}.
-                  </p>
-                </div>
-
-                {/* Simulator */}
-                <div className="rounded-2xl border border-border bg-background p-4">
-                  <div className="flex items-center gap-2 text-sm font-extrabold text-qc-navy">
-                    <Cpu className="h-4 w-4 text-qc-blue" />
-                    Isolated ingestion engine
-                  </div>
-
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    Simulation and ingestion workflows are
-                    separated from the main dashboard experience
-                    through the dedicated simulator pathway.
-                  </p>
-                </div>
-              </div>
-
-              {/* System information */}
-              <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-bold text-muted-foreground">
-                    System version
-                  </p>
-
-                  <p className="mt-1 text-sm font-extrabold text-qc-navy">
-                    {governance.systemVersion}
-                  </p>
-                </div>
-
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-3 py-1.5 text-xs font-extrabold text-qc-blue">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Zero-PII mode
-                </span>
-              </div>
+              <span
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-extrabold ${
+                  governance.phiZeroCompliance
+                    ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
+                    : "border-orange-200 bg-orange-50 text-qc-orange"
+                }`}
+              >
+                {governance.phiZeroCompliance
+                  ? "Enabled"
+                  : "Review"}
+              </span>
             </div>
-          </section>
-        </div>
+
+            {/* Accession keys */}
+            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-sm font-bold text-qc-navy">
+                  Examination identifiers
+                </p>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Workflow records use de-identified accession
+                  keys.
+                </p>
+              </div>
+
+              <span className="shrink-0 text-xs font-semibold text-slate-500">
+                De-identified
+              </span>
+            </div>
+
+            {/* Timestamp */}
+            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-sm font-bold text-qc-navy">
+                  TAT timestamps
+                </p>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Calculated from examination completion (T₁)
+                  to report sign-off (T₂).
+                </p>
+              </div>
+
+              <span className="shrink-0 text-xs font-semibold text-slate-500">
+                T₁ → T₂
+              </span>
+            </div>
+
+            {/* Accreditation */}
+            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-sm font-bold text-qc-navy">
+                  Hospital accreditation
+                </p>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {governance.hospitalName}
+                </p>
+              </div>
+
+              <span className="max-w-[240px] text-right text-xs font-semibold text-slate-500">
+                {governance.dohAccreditation}
+              </span>
+            </div>
+
+            {/* Ingestion */}
+            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-sm font-bold text-qc-navy">
+                  Ingestion
+                </p>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Simulation and ingestion workflows remain
+                  separate from the dashboard.
+                </p>
+              </div>
+
+              <span className="shrink-0 text-xs font-semibold text-slate-500">
+                Isolated
+              </span>
+            </div>
+
+            {/* Version */}
+            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-sm font-bold text-qc-navy">
+                  System version
+                </p>
+              </div>
+
+              <span className="shrink-0 font-mono text-xs font-semibold text-slate-500">
+                {governance.systemVersion}
+              </span>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* =========================================================
@@ -1066,23 +1015,25 @@ export function ConfigurationsHub({
 
       {editingSla && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-qc-navy/45 p-4 backdrop-blur-[3px] animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-qc-navy/45 p-4 backdrop-blur-[4px] animate-in fade-in duration-150"
           role="dialog"
           aria-modal="true"
         >
-          <div className="relative w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-[0_24px_70px_rgba(5,6,64,0.18)]">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_24px_70px_rgba(5,6,64,0.18)]">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-qc-yellow/10" />
+
             <button
               type="button"
               onClick={() => setEditingSla(null)}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-qc-navy"
               aria-label="Close SLA dialog"
             >
               <X className="h-4 w-4" />
             </button>
 
-            <div className="pr-8">
+            <div className="relative pr-8">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-blue/10 text-qc-blue">
                   <Clock className="h-4 w-4" />
                 </div>
 
@@ -1091,7 +1042,7 @@ export function ConfigurationsHub({
                     Edit SLA benchmark
                   </h3>
 
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
                     {editingSla.modalityName} (
                     {editingSla.modalityCode}) ·{" "}
                     {editingSla.triageLevel} /{" "}
@@ -1126,7 +1077,7 @@ export function ConfigurationsHub({
                   }
                 });
               }}
-              className="mt-6 space-y-5"
+              className="relative mt-6 space-y-5"
             >
               <input
                 type="hidden"
@@ -1161,15 +1112,17 @@ export function ConfigurationsHub({
                     defaultValue={
                       editingSla.currentTargetMinutes
                     }
-                    className={`${inputBase} pr-20 font-mono`}
+                    className={
+                      inputBase + " pr-20 font-mono"
+                    }
                   />
 
-                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
                     minutes
                   </span>
                 </div>
 
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="mt-2 text-xs text-slate-500">
                   Current target:{" "}
                   <strong className="text-qc-navy">
                     {formatDuration(
@@ -1180,7 +1133,7 @@ export function ConfigurationsHub({
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold text-muted-foreground">
+                <label className="mb-2 block text-xs font-bold text-slate-500">
                   Quick duration presets
                 </label>
 
@@ -1212,7 +1165,7 @@ export function ConfigurationsHub({
                             p.val.toString();
                         }
                       }}
-                      className="rounded-xl border border-border bg-background px-2.5 py-1.5 text-xs font-bold text-qc-navy transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue"
+                      className="rounded-xl border border-slate-200/80 bg-white px-2.5 py-1.5 text-xs font-bold text-qc-navy transition-all hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue"
                     >
                       {p.label}
                     </button>
@@ -1220,13 +1173,13 @@ export function ConfigurationsHub({
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-200/80 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() =>
                     setEditingSla(null)
                   }
-                  className="rounded-2xl px-4 py-2.5 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
+                  className="rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-qc-navy"
                 >
                   Cancel
                 </button>
@@ -1251,25 +1204,27 @@ export function ConfigurationsHub({
 
       {editingModality && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-qc-navy/45 p-4 backdrop-blur-[3px] animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-qc-navy/45 p-4 backdrop-blur-[4px] animate-in fade-in duration-150"
           role="dialog"
           aria-modal="true"
         >
-          <div className="relative w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-[0_24px_70px_rgba(5,6,64,0.18)]">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_24px_70px_rgba(5,6,64,0.18)]">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-qc-yellow/10" />
+
             <button
               type="button"
               onClick={() =>
                 setEditingModality(null)
               }
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-qc-navy"
               aria-label="Close modality dialog"
             >
               <X className="h-4 w-4" />
             </button>
 
-            <div className="pr-8">
+            <div className="relative pr-8">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-blue/10 text-qc-blue">
                   <Building2 className="h-4 w-4" />
                 </div>
 
@@ -1278,7 +1233,7 @@ export function ConfigurationsHub({
                     Edit modality suite
                   </h3>
 
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-slate-500">
                     {editingModality.modalityName} (
                     {editingModality.modalityCode})
                   </p>
@@ -1303,7 +1258,7 @@ export function ConfigurationsHub({
                   }
                 });
               }}
-              className="mt-6 space-y-5"
+              className="relative mt-6 space-y-5"
             >
               <input
                 type="hidden"
@@ -1352,13 +1307,13 @@ export function ConfigurationsHub({
                 </select>
               </div>
 
-              <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-200/80 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() =>
                     setEditingModality(null)
                   }
-                  className="rounded-2xl px-4 py-2.5 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
+                  className="rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-qc-navy"
                 >
                   Cancel
                 </button>
@@ -1383,25 +1338,27 @@ export function ConfigurationsHub({
 
       {isAddingRadiologist && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-qc-navy/45 p-4 backdrop-blur-[3px] animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-qc-navy/45 p-4 backdrop-blur-[4px] animate-in fade-in duration-150"
           role="dialog"
           aria-modal="true"
         >
-          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-[0_24px_70px_rgba(5,6,64,0.18)]">
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_24px_70px_rgba(5,6,64,0.18)]">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-qc-yellow/10" />
+
             <button
               type="button"
               onClick={() =>
                 setIsAddingRadiologist(false)
               }
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-qc-navy"
               aria-label="Close radiologist dialog"
             >
               <X className="h-4 w-4" />
             </button>
 
-            <div className="pr-8">
+            <div className="relative pr-8">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-qc-yellow/20 text-qc-navy">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-yellow/20 text-qc-navy">
                   <UserCheck className="h-4 w-4" />
                 </div>
 
@@ -1410,7 +1367,7 @@ export function ConfigurationsHub({
                     Register attending radiologist
                   </h3>
 
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
                     Add an interpreting physician to the
                     active departmental roster.
                   </p>
@@ -1441,7 +1398,7 @@ export function ConfigurationsHub({
                   }
                 });
               }}
-              className="mt-6 space-y-5"
+              className="relative mt-6 space-y-5"
             >
               <div>
                 <label className="mb-2 block text-sm font-bold text-qc-navy">
@@ -1479,17 +1436,17 @@ export function ConfigurationsHub({
                   type="text"
                   name="licenseNumber"
                   placeholder="e.g. PRC-0134812"
-                  className={`${inputBase} font-mono`}
+                  className={inputBase + " font-mono"}
                 />
               </div>
 
-              <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-200/80 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() =>
                     setIsAddingRadiologist(false)
                   }
-                  className="rounded-2xl px-4 py-2.5 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
+                  className="rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-qc-navy"
                 >
                   Cancel
                 </button>
