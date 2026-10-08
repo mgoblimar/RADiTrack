@@ -7,9 +7,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -18,113 +20,369 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
+
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
+
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
+
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 2.5);
+  --radius-4xl: calc(var(--radius) * 3);
+
+  /* =========================================================
+     RADiTrack / QC-inspired color palette
+     ========================================================= */
+
+  --color-qc-navy: #050640;
+  --color-qc-blue: #18298c;
+  --color-qc-yellow: #f2cb49;
+  --color-qc-orange: #d97925;
+  --color-qc-red: #a60808;
+
+  /* Additional UI neutrals */
+  --color-qc-cream: #f7f2e8;
+  --color-qc-cream-dark: #eee5d4;
+  --color-qc-surface: #fffdf9;
+  --color-qc-text: #1f1b16;
+  --color-qc-muted: #7d7468;
 }
+
+/* =========================================================
+   LIGHT MODE
+   ========================================================= */
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Main application canvas */
+  --background: #f7f2e8;
+  --foreground: #1f1b16;
+
+  /* Cards / panels */
+  --card: #fffdf9;
+  --card-foreground: #1f1b16;
+
+  --popover: #fffdf9;
+  --popover-foreground: #1f1b16;
+
+  /* =======================================================
+     Primary brand colors
+     ======================================================= */
+
+  --primary: #18298c;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f2cb49;
+  --secondary-foreground: #050640;
+
+  /* Soft neutral surfaces */
+  --muted: #eee5d4;
+  --muted-foreground: #7d7468;
+
+  /* Soft blue accent */
+  --accent: #edf0ff;
+  --accent-foreground: #18298c;
+
+  /* Alerts / destructive states */
+  --destructive: #a60808;
+
+  /* Borders / fields */
+  --border: #e6ddce;
+  --input: #ddd3c3;
+  --ring: #18298c;
+
+  /* Rounded visual language */
+  --radius: 1.1rem;
+
+  /* =======================================================
+     Chart palette
+     ======================================================= */
+
+  --chart-1: #18298c;
+  --chart-2: #f2cb49;
+  --chart-3: #d97925;
+  --chart-4: #a60808;
+  --chart-5: #050640;
+
+  /* =======================================================
+     Sidebar
+     ======================================================= */
+
+  --sidebar: #050640;
+  --sidebar-foreground: #f7f2e8;
+
+  --sidebar-primary: #f2cb49;
+  --sidebar-primary-foreground: #050640;
+
+  --sidebar-accent: #18298c;
+  --sidebar-accent-foreground: #ffffff;
+
+  --sidebar-border: rgba(247, 242, 232, 0.12);
+  --sidebar-ring: #f2cb49;
 }
 
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #050640;
+  --foreground: #f7f2e8;
+
+  --card: #0b1057;
+  --card-foreground: #f7f2e8;
+
+  --popover: #0b1057;
+  --popover-foreground: #f7f2e8;
+
+  --primary: #f2cb49;
+  --primary-foreground: #050640;
+
+  --secondary: #18298c;
+  --secondary-foreground: #ffffff;
+
+  --muted: #12185f;
+  --muted-foreground: #c4bdaf;
+
+  --accent: #18298c;
+  --accent-foreground: #ffffff;
+
+  --destructive: #c62828;
+
+  --border: rgba(247, 242, 232, 0.14);
+  --input: rgba(247, 242, 232, 0.16);
+
+  --ring: #f2cb49;
+
+  --chart-1: #f2cb49;
+  --chart-2: #18298c;
+  --chart-3: #d97925;
+  --chart-4: #a60808;
+  --chart-5: #f7f2e8;
+
+  --sidebar: #03042f;
+  --sidebar-foreground: #f7f2e8;
+
+  --sidebar-primary: #f2cb49;
+  --sidebar-primary-foreground: #050640;
+
+  --sidebar-accent: #18298c;
+  --sidebar-accent-foreground: #ffffff;
+
+  --sidebar-border: rgba(247, 242, 232, 0.12);
+  --sidebar-ring: #f2cb49;
 }
+
+/* =========================================================
+   BASE STYLES
+   ========================================================= */
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
-    @apply font-sans;
+  font-family: var(--font-nunito), sans-serif;
+  scroll-behavior: smooth;
+}
+
+  body {
+  @apply bg-background text-foreground antialiased;
+
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--background);
+  font-family: var(--font-nunito), sans-serif;
+}
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: rgba(242, 203, 73, 0.45);
+    color: var(--color-qc-navy);
+  }
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #eee5d4;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c9bea9;
+  border-radius: 999px;
+  border: 2px solid #eee5d4;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #18298c;
+}
+
+/* =========================================================
+   RADiTrack VISUAL HELPERS
+   These classes can be used by the dashboard components
+   as we redesign them one-by-one.
+   ========================================================= */
+
+.radi-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  box-shadow:
+    0 10px 30px rgba(5, 6, 64, 0.05),
+    0 2px 8px rgba(5, 6, 64, 0.03);
+}
+
+.radi-card-soft {
+  background: rgba(255, 253, 249, 0.82);
+  border: 1px solid rgba(230, 221, 206, 0.9);
+  border-radius: 1.25rem;
+}
+
+.radi-pill {
+  border-radius: 999px;
+}
+
+.radi-shadow {
+  box-shadow:
+    0 14px 36px rgba(5, 6, 64, 0.07),
+    0 3px 10px rgba(5, 6, 64, 0.035);
+}
+
+.radi-shadow-hover {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.radi-shadow-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 18px 42px rgba(5, 6, 64, 0.09),
+    0 5px 14px rgba(5, 6, 64, 0.04);
+}
+
+/* =========================================================
+   BRAND COLOR HELPERS
+   ========================================================= */
+
+.radi-navy {
+  color: #050640;
+}
+
+.radi-blue {
+  color: #18298c;
+}
+
+.radi-yellow {
+  color: #f2cb49;
+}
+
+.radi-orange {
+  color: #d97925;
+}
+
+.radi-red {
+  color: #a60808;
+}
+
+.radi-bg-navy {
+  background-color: #050640;
+}
+
+.radi-bg-blue {
+  background-color: #18298c;
+}
+
+.radi-bg-yellow {
+  background-color: #f2cb49;
+}
+
+.radi-bg-orange {
+  background-color: #d97925;
+}
+
+.radi-bg-red {
+  background-color: #a60808;
+}
+
+/* =========================================================
+   SMALL MOTION
+   ========================================================= */
+
+@keyframes radi-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.radi-fade-up {
+  animation: radi-fade-up 420ms ease-out both;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
