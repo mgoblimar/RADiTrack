@@ -1,10 +1,10 @@
 "use client";
 
 import {
-  useState,
   useEffect,
-  useTransition,
   useMemo,
+  useState,
+  useTransition,
 } from "react";
 
 import { Sidebar, ActiveTab } from "@/components/navigation/Sidebar";
@@ -14,7 +14,6 @@ import { TatOverviewChart } from "@/components/charts/TatOverviewChart";
 import { SevenDayTatTable } from "@/components/staff/SevenDayTatTable";
 import { TwelveMonthTrendChart } from "@/components/staff/TwelveMonthTrendChart";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
-import { QuickIngestionModal } from "@/components/dashboard/QuickIngestionModal";
 
 import {
   fetchFilteredExecutiveKpiAction,
@@ -24,16 +23,7 @@ import {
 } from "@/app/actions";
 
 import {
-  Activity,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Calendar,
-  TrendingDown,
-  TrendingUp,
-  ClipboardList,
   BarChart3,
-  ArrowRight,
 } from "lucide-react";
 
 interface DashboardShellProps {
@@ -56,9 +46,9 @@ export function DashboardShell({
   const [activeTab, setActiveTab] =
     useState<ActiveTab>("overview");
 
-  // =========================================================
-  // Sidebar
-  // =========================================================
+  /* =========================================================
+     Sidebar
+  ========================================================= */
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] =
     useState(false);
@@ -96,9 +86,9 @@ export function DashboardShell({
     });
   };
 
-  // =========================================================
-  // Unified dashboard filter
-  // =========================================================
+  /* =========================================================
+     Dashboard filter
+  ========================================================= */
 
   const [filterPreset, setFilterPreset] =
     useState<KpiPreset>("ALL");
@@ -106,17 +96,19 @@ export function DashboardShell({
   const [isKpiPending, startKpiTransition] =
     useTransition();
 
-  // =========================================================
-  // Date defaults
-  // =========================================================
+  /* =========================================================
+     Date defaults
+  ========================================================= */
 
   const todayIso = useMemo(() => {
     const now = new Date();
 
     const y = now.getFullYear();
+
     const m = String(
       now.getMonth() + 1,
     ).padStart(2, "0");
+
     const d = String(
       now.getDate(),
     ).padStart(2, "0");
@@ -132,9 +124,11 @@ export function DashboardShell({
     );
 
     const y = now.getFullYear();
+
     const m = String(
       now.getMonth() + 1,
     ).padStart(2, "0");
+
     const d = String(
       now.getDate(),
     ).padStart(2, "0");
@@ -148,9 +142,9 @@ export function DashboardShell({
   const [customEnd, setCustomEnd] =
     useState(todayIso);
 
-  // =========================================================
-  // Dynamic KPI / modality state
-  // =========================================================
+  /* =========================================================
+     Dynamic KPI / modality state
+  ========================================================= */
 
   const [kpiData, setKpiData] =
     useState<FilteredKpiResult | null>(null);
@@ -162,9 +156,9 @@ export function DashboardShell({
     ModalityTatOverviewItem[] | null
   >(null);
 
-  // =========================================================
-  // KPI filter
-  // =========================================================
+  /* =========================================================
+     KPI filter
+  ========================================================= */
 
   const handlePresetChange = (
     preset: KpiPreset,
@@ -182,6 +176,7 @@ export function DashboardShell({
             });
 
           setKpiData(result);
+
           setFilteredModalityData(
             result.modalityOverview,
           );
@@ -195,6 +190,7 @@ export function DashboardShell({
           });
 
         setKpiData(result);
+
         setFilteredModalityData(
           result.modalityOverview,
         );
@@ -207,9 +203,9 @@ export function DashboardShell({
     });
   };
 
-  // =========================================================
-  // Custom date range
-  // =========================================================
+  /* =========================================================
+     Custom date range
+  ========================================================= */
 
   const handleCustomRangeApply = (
     startDate: string,
@@ -229,6 +225,7 @@ export function DashboardShell({
           });
 
         setKpiData(result);
+
         setFilteredModalityData(
           result.modalityOverview,
         );
@@ -241,37 +238,9 @@ export function DashboardShell({
     });
   };
 
-  // =========================================================
-  // Telemetry summary
-  // =========================================================
-
-  const telemetrySummary = kpiData
-    ? {
-        presetLabel: kpiData.presetLabel,
-        dateRangeFormatted:
-          kpiData.dateRangeFormatted,
-        totalVolume: kpiData.totalVolume,
-        finalizedCount:
-          kpiData.finalizedCount,
-        pendingReadingCount:
-          kpiData.pendingReadingCount,
-        pctOnTime: kpiData.pctOnTime,
-      }
-    : {
-        presetLabel: "All Time",
-        dateRangeFormatted:
-          "All Recorded Scans",
-        totalVolume: data.totalVolume,
-        finalizedCount:
-          data.finalizedCount,
-        pendingReadingCount:
-          data.pendingReadingCount,
-        pctOnTime: data.pctOnTime,
-      };
-
-  // =========================================================
-  // Resolved metrics
-  // =========================================================
+  /* =========================================================
+     Resolved metrics
+  ========================================================= */
 
   const displayVolume = kpiData
     ? kpiData.totalVolume
@@ -306,52 +275,79 @@ export function DashboardShell({
     ? kpiData.pendingReadingCount
     : data.pendingReadingCount;
 
-  // =========================================================
-  // Recent analytics snapshot
-  // =========================================================
+  /* =========================================================
+     Recent analytics
+  ========================================================= */
 
   const recentAnalytics =
     sevenDayAnalytics?.all;
 
   const recentAvgHours =
-    recentAnalytics?.currentAvgTatHours ??
-    0;
+    recentAnalytics
+      ?.currentAvgTatHours ?? 0;
 
   const recentAvgMinutes =
-    recentAnalytics?.currentAvgTatMinutes ??
-    0;
+    recentAnalytics
+      ?.currentAvgTatMinutes ?? 0;
 
   const priorAvgHours =
-    recentAnalytics?.priorAvgTatHours ??
-    0;
+    recentAnalytics
+      ?.priorAvgTatHours ?? 0;
 
   const priorAvgMinutes =
-    recentAnalytics?.priorAvgTatMinutes ??
-    0;
+    recentAnalytics
+      ?.priorAvgTatMinutes ?? 0;
 
   const recentPctChange =
-    recentAnalytics?.pctChange ??
-    0;
+    recentAnalytics?.pctChange ?? 0;
 
   const recentTotalVolume =
-    recentAnalytics?.currentTotalVolume ??
-    0;
+    recentAnalytics
+      ?.currentTotalVolume ?? 0;
 
-  // =========================================================
-  // Shared layout styles
-  // =========================================================
+  /* =========================================================
+     Shared styles
+  ========================================================= */
 
   const softCard =
-    "rounded-3xl border border-border bg-card shadow-sm";
+    "rounded-[26px] border border-border/80 bg-card shadow-[0_2px_8px_rgba(15,23,42,0.04)]";
 
-  const sectionEyebrow =
-    "text-[11px] font-extrabold uppercase tracking-[0.12em] text-qc-blue";
+  const compactLabel =
+    "text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground";
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="relative min-h-screen overflow-hidden bg-[#F7F9FC] text-foreground">
+      {/* =====================================================
+          GLOBAL QCGH BACKGROUND
+          Stays fixed across every tab and filter state.
+      ===================================================== */}
+
+      <div
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+        aria-hidden="true"
+      >
+        {/* QCGH photograph */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.34] saturate-[0.82]"
+          style={{
+            backgroundImage:
+              "url('/qcgh-background.jpg')",
+          }}
+        />
+
+        {/* Readability wash */}
+        <div className="absolute inset-0 bg-white/[0.34]" />
+
+        {/* Vertical fade */}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(247,249,252,0.08)_0%,rgba(247,249,252,0.02)_38%,rgba(247,249,252,0.16)_100%)]" />
+
+        {/* RADiTrack atmosphere */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_4%,rgba(24,41,140,0.045),transparent_28%),radial-gradient(circle_at_92%_7%,rgba(242,203,73,0.055),transparent_26%)]" />
+      </div>
+
       {/* =====================================================
           SIDEBAR
-          ===================================================== */}
+      ===================================================== */}
 
       <Sidebar
         activeTab={activeTab}
@@ -369,68 +365,29 @@ export function DashboardShell({
 
       {/* =====================================================
           MAIN VIEWPORT
-          ===================================================== */}
+      ===================================================== */}
 
       <div
-        className={`min-w-0 flex-1 transition-all duration-200 ease-in-out ${
+        className={`relative z-10 min-w-0 flex-1 transition-all duration-200 ease-in-out ${
           isSidebarCollapsed
-            ? "lg:pl-20"
-            : "lg:pl-64"
+            ? "lg:pl-[76px]"
+            : "lg:pl-[248px]"
         }`}
       >
-        <main className="mx-auto w-full max-w-[1560px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
+        <main className="mx-auto w-full max-w-[1540px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
           {/* =================================================
               OVERVIEW
-              ================================================= */}
+          ================================================= */}
 
           {activeTab === "overview" && (
-            <div className="space-y-7">
-              {/* =================================================
-                  TOP HEADER
-                  ================================================= */}
-
-              <header className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-                <div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-qc-yellow/30 text-qc-navy">
-                      <Activity className="h-3.5 w-3.5" />
-                    </span>
-
-                    <span className="text-xs font-extrabold text-qc-blue">
-                      Radiology operations
-                    </span>
-                  </div>
-
-                  <h1 className="text-3xl font-extrabold tracking-tight text-qc-navy sm:text-4xl">
-                    Dashboard
-                  </h1>
-
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    A clear view of today&apos;s
-                    workload, turnaround, and SLA
-                    performance.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {isKpiPending && (
-                    <span className="rounded-full border border-qc-blue/15 bg-qc-blue/5 px-3 py-2 text-xs font-bold text-qc-blue">
-                      Updating…
-                    </span>
-                  )}
-
-                  <QuickIngestionModal />
-                </div>
+            <div className="space-y-4">
+              <header>
+                <h1 className="text-4xl font-extrabold tracking-tight text-qc-navy">
+                  Dashboard
+                </h1>
               </header>
 
-              {/* =================================================
-                  FILTER BAR
-                  ================================================= */}
-
-              <section
-                className={softCard}
-                aria-label="Dashboard date filters"
-              >
+              <section aria-label="Dashboard date filters">
                 <DateRangeFilter
                   currentPreset={
                     filterPreset
@@ -446,176 +403,164 @@ export function DashboardShell({
                   isPending={
                     isKpiPending
                   }
-                  telemetrySummary={
-                    telemetrySummary
-                  }
                 />
               </section>
 
-              {/* =================================================
-                  KPI GRID
-                  Four primary KPIs instead of five
-                  ================================================= */}
-
+              {/* KPI CARDS */}
               <section
                 aria-label="Key performance indicators"
-                className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+                className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
               >
-                {/* Volume */}
-                <div className="rounded-3xl bg-qc-navy p-5 text-white shadow-[0_12px_32px_rgba(5,14,64,0.10)]">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-white/60">
+                {/* Total scans */}
+                <div className="group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] border border-qc-navy/20 bg-qc-navy px-5 py-4 text-center shadow-[0_10px_26px_rgba(5,14,64,0.10)] transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/40 hover:shadow-[0_18px_34px_rgba(5,14,64,0.16)]">
+                  <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-qc-blue/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+
+                  <div className="pointer-events-none absolute -bottom-12 -left-10 h-28 w-28 rounded-full bg-qc-yellow/[0.08] blur-2xl transition-transform duration-500 group-hover:scale-125" />
+
+                  <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/20" />
+
+                  <div className="relative z-10">
+                    <div className="mb-1.5 flex items-center justify-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_8px_rgba(242,203,73,0.55)] motion-safe:animate-pulse" />
+
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/55">
                         Total scans
                       </p>
-
-                      <div className="mt-3 text-4xl font-extrabold tracking-tight">
-                        {displayVolume}
-                      </div>
-
-                      <p className="mt-2 text-xs font-medium text-white/55">
-                        {filterPreset ===
-                        "ALL"
-                          ? "All recorded"
-                          : telemetrySummary.presetLabel}
-                      </p>
                     </div>
 
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-yellow text-qc-navy">
-                      <Activity className="h-5 w-5" />
+                    <div className="text-4xl font-extrabold leading-none tracking-tight text-white transition-transform duration-300 group-hover:scale-[1.03]">
+                      {displayVolume}
                     </div>
+
+                    <p className="mt-2.5 text-[11px] font-medium text-white/50">
+                      {filterPreset ===
+                      "ALL"
+                        ? "All recorded"
+                        : filterPreset ===
+                            "CUSTOM"
+                          ? "Selected range"
+                          : "Selected period"}
+                    </p>
                   </div>
                 </div>
 
                 {/* Average TAT */}
                 <div
-                  className={`${softCard} p-5`}
+                  className={`${softCard} group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] px-5 py-4 text-center transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/15 hover:shadow-[0_16px_30px_rgba(24,41,140,0.09)]`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-muted-foreground">
-                        Average TAT
-                      </p>
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-qc-blue/[0.055] blur-2xl opacity-70 transition-all duration-500 group-hover:scale-125 group-hover:opacity-100" />
 
-                      <div className="mt-3 text-4xl font-extrabold tracking-tight text-qc-navy">
+                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-qc-blue/10 to-transparent" />
+
+                  <div className="relative z-10">
+                    <p className={compactLabel}>
+                      Average TAT
+                    </p>
+
+                    <div className="mt-1.5 flex items-baseline justify-center gap-1.5 transition-transform duration-300 group-hover:scale-[1.03]">
+                      <span className="text-4xl font-extrabold leading-none tracking-tight text-qc-navy">
                         {displayAvgHours >=
                         1
                           ? displayAvgHours
                           : displayAvgMinutes}
+                      </span>
 
-                        <span className="ml-1.5 text-base font-bold text-muted-foreground">
-                          {displayAvgHours >=
-                          1
-                            ? "hrs"
-                            : "mins"}
-                        </span>
-                      </div>
-
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Median{" "}
-                        <strong className="text-qc-navy">
-                          {displayMedianMinutes}
-                          m
-                        </strong>
-
-                        {filterPreset ===
-                          "ALL" &&
-                          prevMonth && (
-                            <>
-                              {" "}
-                              · Prior month{" "}
-                              <strong className="text-qc-navy">
-                                {prevMonth.avgTatHours >=
-                                1
-                                  ? `${prevMonth.avgTatHours}h`
-                                  : `${prevMonth.avgTatMinutes}m`}
-                              </strong>
-                            </>
-                          )}
-                      </p>
+                      <span className="text-sm font-bold text-muted-foreground">
+                        {displayAvgHours >=
+                        1
+                          ? "hrs"
+                          : "mins"}
+                      </span>
                     </div>
 
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-blue/10 text-qc-blue">
-                      <Clock className="h-5 w-5" />
-                    </div>
+                    <p className="mt-2.5 text-[11px] text-muted-foreground">
+                      Median{" "}
+                      <span className="font-extrabold text-qc-navy">
+                        {displayMedianMinutes}m
+                      </span>
+                    </p>
                   </div>
                 </div>
 
-                {/* SLA */}
+                {/* SLA compliance */}
                 <div
-                  className={`${softCard} p-5`}
+                  className={`${softCard} group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] border-qc-blue/10 bg-[linear-gradient(145deg,#FFFFFF_0%,#F7F9FF_100%)] px-5 py-4 text-center transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/20 hover:shadow-[0_16px_30px_rgba(24,41,140,0.10)]`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-muted-foreground">
-                        SLA compliance
-                      </p>
+                  <div className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 rounded-full bg-qc-blue/[0.055] blur-2xl transition-transform duration-500 group-hover:scale-125" />
 
-                      <div className="mt-3 text-4xl font-extrabold tracking-tight text-qc-blue">
-                        {displayPctOnTime}%
-                      </div>
+                  <div className="relative z-10">
+                    <p className={compactLabel}>
+                      SLA compliance
+                    </p>
 
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {displayFinalized} finalized
-                      </p>
+                    <div className="mt-1.5 text-4xl font-extrabold leading-none tracking-tight text-qc-blue transition-transform duration-300 group-hover:scale-[1.03]">
+                      {displayPctOnTime}%
                     </div>
 
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-yellow/20 text-qc-blue">
-                      <CheckCircle2 className="h-5 w-5" />
-                    </div>
+                    <p className="mt-2.5 text-[11px] text-muted-foreground">
+                      <span className="font-extrabold text-qc-navy">
+                        {displayFinalized}
+                      </span>{" "}
+                      finalized
+                    </p>
                   </div>
                 </div>
 
-                {/* Backlog */}
+                {/* Reading backlog */}
                 <div
-                  className={`${softCard} p-5`}
+                  className={`group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] border px-5 py-4 text-center transition-all duration-300 ${
+                    displayPending > 0
+                      ? "border-orange-100 bg-[linear-gradient(145deg,#FFFDFC_0%,#FFF8F2_100%)] shadow-[0_6px_18px_rgba(234,88,12,0.045)] hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_16px_30px_rgba(234,88,12,0.09)]"
+                      : "border-border/80 bg-card shadow-[0_2px_8px_rgba(15,23,42,0.04)] hover:-translate-y-1 hover:border-qc-blue/15 hover:shadow-[0_16px_30px_rgba(24,41,140,0.08)]"
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-muted-foreground">
+                  <div
+                    className={`pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl transition-transform duration-500 group-hover:scale-125 ${
+                      displayPending > 0
+                        ? "bg-qc-orange/[0.10]"
+                        : "bg-qc-blue/[0.05]"
+                    }`}
+                  />
+
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-center gap-1.5">
+                      {displayPending >
+                        0 && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-qc-orange shadow-[0_0_8px_rgba(234,88,12,0.35)] motion-safe:animate-pulse" />
+                      )}
+
+                      <p className={compactLabel}>
                         Reading backlog
-                      </p>
-
-                      <div
-                        className={`mt-3 text-4xl font-extrabold tracking-tight ${
-                          displayPending > 0
-                            ? "text-qc-orange"
-                            : "text-qc-blue"
-                        }`}
-                      >
-                        {displayPending}
-                      </div>
-
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {displayPending > 0
-                          ? "Awaiting sign-off"
-                          : "Queue is clear"}
                       </p>
                     </div>
 
                     <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                      className={`mt-1.5 text-4xl font-extrabold leading-none tracking-tight transition-transform duration-300 group-hover:scale-[1.03] ${
                         displayPending > 0
-                          ? "bg-orange-50 text-qc-orange"
-                          : "bg-qc-blue/10 text-qc-blue"
+                          ? "text-qc-orange"
+                          : "text-qc-blue"
                       }`}
                     >
-                      {displayPending > 0 ? (
-                        <AlertTriangle className="h-5 w-5" />
-                      ) : (
-                        <CheckCircle2 className="h-5 w-5" />
-                      )}
+                      {displayPending}
                     </div>
+
+                    <p
+                      className={`mt-2.5 text-[11px] font-semibold ${
+                        displayPending > 0
+                          ? "text-qc-orange"
+                          : "text-qc-blue"
+                      }`}
+                    >
+                      {displayPending > 0
+                        ? "Awaiting sign-off"
+                        : "Queue clear"}
+                    </p>
                   </div>
                 </div>
               </section>
 
-              {/* =================================================
-                  PRIMARY PERFORMANCE AREA
-                  ================================================= */}
-
-              <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(300px,0.85fr)]">
-                {/* Main chart */}
+              {/* PRIMARY ANALYTICS */}
+              <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.9fr)_minmax(300px,0.75fr)]">
                 <div className="min-w-0">
                   <TatOverviewChart
                     key={`tat-${filterPreset}-${customStart}-${customEnd}`}
@@ -626,36 +571,30 @@ export function DashboardShell({
                   />
                 </div>
 
-                {/* =================================================
-                    7-DAY PULSE
-                    ================================================= */}
-
                 <div
-                  className={`${softCard} flex flex-col p-5 sm:p-6`}
+                  className={`${softCard} relative flex min-h-[360px] flex-col overflow-hidden px-6 py-6 sm:px-7 sm:py-7`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className={sectionEyebrow}>
-                        Recent pulse
-                      </p>
+                  <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-qc-yellow/10" />
 
-                      <h2 className="mt-1 text-xl font-extrabold tracking-tight text-qc-navy">
-                        7-day TAT
-                      </h2>
-                    </div>
+                  <div className="pointer-events-none absolute -bottom-20 -left-16 h-44 w-44 rounded-full bg-qc-blue/[0.04]" />
 
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-yellow/25 text-qc-navy">
-                      <BarChart3 className="h-5 w-5" />
-                    </div>
+                  <div className="relative">
+                    <p className={compactLabel}>
+                      Recent pulse
+                    </p>
+
+                    <h2 className="mt-1 text-xl font-extrabold tracking-tight text-qc-navy">
+                      7-day Turnaround Time
+                    </h2>
                   </div>
 
-                  <div className="mt-6">
-                    <p className="text-xs font-bold text-muted-foreground">
+                  <div className="relative mt-9 text-center">
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
                       Current average
                     </p>
 
-                    <div className="mt-1 flex items-baseline gap-1.5">
-                      <span className="text-4xl font-extrabold tracking-tight text-qc-navy">
+                    <div className="mt-2 flex items-baseline justify-center gap-1.5">
+                      <span className="text-[52px] font-extrabold leading-none tracking-tight text-qc-navy">
                         {recentAvgHours >=
                         1
                           ? recentAvgHours
@@ -670,16 +609,17 @@ export function DashboardShell({
                       </span>
                     </div>
 
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {recentTotalVolume} exams
-                      in the active window
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {recentTotalVolume}{" "}
+                      exams in the current
+                      window
                     </p>
                   </div>
 
-                  <div className="mt-6 rounded-2xl bg-background p-4">
-                    <div className="flex items-center justify-between gap-3">
+                  <div className="relative mt-8 rounded-[22px] border border-white/80 bg-[#F7F4EE] px-5 py-4">
+                    <div className="flex items-center justify-between gap-4">
                       <span className="text-xs font-semibold text-muted-foreground">
-                        Prior 7-day average
+                        Previous
                       </span>
 
                       <span className="text-sm font-extrabold text-qc-navy">
@@ -690,7 +630,9 @@ export function DashboardShell({
                       </span>
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="my-3 h-px bg-qc-navy/8" />
+
+                    <div className="flex items-center justify-between gap-4">
                       <span className="text-xs font-semibold text-muted-foreground">
                         Change
                       </span>
@@ -698,34 +640,56 @@ export function DashboardShell({
                       {recentPctChange !==
                       0 ? (
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
+                          className={`rounded-full px-3 py-1 text-[10px] font-extrabold ${
                             recentPctChange <
                             0
-                              ? "bg-qc-blue/5 text-qc-blue"
+                              ? "bg-qc-blue/10 text-qc-blue"
                               : "bg-red-50 text-qc-red"
                           }`}
                         >
-                          {recentPctChange <
-                          0 ? (
-                            <TrendingDown className="h-3 w-3" />
-                          ) : (
-                            <TrendingUp className="h-3 w-3" />
-                          )}
-
                           {Math.abs(
                             recentPctChange,
                           )}
-                          %
+                          %{" "}
+                          {recentPctChange <
+                          0
+                            ? "faster"
+                            : "slower"}
                         </span>
                       ) : (
-                        <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+                        <span className="rounded-full bg-white/70 px-3 py-1 text-[10px] font-extrabold text-muted-foreground">
                           No change
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-6">
+                  <div className="relative mt-auto pt-6 text-center">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+                      Compared with previous 7 days
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              {/* 7-DAY PERFORMANCE */}
+              <section className="overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(24,41,140,0.05)]">
+                <div className="relative overflow-hidden border-b border-[#E4E8F1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-5 sm:px-6">
+                  <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-qc-yellow/10" />
+
+                  <div className="pointer-events-none absolute bottom-0 right-28 h-20 w-20 rounded-full bg-qc-blue/[0.035]" />
+
+                  <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-center gap-3.5">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow shadow-[0_5px_14px_rgba(5,14,64,0.12)]">
+                        <BarChart3 className="h-5 w-5" />
+                      </div>
+
+                      <h2 className="text-2xl font-extrabold tracking-tight text-qc-navy">
+                        7-DAY PERFORMANCE
+                      </h2>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -733,113 +697,68 @@ export function DashboardShell({
                           "examinations",
                         )
                       }
-                      className="group inline-flex items-center gap-2 text-xs font-extrabold text-qc-blue transition-colors hover:text-qc-navy"
+                      className="group inline-flex w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[11px] font-extrabold text-qc-blue shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
                     >
-                      View examination activity
+                      Open examinations
 
-                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                      <span className="transition-transform group-hover:translate-x-0.5">
+                        →
+                      </span>
                     </button>
                   </div>
                 </div>
-              </section>
 
-              {/* =================================================
-                  RECENT PERFORMANCE
-                  ================================================= */}
-
-              <section className="space-y-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className={sectionEyebrow}>
-                      Recent performance
-                    </p>
-
-                    <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-qc-navy">
-                      7-day activity
-                    </h2>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveTab(
-                        "examinations",
-                      )
+                <div className="bg-[linear-gradient(180deg,#FCFCFE_0%,#FFFFFF_100%)]">
+                  <SevenDayTatTable
+                    analytics={
+                      sevenDayAnalytics
                     }
-                    className="group inline-flex w-fit items-center gap-2 text-xs font-extrabold text-qc-blue hover:text-qc-navy"
-                  >
-                    Open examinations
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </button>
+                  />
                 </div>
-
-                <SevenDayTatTable
-                  analytics={
-                    sevenDayAnalytics
-                  }
-                />
               </section>
 
-              {/* =================================================
-                  HISTORICAL ANALYTICS
-                  ================================================= */}
+              {/* 12-MONTH TREND */}
+              <section className="overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(24,41,140,0.05)]">
+                <div className="relative overflow-hidden border-b border-[#E4E8F1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-5 sm:px-6">
+                  <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-qc-yellow/10" />
 
-              <section className="space-y-4">
-                <div>
-                  <p className={sectionEyebrow}>
-                    Historical analytics
-                  </p>
+                  <div className="pointer-events-none absolute bottom-0 right-28 h-20 w-20 rounded-full bg-qc-blue/[0.035]" />
 
-                  <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-qc-navy">
-                    Long-term TAT trend
-                  </h2>
+                  <div className="relative flex items-center">
+                    <div className="flex items-center gap-3.5">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow shadow-[0_5px_14px_rgba(5,14,64,0.12)]">
+                        <BarChart3 className="h-5 w-5" />
+                      </div>
 
-                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                    Use the historical view when
-                    you need deeper trend analysis
-                    beyond the current operational
-                    window.
-                  </p>
+                      <h2 className="text-2xl font-extrabold tracking-tight text-qc-navy">
+                        12-MONTH TAT TREND
+                      </h2>
+                    </div>
+                  </div>
                 </div>
 
-                <TwelveMonthTrendChart
-                  data={twelveMonthTrend}
-                />
+                <div className="bg-white p-4 sm:p-6">
+                  <TwelveMonthTrendChart
+                    data={
+                      twelveMonthTrend
+                    }
+                  />
+                </div>
               </section>
             </div>
           )}
 
           {/* =====================================================
               EXAMINATIONS
-              ===================================================== */}
+          ===================================================== */}
 
           {activeTab ===
             "examinations" && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <header>
-                <p className={sectionEyebrow}>
-                  Workflow operations
-                </p>
-
-                <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-qc-navy sm:text-4xl">
-                      Examinations
-                    </h1>
-
-                    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                      Manage active reading work and
-                      review finalized studies.
-                    </p>
-                  </div>
-
-                  <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs font-bold text-muted-foreground">
-                    <ClipboardList className="h-3.5 w-3.5 text-qc-blue" />
-
-                    {data.pendingReadingQueue.length}{" "}
-                    pending
-                  </div>
-                </div>
+                <h1 className="text-4xl font-extrabold tracking-tight text-qc-navy">
+                  Examinations
+                </h1>
               </header>
 
               <ExaminationsHub
@@ -855,23 +774,14 @@ export function DashboardShell({
 
           {/* =====================================================
               CONFIGURATIONS
-              ===================================================== */}
+          ===================================================== */}
 
           {activeTab === "config" && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <header>
-                <p className={sectionEyebrow}>
-                  System configuration
-                </p>
-
-                <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-qc-navy sm:text-4xl">
+                <h1 className="text-4xl font-extrabold tracking-tight text-qc-navy">
                   Configurations
                 </h1>
-
-                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Manage modalities, SLA targets,
-                  rooms, and radiologist settings.
-                </p>
               </header>
 
               <ConfigurationsHub

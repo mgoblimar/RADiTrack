@@ -6,12 +6,11 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
 import {
   Calendar,
-  CalendarDays,
   Check,
-  CheckCircle2,
   ChevronDown,
   Filter,
   Loader2,
@@ -31,6 +30,9 @@ export interface DateRangeFilterProps {
     endDate: string,
   ) => void;
   isPending?: boolean;
+
+  // Kept for compatibility with DashboardShell.
+  // Intentionally not displayed in this component.
   telemetrySummary?: {
     presetLabel: string;
     dateRangeFormatted: string;
@@ -86,36 +88,156 @@ export function DateRangeFilter({
   onPresetChange,
   onCustomRangeApply,
   isPending = false,
-  telemetrySummary,
 }: DateRangeFilterProps) {
-  const [isOpen, setIsOpen] =
-    useState(false);
-
+  const [isOpen, setIsOpen] = useState(false);
   const [localStart, setLocalStart] =
     useState(startDate);
-
   const [localEnd, setLocalEnd] =
     useState(endDate);
 
-  const dropdownRef =
+  const buttonRef =
+    useRef<HTMLButtonElement>(null);
+
+  const popoverRef =
     useRef<HTMLDivElement>(null);
 
+  const [popoverPosition, setPopoverPosition] =
+    useState({
+      top: 0,
+      left: 0,
+      width: 500,
+    });
+
   // =========================================================
-  // Close popover when clicking outside
+  // Keep local date values synchronized
   // =========================================================
 
   useEffect(() => {
+    setLocalStart(startDate);
+    setLocalEnd(endDate);
+  }, [startDate, endDate]);
+
+  // =========================================================
+  // Position the dropdown
+  // =========================================================
+
+  const updatePopoverPosition = () => {
+    if (!buttonRef.current) {
+      return;
+    }
+
+    const rect =
+      buttonRef.current.getBoundingClientRect();
+
+    const viewportPadding = 12;
+
+    const availableWidth =
+      window.innerWidth -
+      viewportPadding * 2;
+
+    const width = Math.min(
+      500,
+      availableWidth,
+    );
+
+    let left = rect.left;
+
+    if (
+      left + width >
+      window.innerWidth - viewportPadding
+    ) {
+      left =
+        window.innerWidth -
+        width -
+        viewportPadding;
+    }
+
+    left = Math.max(
+      viewportPadding,
+      left,
+    );
+
+    const top = rect.bottom + 8;
+
+    setPopoverPosition({
+      top,
+      left,
+      width,
+    });
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    updatePopoverPosition();
+
+    const handleResize = () => {
+      updatePopoverPosition();
+    };
+
+    const handleScroll = () => {
+      updatePopoverPosition();
+    };
+
+    window.addEventListener(
+      "resize",
+      handleResize,
+    );
+
+    window.addEventListener(
+      "scroll",
+      handleScroll,
+      true,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "resize",
+        handleResize,
+      );
+
+      window.removeEventListener(
+        "scroll",
+        handleScroll,
+        true,
+      );
+    };
+  }, [isOpen]);
+
+  // =========================================================
+  // Close when clicking outside / Escape
+  // =========================================================
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
     const handleClickOutside = (
       event: MouseEvent,
     ) => {
+      const target =
+        event.target as Node;
+
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(
-          event.target as Node,
+        buttonRef.current?.contains(
+          target,
         )
       ) {
-        setIsOpen(false);
+        return;
       }
+
+      if (
+        popoverRef.current?.contains(
+          target,
+        )
+      ) {
+        return;
+      }
+
+      setIsOpen(false);
     };
 
     const handleKeyDown = (
@@ -126,17 +248,15 @@ export function DateRangeFilter({
       }
     };
 
-    if (isOpen) {
-      document.addEventListener(
-        "mousedown",
-        handleClickOutside,
-      );
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside,
+    );
 
-      document.addEventListener(
-        "keydown",
-        handleKeyDown,
-      );
-    }
+    document.addEventListener(
+      "keydown",
+      handleKeyDown,
+    );
 
     return () => {
       document.removeEventListener(
@@ -152,15 +272,6 @@ export function DateRangeFilter({
   }, [isOpen]);
 
   // =========================================================
-  // Keep local date values synchronized
-  // =========================================================
-
-  useEffect(() => {
-    setLocalStart(startDate);
-    setLocalEnd(endDate);
-  }, [startDate, endDate]);
-
-  // =========================================================
   // Active preset
   // =========================================================
 
@@ -169,6 +280,21 @@ export function DateRangeFilter({
       (preset) =>
         preset.id === currentPreset,
     ) ?? PRESETS[0];
+
+  const isCustom =
+    currentPreset === "CUSTOM";
+
+  // =========================================================
+  // Open / close dropdown
+  // =========================================================
+
+  const toggleDropdown = () => {
+    if (isPending) {
+      return;
+    }
+
+    setIsOpen((previous) => !previous);
+  };
 
   // =========================================================
   // Preset selection
@@ -183,6 +309,11 @@ export function DateRangeFilter({
 
     if (preset === "CUSTOM") {
       onPresetChange("CUSTOM");
+
+      requestAnimationFrame(() => {
+        updatePopoverPosition();
+      });
+
       return;
     }
 
@@ -216,7 +347,7 @@ export function DateRangeFilter({
   };
 
   // =========================================================
-  // Quick range helpers
+  // Quick custom ranges
   // =========================================================
 
   const handleQuickPastDays = (
@@ -263,6 +394,10 @@ export function DateRangeFilter({
     setIsOpen(false);
   };
 
+  // =========================================================
+  // Reset
+  // =========================================================
+
   const handleReset = () => {
     if (isPending) {
       return;
@@ -272,35 +407,226 @@ export function DateRangeFilter({
     setIsOpen(false);
   };
 
-  const isCustom =
-    currentPreset === "CUSTOM";
+  // =========================================================
+  // Popover
+  // =========================================================
 
-  return (
+  const popover = isOpen ? (
     <div
-      ref={dropdownRef}
-      className="relative"
+      ref={popoverRef}
+      role="dialog"
+      aria-label="Time window"
+      style={{
+        position: "fixed",
+        top: popoverPosition.top,
+        left: popoverPosition.left,
+        width: popoverPosition.width,
+        zIndex: 9999,
+      }}
+      className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_50px_rgba(5,14,64,0.14)]"
     >
-      {/* =====================================================
-          COMPACT FILTER BAR
-          ===================================================== */}
-
-      <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3">
-        {/* Left side */}
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue sm:flex">
-            <CalendarDays className="h-4 w-4" />
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-qc-blue/10 text-qc-blue">
+            <Filter className="h-3.5 w-3.5" />
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              setIsOpen(
-                (previous) =>
-                  !previous,
-              )
+          <span className="text-sm font-extrabold text-qc-navy">
+            Time window
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            setIsOpen(false)
+          }
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
+          aria-label="Close time window"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Presets */}
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {PRESETS.map((preset) => {
+            const isActive =
+              currentPreset ===
+              preset.id;
+
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() =>
+                  handleSelectPreset(
+                    preset.id,
+                  )
+                }
+                disabled={isPending}
+                className={`flex min-h-10 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition-all ${
+                  isActive
+                    ? "border-qc-blue/15 bg-qc-blue/10 text-qc-blue"
+                    : "border-border bg-background text-qc-navy hover:border-qc-blue/15 hover:bg-qc-blue/5"
+                } disabled:cursor-not-allowed disabled:opacity-60`}
+              >
+                <span>
+                  {preset.label}
+                </span>
+
+                {isActive && (
+                  <Check className="h-3.5 w-3.5 shrink-0" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Custom range */}
+      {isCustom && (
+        <div className="border-t border-border bg-background/60 px-4 py-4">
+          <div className="mb-3 text-xs font-extrabold text-qc-navy">
+            Custom range
+          </div>
+
+          <form
+            onSubmit={
+              handleApplyCustom
             }
+            className="space-y-4"
+          >
+            {/* Date inputs */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors focus-within:border-qc-blue/25">
+                <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
+                  From
+                </span>
+
+                <input
+                  type="date"
+                  value={localStart}
+                  onChange={(event) =>
+                    setLocalStart(
+                      event.target.value,
+                    )
+                  }
+                  max={
+                    localEnd ||
+                    undefined
+                  }
+                  required
+                  className="min-w-0 w-full bg-transparent text-xs font-bold text-qc-navy outline-none"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors focus-within:border-qc-blue/25">
+                <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
+                  To
+                </span>
+
+                <input
+                  type="date"
+                  value={localEnd}
+                  onChange={(event) =>
+                    setLocalEnd(
+                      event.target.value,
+                    )
+                  }
+                  min={
+                    localStart ||
+                    undefined
+                  }
+                  required
+                  className="min-w-0 w-full bg-transparent text-xs font-bold text-qc-navy outline-none"
+                />
+              </label>
+            </div>
+
+            {/* Quick ranges + apply */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                  Quick
+                </span>
+
+                {[
+                  {
+                    days: 7,
+                    label: "7D",
+                  },
+                  {
+                    days: 14,
+                    label: "14D",
+                  },
+                  {
+                    days: 30,
+                    label: "30D",
+                  },
+                  {
+                    days: 90,
+                    label: "90D",
+                  },
+                ].map((range) => (
+                  <button
+                    key={range.days}
+                    type="button"
+                    onClick={() =>
+                      handleQuickPastDays(
+                        range.days,
+                      )
+                    }
+                    className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-extrabold text-qc-navy transition-colors hover:border-qc-blue/15 hover:bg-qc-blue/5 hover:text-qc-blue"
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="submit"
+                disabled={
+                  isPending ||
+                  !localStart ||
+                  !localEnd ||
+                  localStart >
+                    localEnd
+                }
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-qc-yellow px-4 py-2.5 text-xs font-extrabold text-qc-navy shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Calendar className="h-3.5 w-3.5" />
+                )}
+
+                Apply
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  return (
+    <div className="relative">
+      {/* =====================================================
+          FILTER BAR
+      ===================================================== */}
+
+      <div className="flex min-h-[68px] items-center px-3 py-3 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          {/* One icon only */}
+          <button
+            ref={buttonRef}
+            type="button"
+            onClick={toggleDropdown}
             disabled={isPending}
-            className={`group inline-flex min-w-0 items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-left transition-all duration-150 ${
+            className={`group inline-flex min-w-0 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-all duration-150 ${
               isOpen
                 ? "border-qc-navy bg-qc-navy text-white"
                 : isCustom
@@ -309,8 +635,9 @@ export function DateRangeFilter({
             }`}
             aria-expanded={isOpen}
             aria-haspopup="dialog"
+            aria-label="Change time window"
           >
-            <CalendarDays
+            <Calendar
               className={`h-4 w-4 shrink-0 ${
                 isOpen
                   ? "text-qc-yellow"
@@ -319,10 +646,6 @@ export function DateRangeFilter({
                     : "text-muted-foreground"
               }`}
             />
-
-            <span className="text-[11px] font-bold text-muted-foreground">
-              Window
-            </span>
 
             <span
               className={`truncate text-sm font-extrabold ${
@@ -355,6 +678,7 @@ export function DateRangeFilter({
             )}
           </button>
 
+          {/* Reset */}
           {currentPreset !== "ALL" && (
             <button
               type="button"
@@ -362,303 +686,21 @@ export function DateRangeFilter({
               disabled={isPending}
               title="Reset to All Time"
               aria-label="Reset time window"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-background text-muted-foreground transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue disabled:opacity-50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue disabled:opacity-50"
             >
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
-
-        {/* ===================================================
-            TELEMETRY
-            =================================================== */}
-
-        {telemetrySummary && (
-          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-qc-yellow" />
-
-              <strong className="font-extrabold text-qc-navy">
-                {telemetrySummary.totalVolume.toLocaleString()}
-              </strong>
-
-              <span className="text-muted-foreground">
-                scans
-              </span>
-            </div>
-
-            <span className="hidden text-border sm:inline">
-              /
-            </span>
-
-            <div className="flex items-center gap-1.5 font-extrabold text-qc-blue">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-
-              {telemetrySummary.pctOnTime}%
-              <span className="font-semibold text-muted-foreground">
-                SLA
-              </span>
-            </div>
-
-            {telemetrySummary.pendingReadingCount >
-              0 && (
-              <>
-                <span className="hidden text-border sm:inline">
-                  /
-                </span>
-
-                <div className="font-extrabold text-qc-orange">
-                  {telemetrySummary.pendingReadingCount}
-                  <span className="ml-1 font-semibold text-muted-foreground">
-                    pending
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* =====================================================
-          FILTER POPOVER
-          ===================================================== */}
-
-      {isOpen && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_20px_50px_rgba(5,14,64,0.12)] animate-in fade-in zoom-in-95 duration-150 sm:right-auto sm:w-[540px]">
-          {/* Popover header */}
-          <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
-                <Filter className="h-4 w-4" />
-              </div>
-
-              <div>
-                <h3 className="text-sm font-extrabold text-qc-navy">
-                  Time window
-                </h3>
-
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  Select the period used by the dashboard
-                  metrics.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                setIsOpen(false)
-              }
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
-              aria-label="Close time window"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* =================================================
-              PRESET GRID
-              ================================================= */}
-
-          <div className="px-5 py-4">
-            <div className="mb-2.5 flex items-center justify-between">
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-                Quick periods
-              </span>
-
-              {isPending && (
-                <span className="flex items-center gap-1.5 text-[10px] font-bold text-qc-blue">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Updating
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {PRESETS.map(
-                (preset) => {
-                  const isActive =
-                    currentPreset ===
-                    preset.id;
-
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() =>
-                        handleSelectPreset(
-                          preset.id,
-                        )
-                      }
-                      disabled={isPending}
-                      className={`flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition-all ${
-                        isActive
-                          ? "border-qc-blue/15 bg-qc-blue/10 text-qc-blue"
-                          : "border-border bg-background text-qc-navy hover:border-qc-blue/15 hover:bg-qc-blue/5"
-                      } disabled:cursor-not-allowed disabled:opacity-60`}
-                    >
-                      <span>
-                        {preset.label}
-                      </span>
-
-                      {isActive && (
-                        <Check className="h-3.5 w-3.5 shrink-0" />
-                      )}
-                    </button>
-                  );
-                },
-              )}
-            </div>
-          </div>
-
-          {/* =================================================
-              CUSTOM RANGE
-              ================================================= */}
-
-          {isCustom && (
-            <div className="border-t border-border bg-background/60 px-5 py-4">
-              <div className="mb-3 flex items-center gap-2">
-                <Calendar className="h-3.5 w-3.5 text-qc-blue" />
-
-                <span className="text-xs font-extrabold text-qc-navy">
-                  Custom range
-                </span>
-              </div>
-
-              <form
-                onSubmit={
-                  handleApplyCustom
-                }
-                className="space-y-4"
-              >
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 transition-colors focus-within:border-qc-blue/25">
-                    <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
-                      From
-                    </span>
-
-                    <input
-                      type="date"
-                      value={localStart}
-                      onChange={(event) =>
-                        setLocalStart(
-                          event.target.value,
-                        )
-                      }
-                      max={localEnd || undefined}
-                      required
-                      className="min-w-0 w-full bg-transparent text-xs font-bold text-qc-navy outline-none"
-                    />
-                  </label>
-
-                  <label className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 transition-colors focus-within:border-qc-blue/25">
-                    <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
-                      To
-                    </span>
-
-                    <input
-                      type="date"
-                      value={localEnd}
-                      onChange={(event) =>
-                        setLocalEnd(
-                          event.target.value,
-                        )
-                      }
-                      min={
-                        localStart ||
-                        undefined
-                      }
-                      required
-                      className="min-w-0 w-full bg-transparent text-xs font-bold text-qc-navy outline-none"
-                    />
-                  </label>
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-1 text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
-                      Quick
-                    </span>
-
-                    {[
-                      {
-                        days: 7,
-                        label: "7D",
-                      },
-                      {
-                        days: 14,
-                        label: "14D",
-                      },
-                      {
-                        days: 30,
-                        label: "30D",
-                      },
-                      {
-                        days: 90,
-                        label: "90D",
-                      },
-                    ].map((range) => (
-                      <button
-                        key={
-                          range.days
-                        }
-                        type="button"
-                        onClick={() =>
-                          handleQuickPastDays(
-                            range.days,
-                          )
-                        }
-                        className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-extrabold text-qc-navy transition-colors hover:border-qc-blue/15 hover:bg-qc-blue/5 hover:text-qc-blue"
-                      >
-                        {range.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={
-                      isPending ||
-                      !localStart ||
-                      !localEnd ||
-                      localStart >
-                        localEnd
-                    }
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-qc-yellow px-4 py-2.5 text-xs font-extrabold text-qc-navy shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] disabled:pointer-events-none disabled:opacity-50"
-                  >
-                    {isPending ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Calendar className="h-3.5 w-3.5" />
-                    )}
-
-                    Apply range
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* =================================================
-              CURRENT RANGE FOOTER
-              ================================================= */}
-
-          <div className="border-t border-border px-5 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground">
-                {telemetrySummary?.dateRangeFormatted ??
-                  "All recorded scans"}
-              </span>
-
-              <span className="text-[10px] font-bold text-qc-navy">
-                {telemetrySummary?.finalizedCount ??
-                  0}{" "}
-                finalized
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Render outside the dashboard layout so it cannot be clipped */}
+      {typeof document !== "undefined" &&
+        isOpen &&
+        createPortal(
+          popover,
+          document.body,
+        )}
     </div>
   );
 }
