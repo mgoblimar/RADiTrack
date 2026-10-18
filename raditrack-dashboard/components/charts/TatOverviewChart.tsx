@@ -16,6 +16,7 @@ import {
   CartesianGrid,
   Cell,
   ComposedChart,
+  LabelList,
   Line,
   Tooltip,
   XAxis,
@@ -561,6 +562,46 @@ export function TatOverviewChart({
   };
 
   /* =========================================================
+     Direct Average TAT Label (no hover needed)
+  ========================================================= */
+
+  const renderActualTatLabel = (props: any) => {
+    const { x, y, width, value, index } = props;
+    if (value === undefined || value === null) return null;
+    const item = displayData[index];
+    if (!item || item.volume === 0) return null;
+
+    const isBreach = item.avgTat > item.target;
+
+    return (
+      <g transform={`translate(${x + width / 2}, ${y - 10})`}>
+        <rect
+          x={-19}
+          y={-14}
+          width={38}
+          height={18}
+          rx={5}
+          fill={isBreach ? "#A60808" : "#FFFFFF"}
+          stroke={isBreach ? "#DC2626" : "#CBD5E1"}
+          strokeWidth={1}
+          style={{ filter: "drop-shadow(0 2px 4px rgba(5, 14, 64, 0.12))" }}
+        />
+        <text
+          x={0}
+          y={-4}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={isBreach ? "#FFFFFF" : "#050E40"}
+          fontSize={10}
+          fontWeight={800}
+        >
+          {value}h
+        </text>
+      </g>
+    );
+  };
+
+  /* =========================================================
      Filter popover
   ========================================================= */
 
@@ -870,7 +911,7 @@ export function TatOverviewChart({
               <ComposedChart
                 data={displayData}
                 margin={{
-                  top: 14,
+                  top: 24,
                   right: 12,
                   left: -10,
                   bottom: 0,
@@ -950,6 +991,10 @@ export function TatOverviewChart({
                       }
                     />
                   ))}
+                  <LabelList
+                    dataKey="avgTat"
+                    content={renderActualTatLabel}
+                  />
                 </Bar>
               </ComposedChart>
             </ResponsiveContainer>
