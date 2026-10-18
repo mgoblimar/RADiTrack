@@ -611,6 +611,15 @@ export async function exportExaminationsCSVAction(): Promise<string> {
 // 7. QUERY & ACTION: Multi-Year & 12-Month Historical TAT Trend (Annual Review)
 // Aggregates monthly averages and YoY comparisons across any calendar year or rolling 12M
 // ============================================================================
+export interface MonthModalityTrend {
+  avgTatHours: number;
+  avgTatMinutes: number;
+  totalFinalized: number;
+  priorYearAvgTatHours: number;
+  priorYearAvgTatMinutes: number;
+  priorYearTotalFinalized: number;
+}
+
 export interface MonthTrendData {
   monthIndex: number;
   monthLabel: string;
@@ -621,6 +630,19 @@ export interface MonthTrendData {
   priorYearAvgTatHours?: number;
   priorYearAvgTatMinutes?: number;
   priorYearTotalFinalized?: number;
+  byModality?: Record<string, MonthModalityTrend>;
+  [key: string]: any;
+}
+
+export interface ModalityAnnualSummary {
+  modalityCode: string;
+  annualTotalFinalized: number;
+  annualAvgTatHours: number;
+  annualAvgTatMinutes: number;
+  priorAnnualTotalFinalized: number;
+  priorAnnualAvgTatHours: number;
+  priorAnnualAvgTatMinutes: number;
+  pctChangeTat: number;
 }
 
 export interface TwelveMonthTrendResult {
@@ -646,6 +668,7 @@ export interface TwelveMonthTrendResult {
     monthLabel: string;
     volume: number;
   } | null;
+  byModalityAnnual?: Record<string, ModalityAnnualSummary>;
 }
 
 export async function getTwelveMonthTatTrend(
@@ -729,15 +752,52 @@ export async function getTwelveMonthTatTrend(
     select: {
       tatExamToSignMinutes: true,
       examination: {
-        select: { studyDate: true },
+        select: { studyDate: true, modalityCode: true },
       },
     },
   });
+
+  const modalityCodes = [
+    ModalityCode.XRAY,
+    ModalityCode.US,
+    ModalityCode.CT,
+    ModalityCode.MRI,
+    ModalityCode.MAMMO,
+  ];
 
   const allCurrentTats: number[] = [];
   const allPriorTats: number[] = [];
   let annualTotalFinalized = 0;
   let priorAnnualTotalFinalized = 0;
+
+  const modalityCurrentTats: Record<string, number[]> = {
+    [ModalityCode.XRAY]: [],
+    [ModalityCode.US]: [],
+    [ModalityCode.CT]: [],
+    [ModalityCode.MRI]: [],
+    [ModalityCode.MAMMO]: [],
+  };
+  const modalityPriorTats: Record<string, number[]> = {
+    [ModalityCode.XRAY]: [],
+    [ModalityCode.US]: [],
+    [ModalityCode.CT]: [],
+    [ModalityCode.MRI]: [],
+    [ModalityCode.MAMMO]: [],
+  };
+  const modalityCurrentCounts: Record<string, number> = {
+    [ModalityCode.XRAY]: 0,
+    [ModalityCode.US]: 0,
+    [ModalityCode.CT]: 0,
+    [ModalityCode.MRI]: 0,
+    [ModalityCode.MAMMO]: 0,
+  };
+  const modalityPriorCounts: Record<string, number> = {
+    [ModalityCode.XRAY]: 0,
+    [ModalityCode.US]: 0,
+    [ModalityCode.CT]: 0,
+    [ModalityCode.MRI]: 0,
+    [ModalityCode.MAMMO]: 0,
+  };
 
   const monthsData: MonthTrendData[] = monthsConfig.map((cfg) => {
     const curReports = reports.filter((r) => {
@@ -768,6 +828,47 @@ export async function getTwelveMonthTatTrend(
     allPriorTats.push(...priTatList);
     priorAnnualTotalFinalized += priReports.length;
 
+    const byModality: Record<string, MonthModalityTrend> = {};
+    const flatModalityProps: Record<string, number> = {};
+
+    for (const mCode of modalityCodes) {
+      const curModReports = curReports.filter((r) => r.examination.modalityCode === mCode);
+      const curModTats = curModReports.map((r) => r.tatExamToSignMinutes!).filter((v) => v > 0);
+      const curModAvgMin =
+        curModTats.length > 0
+          ? Number((curModTats.reduce((a, b) => a + b, 0) / curModTats.length).toFixed(1))
+          : 0;
+      const curModAvgHours = Number((curModAvgMin / 60).toFixed(1));
+
+      modalityCurrentTats[mCode].push(...curModTats);
+      modalityCurrentCounts[mCode] += curModReports.length;
+
+      const priModReports = priReports.filter((r) => r.examination.modalityCode === mCode);
+      const priModTats = priModReports.map((r) => r.tatExamToSignMinutes!).filter((v) => v > 0);
+      const priModAvgMin =
+        priModTats.length > 0
+          ? Number((priModTats.reduce((a, b) => a + b, 0) / priModTats.length).toFixed(1))
+          : 0;
+      const priModAvgHours = Number((priModAvgMin / 60).toFixed(1));
+
+      modalityPriorTats[mCode].push(...priModTats);
+      modalityPriorCounts[mCode] += priModReports.length;
+
+      byModality[mCode] = {
+        avgTatHours: curModAvgHours,
+        avgTatMinutes: curModAvgMin,
+        totalFinalized: curModReports.length,
+        priorYearAvgTatHours: priModAvgHours,
+        priorYearAvgTatMinutes: priModAvgMin,
+        priorYearTotalFinalized: priModReports.length,
+      };
+
+      flatModalityProps[`${mCode}_avgTatHours`] = curModAvgHours;
+      flatModalityProps[`${mCode}_totalFinalized`] = curModReports.length;
+      flatModalityProps[`prior_${mCode}_avgTatHours`] = priModAvgHours;
+      flatModalityProps[`prior_${mCode}_totalFinalized`] = priModReports.length;
+    }
+
     return {
       monthIndex: cfg.monthIndex,
       monthLabel: cfg.monthLabel,
@@ -778,6 +879,8 @@ export async function getTwelveMonthTatTrend(
       priorYearAvgTatHours: priAvgHours,
       priorYearAvgTatMinutes: priAvgMinutes,
       priorYearTotalFinalized: priReports.length,
+      byModality,
+      ...flatModalityProps,
     };
   });
 
@@ -808,6 +911,32 @@ export async function getTwelveMonthTatTrend(
         100
       ).toFixed(1)
     );
+  }
+
+  const byModalityAnnual: Record<string, ModalityAnnualSummary> = {};
+  for (const mCode of modalityCodes) {
+    const curTats = modalityCurrentTats[mCode];
+    const priTats = modalityPriorTats[mCode];
+    const curAvgMin =
+      curTats.length > 0 ? Number((curTats.reduce((a, b) => a + b, 0) / curTats.length).toFixed(1)) : 0;
+    const curAvgHours = Number((curAvgMin / 60).toFixed(1));
+    const priAvgMin =
+      priTats.length > 0 ? Number((priTats.reduce((a, b) => a + b, 0) / priTats.length).toFixed(1)) : 0;
+    const priAvgHours = Number((priAvgMin / 60).toFixed(1));
+    let pctChange = 0;
+    if (priAvgMin > 0 && curAvgMin > 0) {
+      pctChange = Number((((curAvgMin - priAvgMin) / priAvgMin) * 100).toFixed(1));
+    }
+    byModalityAnnual[mCode] = {
+      modalityCode: mCode,
+      annualTotalFinalized: modalityCurrentCounts[mCode],
+      annualAvgTatHours: curAvgHours,
+      annualAvgTatMinutes: curAvgMin,
+      priorAnnualTotalFinalized: modalityPriorCounts[mCode],
+      priorAnnualAvgTatHours: priAvgHours,
+      priorAnnualAvgTatMinutes: priAvgMin,
+      pctChangeTat: pctChange,
+    };
   }
 
   const activeMonths = monthsData.filter((m) => m.avgTatMinutes > 0);
@@ -864,6 +993,7 @@ export async function getTwelveMonthTatTrend(
           volume: peakVolumeMonth.totalFinalized,
         }
       : null,
+    byModalityAnnual,
   };
 }
 
