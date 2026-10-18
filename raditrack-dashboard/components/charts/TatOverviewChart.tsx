@@ -366,11 +366,16 @@ export function TatOverviewChart({
             ? item.routine
             : item.all;
 
+      const avgTatHours = Number((stats.avgTat / 60).toFixed(1));
+      const targetHours = Number((stats.target / 60).toFixed(1));
+
       return {
         modality: item.modality,
         name: item.name,
-        avgTat: stats.avgTat,
-        target: stats.target,
+        avgTatMinutes: stats.avgTat,
+        avgTat: avgTatHours,
+        targetMinutes: stats.target,
+        target: targetHours,
         volume: stats.volume,
       };
     });
@@ -444,7 +449,7 @@ export function TatOverviewChart({
                   : "text-qc-blue"
               }
             >
-              {point.avgTat}m
+              {point.avgTat}h
             </strong>
           </div>
 
@@ -454,7 +459,7 @@ export function TatOverviewChart({
             </span>
 
             <strong className="text-qc-navy">
-              {point.target}m
+              {point.target}h
             </strong>
           </div>
 
@@ -913,7 +918,7 @@ export function TatOverviewChart({
                   axisLine={false}
                   width={42}
                   tickFormatter={(value) =>
-                    `${value}m`
+                    `${value}h`
                   }
                 />
 

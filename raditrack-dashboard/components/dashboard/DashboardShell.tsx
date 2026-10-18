@@ -296,6 +296,10 @@ export function DashboardShell({
       ? kpiData.medianTatMinutes
       : data.medianTatMinutes;
 
+  const displayMedianHours = Number(
+    ((displayMedianMinutes ?? 0) / 60).toFixed(1),
+  );
+
   const displayPctOnTime = kpiData
     ? kpiData.pctOnTime
     : data.pctOnTime;
@@ -602,24 +606,18 @@ export function DashboardShell({
 
                     <div className="mt-1.5 flex items-baseline justify-center gap-1.5 transition-transform duration-300 group-hover:scale-[1.03]">
                       <span className="text-4xl font-extrabold leading-none tracking-tight text-qc-navy">
-                        {displayAvgHours >=
-                        1
-                          ? displayAvgHours
-                          : displayAvgMinutes}
+                        {displayAvgHours}
                       </span>
 
                       <span className="text-sm font-bold text-muted-foreground">
-                        {displayAvgHours >=
-                        1
-                          ? "hrs"
-                          : "mins"}
+                        hrs
                       </span>
                     </div>
 
                     <p className="mt-2.5 text-[11px] text-muted-foreground">
                       Median{" "}
                       <span className="font-extrabold text-qc-navy">
-                        {displayMedianMinutes}m
+                        {displayMedianHours}h
                       </span>
                     </p>
                   </div>
@@ -803,17 +801,11 @@ export function DashboardShell({
 
                     <div className="mt-2 flex items-baseline justify-center gap-1.5">
                       <span className="text-[52px] font-extrabold leading-none tracking-tight text-qc-navy">
-                        {recentAvgHours >=
-                        1
-                          ? recentAvgHours
-                          : recentAvgMinutes}
+                        {recentAvgHours}
                       </span>
 
                       <span className="text-sm font-bold text-muted-foreground">
-                        {recentAvgHours >=
-                        1
-                          ? "hrs"
-                          : "mins"}
+                        hrs
                       </span>
                     </div>
 
@@ -831,10 +823,7 @@ export function DashboardShell({
                       </span>
 
                       <span className="text-sm font-extrabold text-qc-navy">
-                        {priorAvgHours >=
-                        1
-                          ? `${priorAvgHours}h`
-                          : `${priorAvgMinutes}m`}
+                        {priorAvgHours}h
                       </span>
                     </div>
 

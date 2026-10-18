@@ -442,14 +442,10 @@ export function SevenDayTatTable({
   ========================================================= */
 
   const formatTat = (
-    minutes: number,
+    _minutes: number,
     hours: number,
   ) => {
-    if (hours >= 1) {
-      return `${hours}h`;
-    }
-
-    return `${minutes}m`;
+    return `${hours}h`;
   };
 
   /* =========================================================
@@ -713,10 +709,7 @@ export function SevenDayTatTable({
                     }`}
                   >
                     {weightedTat > 0
-                      ? weightedTatHours >=
-                        1
-                        ? `${weightedTatHours}h`
-                        : `${weightedTat}m`
+                      ? `${weightedTatHours}h`
                       : "—"}
                   </span>
                 </td>
