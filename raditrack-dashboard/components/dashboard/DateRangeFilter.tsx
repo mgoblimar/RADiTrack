@@ -60,6 +60,10 @@ const PRESETS: {
     label: "Today",
   },
   {
+    id: "ROLLING_7D",
+    label: "Rolling 7 Days",
+  },
+  {
     id: "WEEK",
     label: "This Week",
   },

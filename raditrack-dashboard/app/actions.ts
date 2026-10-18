@@ -1011,7 +1011,7 @@ export interface ModalityTatStats {
   volume: number;
 }
 
-export type ModalityTemporalPeriod = "ALL" | "7D" | "MONTH" | "YEAR";
+export type ModalityTemporalPeriod = "ALL" | "7D" | "ROLLING_7D" | "MONTH" | "YEAR";
 
 export interface ModalityTatOverviewItem {
   modality: string;
@@ -1019,6 +1019,9 @@ export interface ModalityTatOverviewItem {
   all: ModalityTatStats;
   emergency: ModalityTatStats;
   routine: ModalityTatStats;
+  opd: ModalityTatStats;
+  er: ModalityTatStats;
+  inpatient: ModalityTatStats;
 }
 
 export interface MultiPeriodModalityTatOverview {
@@ -1026,6 +1029,7 @@ export interface MultiPeriodModalityTatOverview {
   periods: {
     ALL: ModalityTatOverviewItem[];
     "7D": ModalityTatOverviewItem[];
+    ROLLING_7D?: ModalityTatOverviewItem[];
     MONTH: ModalityTatOverviewItem[];
     YEAR: ModalityTatOverviewItem[];
   };
@@ -1048,7 +1052,7 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
 
   const now = new Date();
   const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
@@ -1064,17 +1068,21 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
           ? new Date(e.report.reportSignedAt)
           : null;
         if (!examDate) return false;
-        if (period === "7D") return examDate >= sevenDaysAgo && examDate <= now;
+        if (period === "7D" || period === "ROLLING_7D") return examDate >= sevenDaysAgo && examDate <= now;
         if (period === "MONTH") return examDate >= startOfMonth && examDate <= now;
         if (period === "YEAR") return examDate >= startOfYear && examDate <= now;
         return true;
       });
 
-      const calcStats = (exams: typeof m.examinations, isStat: boolean | null): ModalityTatStats => {
+      const calcStats = (
+        exams: typeof m.examinations,
+        filterType: "all" | "isStat" | "isRoutine" | "OPD" | "ER" | "IN"
+      ): ModalityTatStats => {
         const filtered = exams.filter((e) => {
-          if (isStat === true) return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
-          if (isStat === false) return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
-          return true;
+          if (filterType === "all") return true;
+          if (filterType === "isStat") return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
+          if (filterType === "isRoutine") return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+          return e.triageLevel === filterType;
         });
 
         const tatList = filtered
@@ -1086,19 +1094,22 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
             ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
             : 0;
 
-        // Select matching target from SLA rules
-        const sla = m.slaConfigs.find((s) => {
-          if (isStat === true) return s.urgencyLevel === UrgencyLevel.STAT || s.triageLevel === TriageLevel.ER;
-          if (isStat === false) return s.urgencyLevel === UrgencyLevel.ROUTINE;
-          return true;
-        });
+        let sla: any;
+        if (filterType === "isStat" || filterType === "ER") {
+          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER || s.urgencyLevel === UrgencyLevel.STAT);
+        } else if (filterType === "OPD") {
+          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
+        } else if (filterType === "IN") {
+          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
+        } else {
+          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) || m.slaConfigs[0];
+        }
 
-        // Default fallback targets if specific rule not matched
         const defaultTarget =
           m.modalityCode === ModalityCode.CT
-            ? (isStat ? 60 : 1440)
+            ? (filterType === "isStat" || filterType === "ER" ? 60 : 1440)
             : m.modalityCode === ModalityCode.XRAY
-            ? (isStat ? 30 : 480)
+            ? (filterType === "isStat" || filterType === "ER" ? 30 : 480)
             : 120;
 
         return {
@@ -1111,34 +1122,61 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
       return {
         modality: m.modalityCode,
         name: m.modalityName,
-        all: calcStats(periodExams, null),
-        emergency: calcStats(periodExams, true),
-        routine: calcStats(periodExams, false),
+        all: calcStats(periodExams, "all"),
+        emergency: calcStats(periodExams, "isStat"),
+        routine: calcStats(periodExams, "isRoutine"),
+        opd: calcStats(periodExams, "OPD"),
+        er: calcStats(periodExams, "ER"),
+        inpatient: calcStats(periodExams, "IN"),
       };
     });
   };
+
+  const rolling7Data = buildPeriodData("7D");
 
   return {
     currentPeriod: "ALL",
     periods: {
       ALL: buildPeriodData("ALL"),
-      "7D": buildPeriodData("7D"),
+      "7D": rolling7Data,
+      ROLLING_7D: rolling7Data,
       MONTH: buildPeriodData("MONTH"),
       YEAR: buildPeriodData("YEAR"),
     },
   };
 }
 
-// 8B. ACTION: Fetch Modality TAT Overview for Custom Date Range
-export async function fetchModalityTatCustomRangeAction(
-  startDateStr: string,
-  endDateStr: string
-): Promise<ModalityTatOverviewItem[]> {
-  const partsStart = startDateStr.split("-").map(Number);
-  const start = new Date(partsStart[0], partsStart[1] - 1, partsStart[2], 0, 0, 0, 0);
+// Action: Fetch Modality TAT Overview for Specific Period or Custom Range
+export async function fetchModalityTatDataAction(options: {
+  period: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<ModalityTatOverviewItem[]> {
+  const now = new Date();
+  let start: Date | undefined;
+  let end: Date = now;
 
-  const partsEnd = endDateStr.split("-").map(Number);
-  const end = new Date(partsEnd[0], partsEnd[1] - 1, partsEnd[2], 23, 59, 59, 999);
+  if (options.period === "7D" || options.period === "ROLLING_7D") {
+    start = new Date(now);
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+  } else if (options.period === "WEEK") {
+    const day = now.getDay();
+    const diffToMon = now.getDate() - (day === 0 ? 6 : day - 1);
+    start = new Date(now.getFullYear(), now.getMonth(), diffToMon, 0, 0, 0, 0);
+    end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  } else if (options.period === "MONTH") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  } else if (options.period === "YEAR") {
+    start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+  } else if (options.period === "CUSTOM" && options.startDate && options.endDate) {
+    const sParts = options.startDate.split("-").map(Number);
+    const eParts = options.endDate.split("-").map(Number);
+    start = new Date(sParts[0], sParts[1] - 1, sParts[2], 0, 0, 0, 0);
+    end = new Date(eParts[0], eParts[1] - 1, eParts[2], 23, 59, 59, 999);
+  }
 
   const modalities = await prisma.modality.findMany({
     include: {
@@ -1147,6 +1185,7 @@ export async function fetchModalityTatCustomRangeAction(
         where: {
           report: { reportSignedAt: { not: null } },
           statusCode: { not: "CANCELLED" },
+          studyDate: start ? { gte: start, lte: end } : undefined,
         },
         include: { report: true },
       },
@@ -1155,21 +1194,14 @@ export async function fetchModalityTatCustomRangeAction(
   });
 
   return modalities.map((m) => {
-    const periodExams = m.examinations.filter((e) => {
-      const examDate = e.studyDate
-        ? new Date(e.studyDate)
-        : e.report?.reportSignedAt
-        ? new Date(e.report.reportSignedAt)
-        : null;
-      if (!examDate) return false;
-      return examDate >= start && examDate <= end;
-    });
-
-    const calcStats = (exams: typeof m.examinations, isStat: boolean | null): ModalityTatStats => {
-      const filtered = exams.filter((e) => {
-        if (isStat === true) return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
-        if (isStat === false) return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
-        return true;
+    const calcStats = (
+      filterType: "all" | "isStat" | "isRoutine" | "OPD" | "ER" | "IN"
+    ): ModalityTatStats => {
+      const filtered = m.examinations.filter((e) => {
+        if (filterType === "all") return true;
+        if (filterType === "isStat") return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
+        if (filterType === "isRoutine") return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+        return e.triageLevel === filterType;
       });
 
       const tatList = filtered
@@ -1181,17 +1213,22 @@ export async function fetchModalityTatCustomRangeAction(
           ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
           : 0;
 
-      const sla = m.slaConfigs.find((s) => {
-        if (isStat === true) return s.urgencyLevel === UrgencyLevel.STAT || s.triageLevel === TriageLevel.ER;
-        if (isStat === false) return s.urgencyLevel === UrgencyLevel.ROUTINE;
-        return true;
-      });
+      let sla: any;
+      if (filterType === "isStat" || filterType === "ER") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER || s.urgencyLevel === UrgencyLevel.STAT);
+      } else if (filterType === "OPD") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
+      } else if (filterType === "IN") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
+      } else {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) || m.slaConfigs[0];
+      }
 
       const defaultTarget =
         m.modalityCode === ModalityCode.CT
-          ? (isStat ? 60 : 1440)
+          ? (filterType === "isStat" || filterType === "ER" ? 60 : 1440)
           : m.modalityCode === ModalityCode.XRAY
-          ? (isStat ? 30 : 480)
+          ? (filterType === "isStat" || filterType === "ER" ? 30 : 480)
           : 120;
 
       return {
@@ -1204,10 +1241,25 @@ export async function fetchModalityTatCustomRangeAction(
     return {
       modality: m.modalityCode,
       name: m.modalityName,
-      all: calcStats(periodExams, null),
-      emergency: calcStats(periodExams, true),
-      routine: calcStats(periodExams, false),
+      all: calcStats("all"),
+      emergency: calcStats("isStat"),
+      routine: calcStats("isRoutine"),
+      opd: calcStats("OPD"),
+      er: calcStats("ER"),
+      inpatient: calcStats("IN"),
     };
+  });
+}
+
+// 8B. ACTION: Fetch Modality TAT Overview for Custom Date Range
+export async function fetchModalityTatCustomRangeAction(
+  startDateStr: string,
+  endDateStr: string
+): Promise<ModalityTatOverviewItem[]> {
+  return fetchModalityTatDataAction({
+    period: "CUSTOM",
+    startDate: startDateStr,
+    endDate: endDateStr,
   });
 }
 
@@ -1941,6 +1993,7 @@ export async function toggleRadiologistStatusAction(radiologistId: string, isAct
 export type KpiPreset =
   | "ALL"
   | "TODAY"
+  | "ROLLING_7D"
   | "WEEK"
   | "LAST_WEEK"
   | "MONTH"
@@ -2006,6 +2059,15 @@ export async function fetchFilteredExecutiveKpiAction(
     priorEnd.setDate(priorEnd.getDate() - 1);
     presetLabel = "Today";
     priorPeriodLabel = "Yesterday";
+  } else if (preset === "ROLLING_7D") {
+    end = todayEnd;
+    start = new Date(todayStart);
+    start.setDate(start.getDate() - 6);
+    priorEnd = new Date(start.getTime() - 1);
+    priorStart = new Date(start);
+    priorStart.setDate(priorStart.getDate() - 7);
+    presetLabel = "Rolling 7 Days";
+    priorPeriodLabel = "Prior 7 Days";
   } else if (preset === "WEEK") {
     const day = now.getDay();
     const diffToMon = now.getDate() - (day === 0 ? 6 : day - 1);
@@ -2240,11 +2302,14 @@ export async function fetchFilteredExecutiveKpiAction(
 
   // Modality TAT Breakdown for this period
   const modalityOverview: ModalityTatOverviewItem[] = modalities.map((m) => {
-    const calcStats = (exams: typeof m.examinations, isStat: boolean | null): ModalityTatStats => {
-      const filtered = exams.filter((e) => {
-        if (isStat === true) return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
-        if (isStat === false) return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
-        return true;
+    const calcStats = (
+      filterType: "all" | "isStat" | "isRoutine" | "OPD" | "ER" | "IN"
+    ): ModalityTatStats => {
+      const filtered = m.examinations.filter((e) => {
+        if (filterType === "all") return true;
+        if (filterType === "isStat") return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
+        if (filterType === "isRoutine") return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+        return e.triageLevel === filterType;
       });
 
       const tatList = filtered
@@ -2256,17 +2321,22 @@ export async function fetchFilteredExecutiveKpiAction(
           ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
           : 0;
 
-      const sla = m.slaConfigs.find((s) => {
-        if (isStat === true) return s.urgencyLevel === UrgencyLevel.STAT || s.triageLevel === TriageLevel.ER;
-        if (isStat === false) return s.urgencyLevel === UrgencyLevel.ROUTINE;
-        return true;
-      });
+      let sla: any;
+      if (filterType === "isStat" || filterType === "ER") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER || s.urgencyLevel === UrgencyLevel.STAT);
+      } else if (filterType === "OPD") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
+      } else if (filterType === "IN") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
+      } else {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) || m.slaConfigs[0];
+      }
 
       const defaultTarget =
         m.modalityCode === ModalityCode.CT
-          ? (isStat ? 60 : 1440)
+          ? (filterType === "isStat" || filterType === "ER" ? 60 : 1440)
           : m.modalityCode === ModalityCode.XRAY
-          ? (isStat ? 30 : 480)
+          ? (filterType === "isStat" || filterType === "ER" ? 30 : 480)
           : 120;
 
       return {
@@ -2279,9 +2349,12 @@ export async function fetchFilteredExecutiveKpiAction(
     return {
       modality: m.modalityCode,
       name: m.modalityName,
-      all: calcStats(m.examinations, null),
-      emergency: calcStats(m.examinations, true),
-      routine: calcStats(m.examinations, false),
+      all: calcStats("all"),
+      emergency: calcStats("isStat"),
+      routine: calcStats("isRoutine"),
+      opd: calcStats("OPD"),
+      er: calcStats("ER"),
+      inpatient: calcStats("IN"),
     };
   });
 

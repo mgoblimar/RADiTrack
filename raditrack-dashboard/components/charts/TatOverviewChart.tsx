@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 
 import {
+  fetchModalityTatDataAction,
   fetchModalityTatCustomRangeAction,
   type ModalityTatOverviewItem,
   type MultiPeriodModalityTatOverview,
@@ -48,12 +49,19 @@ interface Props {
 
 type ExtendedTemporalPeriod =
   | ModalityTemporalPeriod
+  | "WEEK"
   | "CUSTOM";
 
 type UrgencyFilter =
   | "ALL"
   | "EMERGENCY"
   | "ROUTINE";
+
+type PatientCategoryFilter =
+  | "ALL"
+  | "OPD"
+  | "ER"
+  | "IN";
 
 /* =========================================================
    RADiTrack palette
@@ -75,6 +83,12 @@ export function TatOverviewChart({
 
   const [urgencyFilter, setUrgencyFilter] =
     useState<UrgencyFilter>("ALL");
+
+  const [patientCategory, setPatientCategory] =
+    useState<PatientCategoryFilter>("ALL");
+
+  const [periodDataset, setPeriodDataset] =
+    useState<ModalityTatOverviewItem[] | null>(null);
 
   const [isFilterOpen, setIsFilterOpen] =
     useState(false);
@@ -288,6 +302,33 @@ export function TatOverviewChart({
      Custom range
   ========================================================= */
 
+  const handleSelectPeriod = (period: ExtendedTemporalPeriod) => {
+    setTemporalPeriod(period);
+
+    if (period === "ALL") {
+      setPeriodDataset(null);
+      return;
+    }
+
+    if (period === "CUSTOM") {
+      if (!customDataset) {
+        handleFetchCustomRange(customStartDate, customEndDate);
+      }
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const result = await fetchModalityTatDataAction({
+          period,
+        });
+        setPeriodDataset(result);
+      } catch (error) {
+        console.error("Failed to fetch modality TAT for period:", error);
+      }
+    });
+  };
+
   const handleFetchCustomRange = (
     start: string,
     end: string,
@@ -307,10 +348,11 @@ export function TatOverviewChart({
     startTransition(async () => {
       try {
         const result =
-          await fetchModalityTatCustomRangeAction(
-            start,
-            end,
-          );
+          await fetchModalityTatDataAction({
+            period: "CUSTOM",
+            startDate: start,
+            endDate: end,
+          });
 
         setCustomDataset(result);
       } catch (error) {
@@ -334,6 +376,8 @@ export function TatOverviewChart({
     customDataset
   ) {
     activeDataset = customDataset;
+  } else if (temporalPeriod !== "ALL" && periodDataset) {
+    activeDataset = periodDataset;
   } else if (data) {
     if (
       "periods" in data &&
@@ -345,7 +389,7 @@ export function TatOverviewChart({
           : temporalPeriod;
 
       activeDataset =
-        data.periods[key] ??
+        data.periods[key as ModalityTemporalPeriod] ??
         data.periods.ALL ??
         [];
     } else if (Array.isArray(data)) {
@@ -359,12 +403,19 @@ export function TatOverviewChart({
 
   const displayData =
     activeDataset.map((item) => {
-      const stats =
-        urgencyFilter === "EMERGENCY"
-          ? item.emergency
-          : urgencyFilter === "ROUTINE"
-            ? item.routine
-            : item.all;
+      let stats = item.all;
+
+      if (patientCategory === "OPD" && item.opd) {
+        stats = item.opd;
+      } else if (patientCategory === "ER" && (item.er || item.emergency)) {
+        stats = item.er ?? item.emergency;
+      } else if (patientCategory === "IN" && item.inpatient) {
+        stats = item.inpatient;
+      } else if (urgencyFilter === "EMERGENCY" && item.emergency) {
+        stats = item.emergency;
+      } else if (urgencyFilter === "ROUTINE" && item.routine) {
+        stats = item.routine;
+      }
 
       const avgTatHours = Number((stats.avgTat / 60).toFixed(1));
       const targetHours = Number((stats.target / 60).toFixed(1));
@@ -382,11 +433,15 @@ export function TatOverviewChart({
 
   const isFiltered =
     temporalPeriod !== "ALL" ||
-    urgencyFilter !== "ALL";
+    urgencyFilter !== "ALL" ||
+    patientCategory !== "ALL";
 
   const handleResetFilters = () => {
     setTemporalPeriod("ALL");
     setUrgencyFilter("ALL");
+    setPatientCategory("ALL");
+    setPeriodDataset(null);
+    setCustomDataset(null);
     setIsFilterOpen(false);
   };
 
@@ -395,7 +450,9 @@ export function TatOverviewChart({
     string
   > = {
     ALL: "All time",
+    ROLLING_7D: "Rolling 7 days",
     "7D": "Past 7 days",
+    WEEK: "This week",
     MONTH: "This month",
     YEAR: "This year",
     CUSTOM: "Custom range",
@@ -428,25 +485,61 @@ export function TatOverviewChart({
       point.volume > 0 &&
       point.avgTat > point.target;
 
+    const patientCategoryLabel =
+      patientCategory === "OPD"
+        ? "OPD Patients"
+        : patientCategory === "ER"
+          ? "ER Patients"
+          : patientCategory === "IN"
+            ? "Inpatients"
+            : urgencyFilter === "EMERGENCY"
+              ? "STAT / ER Priority"
+              : urgencyFilter === "ROUTINE"
+                ? "Routine Priority"
+                : "All Patients";
+
     return (
-      <div className="min-w-[190px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_14px_35px_rgba(5,14,64,0.14)]">
-        <p className="font-extrabold text-qc-navy">
-          {point.name ||
-            point.modality}
-        </p>
+      <div className="min-w-[200px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_14px_35px_rgba(5,14,64,0.14)]">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-extrabold text-qc-navy">
+            {point.name || point.modality}
+          </p>
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
+            {patientCategoryLabel}
+          </span>
+        </div>
 
         <div className="mt-2.5 space-y-2 border-t border-border pt-2.5">
+          <div className="flex items-center justify-between gap-5">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="h-2.5 w-3 rounded-xs border border-blue-300 bg-[#E8EFFD]" />
+              Target SLA
+            </span>
+            <strong className="text-qc-navy">
+              {point.target}h
+            </strong>
+          </div>
 
           <div className="flex items-center justify-between gap-5">
-            <span className="text-muted-foreground">
-              TAT
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span
+                className={`h-2 w-2 rounded-xs ${
+                  point.volume === 0
+                    ? "bg-muted-foreground"
+                    : isBreach
+                      ? "bg-qc-red"
+                      : "bg-qc-blue"
+                }`}
+              />
+              Actual TAT
             </span>
-
             <strong
               className={
-                isBreach
-                  ? "text-qc-red"
-                  : "text-qc-blue"
+                point.volume === 0
+                  ? "text-muted-foreground"
+                  : isBreach
+                    ? "text-qc-red"
+                    : "text-qc-blue"
               }
             >
               {point.avgTat}h
@@ -455,19 +548,8 @@ export function TatOverviewChart({
 
           <div className="flex items-center justify-between gap-5">
             <span className="text-muted-foreground">
-              Target
-            </span>
-
-            <strong className="text-qc-navy">
-              {point.target}h
-            </strong>
-          </div>
-
-          <div className="flex items-center justify-between gap-5">
-            <span className="text-muted-foreground">
               Finalized
             </span>
-
             <strong className="text-qc-navy">
               {point.volume}
             </strong>
@@ -486,11 +568,10 @@ export function TatOverviewChart({
               {point.volume === 0
                 ? "No finalized scans"
                 : isBreach
-                  ? "Above SLA"
-                  : "Within SLA"}
+                  ? "Above SLA (Breached)"
+                  : "Within SLA Benchmark"}
             </span>
           </div>
-
         </div>
       </div>
     );
@@ -515,167 +596,138 @@ export function TatOverviewChart({
         }}
         className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_50px_rgba(5,14,64,0.14)]"
       >
-
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-
           <span className="text-sm font-extrabold text-qc-navy">
             Filters
           </span>
-
           <button
             type="button"
-            onClick={() =>
-              setIsFilterOpen(false)
-            }
+            onClick={() => setIsFilterOpen(false)}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
             aria-label="Close filters"
           >
             <X className="h-3.5 w-3.5" />
           </button>
-
         </div>
 
         <div className="space-y-4 p-4">
+          {/* Patient Category */}
+          <div>
+            <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              Patient Category
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {(
+                [
+                  { id: "ALL", label: "All" },
+                  { id: "OPD", label: "OPD" },
+                  { id: "ER", label: "ER" },
+                  { id: "IN", label: "Inpatient" },
+                ] as const
+              ).map((cat) => {
+                const isActive = patientCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setPatientCategory(cat.id)}
+                    className={`rounded-xl px-2 py-2 text-[10px] font-bold transition-colors ${
+                      isActive
+                        ? "bg-qc-navy text-white"
+                        : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Time */}
-          <div>
-
+          <div className="border-t border-border pt-3">
             <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-              Time
+              Time Period
             </div>
 
             <div className="grid grid-cols-2 gap-1.5">
-
               {(
                 [
                   "ALL",
-                  "7D",
+                  "ROLLING_7D",
+                  "WEEK",
                   "MONTH",
                   "YEAR",
                 ] as ExtendedTemporalPeriod[]
               ).map((period) => {
-                const isActive =
-                  temporalPeriod ===
-                  period;
+                const isActive = temporalPeriod === period;
 
                 return (
                   <button
                     key={period}
                     type="button"
-                    onClick={() =>
-                      setTemporalPeriod(
-                        period,
-                      )
-                    }
+                    onClick={() => handleSelectPeriod(period)}
                     className={`flex items-center justify-between rounded-xl px-2.5 py-2.5 text-[11px] font-bold transition-colors ${
                       isActive
                         ? "bg-qc-yellow text-qc-navy"
                         : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
                     }`}
                   >
-                    <span>
-                      {
-                        temporalLabels[
-                          period
-                        ]
-                      }
-                    </span>
-
-                    {isActive && (
-                      <Check className="h-3 w-3" />
-                    )}
+                    <span>{temporalLabels[period]}</span>
+                    {isActive && <Check className="h-3 w-3" />}
                   </button>
                 );
               })}
-
             </div>
 
             <button
               type="button"
               onClick={() => {
-                setTemporalPeriod(
-                  "CUSTOM",
-                );
-
-                if (!customDataset) {
-                  handleFetchCustomRange(
-                    customStartDate,
-                    customEndDate,
-                  );
-                }
+                handleSelectPeriod("CUSTOM");
               }}
               className={`mt-1.5 flex w-full items-center justify-between rounded-xl px-2.5 py-2.5 text-[11px] font-bold transition-colors ${
-                temporalPeriod ===
-                "CUSTOM"
+                temporalPeriod === "CUSTOM"
                   ? "bg-qc-blue text-white"
                   : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
               }`}
             >
-              <span>
-                Custom range
-              </span>
-
-              {temporalPeriod ===
-                "CUSTOM" && (
+              <span>Custom range</span>
+              {temporalPeriod === "CUSTOM" && (
                 <Check className="h-3 w-3" />
               )}
             </button>
 
-            {temporalPeriod ===
-              "CUSTOM" && (
+            {temporalPeriod === "CUSTOM" && (
               <div className="mt-2 rounded-xl bg-background p-2.5">
-
                 <div className="grid grid-cols-2 gap-2">
-
                   <label className="space-y-1">
-
                     <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
                       From
                     </span>
-
                     <input
                       type="date"
-                      value={
-                        customStartDate
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setCustomStartDate(
-                          event.target
-                            .value,
-                        )
+                      value={customStartDate}
+                      onChange={(event) =>
+                        setCustomStartDate(event.target.value)
                       }
                       className="h-9 w-full rounded-lg border border-border bg-card px-2 text-[10px] font-bold text-qc-navy outline-none focus:border-qc-blue/25"
                     />
-
                   </label>
 
                   <label className="space-y-1">
-
                     <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
                       To
                     </span>
-
                     <input
                       type="date"
-                      value={
-                        customEndDate
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setCustomEndDate(
-                          event.target
-                            .value,
-                        )
+                      value={customEndDate}
+                      onChange={(event) =>
+                        setCustomEndDate(event.target.value)
                       }
                       className="h-9 w-full rounded-lg border border-border bg-card px-2 text-[10px] font-bold text-qc-navy outline-none focus:border-qc-blue/25"
                     />
-
                   </label>
-
                 </div>
 
                 <button
@@ -690,8 +742,7 @@ export function TatOverviewChart({
                     isPending ||
                     !customStartDate ||
                     !customEndDate ||
-                    customStartDate >
-                      customEndDate
+                    customStartDate > customEndDate
                   }
                   className="mt-2.5 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-qc-yellow text-[10px] font-extrabold text-qc-navy transition-opacity disabled:opacity-50"
                 >
@@ -700,24 +751,19 @@ export function TatOverviewChart({
                   ) : (
                     <Calendar className="h-3 w-3" />
                   )}
-
                   Apply
                 </button>
-
               </div>
             )}
-
           </div>
 
           {/* Priority */}
-          <div className="border-t border-border pt-4">
-
+          <div className="border-t border-border pt-3">
             <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
               Priority
             </div>
 
             <div className="grid grid-cols-3 gap-1.5">
-
               {(
                 [
                   "ALL",
@@ -725,19 +771,13 @@ export function TatOverviewChart({
                   "ROUTINE",
                 ] as const
               ).map((urgency) => {
-                const isActive =
-                  urgencyFilter ===
-                  urgency;
+                const isActive = urgencyFilter === urgency;
 
                 return (
                   <button
                     key={urgency}
                     type="button"
-                    onClick={() =>
-                      setUrgencyFilter(
-                        urgency,
-                      )
-                    }
+                    onClick={() => setUrgencyFilter(urgency)}
                     className={`rounded-xl px-2 py-2.5 text-[10px] font-bold transition-colors ${
                       isActive
                         ? "bg-qc-blue text-white"
@@ -746,155 +786,151 @@ export function TatOverviewChart({
                   >
                     {urgency === "ALL"
                       ? "All"
-                      : urgency ===
-                          "EMERGENCY"
+                      : urgency === "EMERGENCY"
                         ? "STAT / ER"
                         : "Routine"}
                   </button>
                 );
               })}
-
             </div>
-
           </div>
 
           {/* Reset */}
           {isFiltered && (
             <button
               type="button"
-              onClick={
-                handleResetFilters
-              }
+              onClick={handleResetFilters}
               className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-background py-2.5 text-[10px] font-extrabold text-muted-foreground transition-colors hover:bg-qc-blue/5 hover:text-qc-blue"
             >
               <RotateCcw className="h-3 w-3" />
               Reset filters
             </button>
           )}
-
         </div>
-
       </div>
     ) : null;
 
   return (
     <section className="overflow-hidden rounded-[26px] border border-[#DDE3F2] bg-card shadow-[0_4px_18px_rgba(24,41,140,0.05)]">
-
       {/* =====================================================
           HEADER
       ===================================================== */}
-
-      <div className="relative overflow-hidden border-b border-[#E4E8F1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-5 sm:px-6">
-
+      <div className="relative overflow-hidden border-b border-[#E4E8F1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-4 sm:px-6">
         <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-qc-yellow/10" />
-
         <div className="pointer-events-none absolute bottom-0 right-28 h-20 w-20 rounded-full bg-qc-blue/[0.035]" />
 
-        <div className="relative flex items-center justify-between gap-4">
-
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
           {/* Title */}
           <div className="flex items-center gap-3.5">
-
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow shadow-[0_5px_14px_rgba(5,14,64,0.12)]">
               <BarChart3 className="h-5 w-5" />
             </div>
 
-            <h2 className="text-2xl font-extrabold tracking-tight text-qc-navy">
-              TAT BY MODALITY
-            </h2>
-
+            <div>
+              <h2 className="text-xl font-extrabold tracking-tight text-qc-navy sm:text-2xl">
+                TAT BY MODALITY
+              </h2>
+              <p className="text-xs font-semibold text-muted-foreground">
+                Target SLA benchmark vs Actual TAT
+              </p>
+            </div>
           </div>
 
-          {/* Filter */}
-          <button
-            ref={filterButtonRef}
-            type="button"
-            onClick={() =>
-              setIsFilterOpen(
-                (previous) =>
-                  !previous,
-              )
-            }
-            className={`group inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-[11px] font-extrabold shadow-sm transition-all ${
-              isFilterOpen
-                ? "border-qc-navy bg-qc-navy text-white shadow-[0_6px_14px_rgba(5,14,64,0.12)]"
-                : isFiltered
-                  ? "border-qc-blue/15 bg-white/80 text-qc-blue hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
-                  : "border-white/80 bg-white/75 text-qc-navy hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
-            }`}
-            aria-expanded={
-              isFilterOpen
-            }
-            aria-haspopup="dialog"
-          >
+          {/* Controls: Patient Category Pills + Filter Button */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center rounded-xl border border-border/80 bg-white/90 p-1 shadow-xs">
+              {(
+                [
+                  { id: "ALL", label: "All" },
+                  { id: "OPD", label: "OPD" },
+                  { id: "ER", label: "ER" },
+                  { id: "IN", label: "Inpatient" },
+                ] as const
+              ).map((cat) => {
+                const isActive = patientCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setPatientCategory(cat.id)}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-extrabold transition-all ${
+                      isActive
+                        ? "bg-qc-navy text-white shadow-xs"
+                        : "text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
 
-            <Filter
-              className={`h-3.5 w-3.5 transition-colors ${
+            {/* Filter Button */}
+            <button
+              ref={filterButtonRef}
+              type="button"
+              onClick={() => setIsFilterOpen((previous) => !previous)}
+              className={`group inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-extrabold shadow-xs transition-all ${
                 isFilterOpen
-                  ? "text-qc-yellow"
-                  : "text-qc-blue"
+                  ? "border-qc-navy bg-qc-navy text-white shadow-[0_6px_14px_rgba(5,14,64,0.12)]"
+                  : isFiltered
+                    ? "border-qc-blue/20 bg-white text-qc-blue hover:border-qc-blue/30 hover:bg-white"
+                    : "border-border/80 bg-white/90 text-qc-navy hover:border-qc-blue/15 hover:bg-white"
               }`}
-            />
-
-            <span>
-              Filter
-            </span>
-
-            <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${
-                isFilterOpen
-                  ? "rotate-180"
-                  : ""
-              }`}
-            />
-
-          </button>
-
+              aria-expanded={isFilterOpen}
+              aria-haspopup="dialog"
+            >
+              <Filter
+                className={`h-3 w-3 transition-colors ${
+                  isFilterOpen
+                    ? "text-qc-yellow"
+                    : "text-qc-blue"
+                }`}
+              />
+              <span>
+                {temporalPeriod !== "ALL"
+                  ? temporalLabels[temporalPeriod]
+                  : "Filter"}
+              </span>
+              <ChevronDown
+                className={`h-3 w-3 transition-transform ${
+                  isFilterOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Filter portal */}
-      {typeof document !==
-        "undefined" &&
+      {typeof document !== "undefined" &&
         isFilterOpen &&
-        createPortal(
-          filterPopover,
-          document.body,
-        )}
+        createPortal(filterPopover, document.body)}
 
       {/* Chart */}
       <div className="px-4 py-5 sm:px-5 sm:py-6">
-
         {displayData.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background">
-
             <p className="text-sm font-extrabold text-qc-navy">
               No modality data
             </p>
-
             <p className="mt-1 text-xs text-muted-foreground">
-              No finalized scans match
-              this filter.
+              No finalized scans match this filter.
             </p>
-
           </div>
         ) : (
           <div className="h-[270px] w-full sm:h-[300px]">
-
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
+            <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={displayData}
+                barGap="-100%"
                 margin={{
-                  top: 8,
-                  right: 8,
+                  top: 14,
+                  right: 12,
                   left: -10,
                   bottom: 0,
                 }}
               >
-
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke={QC_GRID}
@@ -917,118 +953,70 @@ export function TatOverviewChart({
                   tickLine={false}
                   axisLine={false}
                   width={42}
-                  tickFormatter={(value) =>
-                    `${value}h`
-                  }
+                  tickFormatter={(value) => `${value}h`}
                 />
 
                 <Tooltip
-                  content={
-                    <ChartTooltip />
-                  }
+                  content={<ChartTooltip />}
                   cursor={{
                     fill: "rgba(24, 41, 140, 0.04)",
                   }}
                 />
 
+                {/* Target SLA (Wide background bar benchmark) */}
+                <Bar
+                  dataKey="target"
+                  name="Target SLA"
+                  fill="#E9EFFD"
+                  stroke="#93C5FD"
+                  strokeWidth={1.5}
+                  radius={[8, 8, 2, 2]}
+                  barSize={46}
+                />
+
+                {/* Actual TAT (Narrow foreground bar centered in front of Target SLA) */}
                 <Bar
                   dataKey="avgTat"
                   name="Actual TAT"
-                  fill={QC_BLUE}
-                  radius={[
-                    8,
-                    8,
-                    2,
-                    2,
-                  ]}
-                  maxBarSize={52}
+                  radius={[6, 6, 2, 2]}
+                  barSize={24}
                 >
-
-                  {displayData.map(
-                    (
-                      item,
-                      index,
-                    ) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={
-                          item.volume ===
-                          0
-                            ? QC_EMPTY
-                            : item.avgTat >
-                                item.target
-                              ? QC_RED
-                              : QC_BLUE
-                        }
-                      />
-                    ),
-                  )}
-
+                  {displayData.map((item, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        item.volume === 0
+                          ? QC_EMPTY
+                          : item.avgTat > item.target
+                            ? QC_RED
+                            : QC_BLUE
+                      }
+                    />
+                  ))}
                 </Bar>
-
-                <Line
-                  type="monotone"
-                  dataKey="target"
-                  name="SLA target"
-                  stroke={QC_YELLOW}
-                  strokeWidth={2}
-                  dot={{
-                    r: 3,
-                    fill: QC_YELLOW,
-                    stroke: "#FFFFFF",
-                    strokeWidth: 1.5,
-                  }}
-                  activeDot={{
-                    r: 4,
-                    fill: QC_YELLOW,
-                    stroke: QC_NAVY,
-                    strokeWidth: 1.5,
-                  }}
-                />
-
               </ComposedChart>
             </ResponsiveContainer>
-
           </div>
         )}
-
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-border px-4 py-3 text-[10px] font-semibold text-muted-foreground">
-
-        <span className="flex items-center gap-1.5">
-
-          <span className="h-2.5 w-2.5 rounded-sm bg-qc-blue" />
-
-          Actual TAT
-
+      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border px-4 py-3 text-[11px] font-semibold text-muted-foreground">
+        <span className="flex items-center gap-2">
+          <span className="h-3 w-5 rounded-xs border border-blue-300 bg-[#E9EFFD]" />
+          Target SLA (Benchmark)
         </span>
 
-        <span className="flex items-center gap-1.5">
-
-          <span
-            className="h-0.5 w-4 rounded-full"
-            style={{
-              backgroundColor:
-                QC_YELLOW,
-            }}
-          />
-
-          SLA target
-
+        <span className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-xs bg-qc-blue" />
+          Actual TAT (Within SLA)
         </span>
 
-        <span className="flex items-center gap-1.5">
-
-          <span className="h-2.5 w-2.5 rounded-sm bg-qc-red" />
-
-          Above target
-
+        <span className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-xs bg-qc-red" />
+          Actual TAT (Above SLA)
         </span>
-
       </div>
-
     </section>
   );
 }
