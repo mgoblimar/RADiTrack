@@ -1148,8 +1148,9 @@ export function ConfigurationsHub({
                     { label: "2 hrs", val: 120 },
                     { label: "8 hrs", val: 480 },
                     { label: "12 hrs", val: 720 },
-                    { label: "24 hrs", val: 1440 },
-                    { label: "48 hrs", val: 2880 },
+                    { label: "24 hrs (1 day)", val: 1440 },
+                    { label: "48 hrs (2 days)", val: 2880 },
+                    { label: "72 hrs (3 days)", val: 4320 },
                   ].map((p) => (
                     <button
                       key={p.val}
