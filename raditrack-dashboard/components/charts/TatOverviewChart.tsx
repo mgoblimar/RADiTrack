@@ -772,7 +772,6 @@ export function TatOverviewChart({
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={displayData}
-                barGap="-100%"
                 margin={{
                   top: 14,
                   right: 12,
@@ -786,7 +785,9 @@ export function TatOverviewChart({
                   vertical={false}
                 />
 
+                {/* Primary X-Axis for Target SLA bar */}
                 <XAxis
+                  xAxisId="targetAxis"
                   dataKey="modality"
                   stroke={QC_MUTED}
                   fontSize={11}
@@ -794,6 +795,13 @@ export function TatOverviewChart({
                   tickLine={false}
                   axisLine={false}
                   dy={7}
+                />
+
+                {/* Secondary hidden X-Axis for Actual TAT bar (centers bar on same tick) */}
+                <XAxis
+                  xAxisId="actualAxis"
+                  dataKey="modality"
+                  hide
                 />
 
                 <YAxis
@@ -812,22 +820,25 @@ export function TatOverviewChart({
                   }}
                 />
 
-                {/* Target SLA (Wide background bar benchmark) */}
+                {/* Wide Target SLA bar in background (matching Excel reference) */}
                 <Bar
+                  xAxisId="targetAxis"
                   dataKey="target"
                   name="Target SLA"
-                  fill="#E9EFFD"
-                  stroke="#93C5FD"
+                  fill="#4A69BD"
+                  fillOpacity={0.82}
+                  stroke="#2C4897"
                   strokeWidth={1.5}
-                  radius={[8, 8, 2, 2]}
-                  barSize={46}
+                  radius={[6, 6, 0, 0]}
+                  barSize={50}
                 />
 
-                {/* Actual TAT (Narrow foreground bar centered in front of Target SLA) */}
+                {/* Narrow Actual TAT bar centered directly in foreground */}
                 <Bar
+                  xAxisId="actualAxis"
                   dataKey="avgTat"
                   name="Actual TAT"
-                  radius={[6, 6, 2, 2]}
+                  radius={[4, 4, 0, 0]}
                   barSize={24}
                 >
                   {displayData.map((item, index) => (
@@ -837,8 +848,8 @@ export function TatOverviewChart({
                         item.volume === 0
                           ? QC_EMPTY
                           : item.avgTat > item.target
-                            ? QC_RED
-                            : QC_BLUE
+                            ? "#C53030"
+                            : QC_NAVY
                       }
                     />
                   ))}
@@ -852,18 +863,18 @@ export function TatOverviewChart({
       {/* Legend */}
       <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border px-4 py-3 text-[11px] font-semibold text-muted-foreground">
         <span className="flex items-center gap-2">
-          <span className="h-3 w-5 rounded-xs border border-blue-300 bg-[#E9EFFD]" />
-          Target SLA (Benchmark)
+          <span className="h-3 w-5 rounded-xs border border-[#2C4897] bg-[#4A69BD]" />
+          Target SLA (Wide Benchmark Bar)
         </span>
 
         <span className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-xs bg-qc-blue" />
+          <span className="h-3 w-3 rounded-xs bg-qc-navy" />
           Actual TAT (Within SLA)
         </span>
 
         <span className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-xs bg-qc-red" />
-          Actual TAT (Above SLA)
+          <span className="h-3 w-3 rounded-xs bg-[#C53030]" />
+          Actual TAT (Above SLA / Breached)
         </span>
       </div>
     </section>
