@@ -22,6 +22,7 @@ import {
   X,
   SlidersHorizontal,
   ArrowUpRight,
+  UserCheck,
 } from "lucide-react";
 
 import { ExportCsvButton } from "@/components/staff/ExportCsvButton";
@@ -60,6 +61,20 @@ type DatePreset =
   | "year"
   | "custom";
 
+const ALL_MODALITIES: ModalityCode[] = [
+  ModalityCode.XRAY,
+  ModalityCode.CT,
+  ModalityCode.MRI,
+  ModalityCode.US,
+  ModalityCode.MAMMO,
+];
+
+const ALL_CATEGORIES: TriageLevel[] = [
+  TriageLevel.OPD,
+  TriageLevel.ER,
+  TriageLevel.IN,
+];
+
 export function ExaminationsHub({
   queue,
   finalizedCount: initialFinalizedCount,
@@ -84,8 +99,11 @@ export function ExaminationsHub({
   const [endDate, setEndDate] =
     useState<string>(todayStr);
 
-  const [modalityCode, setModalityCode] =
-    useState<string>("ALL");
+  const [selectedModalities, setSelectedModalities] =
+    useState<string[]>(ALL_MODALITIES);
+
+  const [selectedCategories, setSelectedCategories] =
+    useState<string[]>(ALL_CATEGORIES);
 
   const [searchTerm, setSearchTerm] =
     useState<string>("");
@@ -156,6 +174,48 @@ export function ExaminationsHub({
   }, [isFilterOpen]);
 
   /* =========================================================
+     Modality & Patient Category Selection Helpers
+  ========================================================= */
+
+  const isAllModalitiesSelected =
+    selectedModalities.length === ALL_MODALITIES.length;
+
+  const toggleAllModalities = () => {
+    if (isAllModalitiesSelected) {
+      setSelectedModalities([]);
+    } else {
+      setSelectedModalities(ALL_MODALITIES);
+    }
+  };
+
+  const toggleModality = (code: string) => {
+    setSelectedModalities((prev) =>
+      prev.includes(code)
+        ? prev.filter((c) => c !== code)
+        : [...prev, code],
+    );
+  };
+
+  const isAllCategoriesSelected =
+    selectedCategories.length === ALL_CATEGORIES.length;
+
+  const toggleAllCategories = () => {
+    if (isAllCategoriesSelected) {
+      setSelectedCategories([]);
+    } else {
+      setSelectedCategories(ALL_CATEGORIES);
+    }
+  };
+
+  const toggleCategory = (level: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(level)
+        ? prev.filter((c) => c !== level)
+        : [...prev, level],
+    );
+  };
+
+  /* =========================================================
      Load examinations
   ========================================================= */
 
@@ -174,7 +234,12 @@ export function ExaminationsHub({
               datePreset === "custom"
                 ? endDate
                 : undefined,
-            modalityCode,
+            modalityCodes: isAllModalitiesSelected
+              ? ["ALL"]
+              : selectedModalities,
+            patientCategories: isAllCategoriesSelected
+              ? ["ALL"]
+              : selectedCategories,
             searchTerm,
           });
 
@@ -191,7 +256,10 @@ export function ExaminationsHub({
     datePreset,
     startDate,
     endDate,
-    modalityCode,
+    isAllModalitiesSelected,
+    selectedModalities,
+    isAllCategoriesSelected,
+    selectedCategories,
     searchTerm,
   ]);
 
@@ -205,7 +273,8 @@ export function ExaminationsHub({
 
   const handleResetFilters = () => {
     setDatePreset("all");
-    setModalityCode("ALL");
+    setSelectedModalities(ALL_MODALITIES);
+    setSelectedCategories(ALL_CATEGORIES);
     setSearchTerm("");
     setStartDate(todayStr);
     setEndDate(todayStr);
@@ -272,10 +341,22 @@ export function ExaminationsHub({
       : "border-qc-orange/20 bg-orange-50 text-qc-orange";
   };
 
+  const isDateFiltered = datePreset !== "all";
+  const isModalityFiltered = !isAllModalitiesSelected;
+  const isCategoryFiltered = !isAllCategoriesSelected;
+  const isSearchFiltered = searchTerm.trim() !== "";
+
   const hasActiveFilters =
-    datePreset !== "all" ||
-    modalityCode !== "ALL" ||
-    searchTerm.trim() !== "";
+    isDateFiltered ||
+    isModalityFiltered ||
+    isCategoryFiltered ||
+    isSearchFiltered;
+
+  const activeFilterCount =
+    (isDateFiltered ? 1 : 0) +
+    (isModalityFiltered ? 1 : 0) +
+    (isCategoryFiltered ? 1 : 0) +
+    (isSearchFiltered ? 1 : 0);
 
   const datePresets: {
     id: DatePreset;
@@ -500,8 +581,10 @@ export function ExaminationsHub({
                       Filters
                     </span>
 
-                    {hasActiveFilters && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-qc-orange" />
+                    {activeFilterCount > 0 && (
+                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-qc-orange px-1 text-[9px] font-black text-white">
+                        {activeFilterCount}
+                      </span>
                     )}
 
                     <ChevronDown
@@ -518,8 +601,8 @@ export function ExaminationsHub({
                   ================================================= */}
 
                   {isFilterOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-2 w-[320px] overflow-hidden rounded-[24px] border border-[#DDE3F2] bg-white shadow-[0_22px_55px_rgba(5,14,64,0.16)] animate-in fade-in zoom-in-95 duration-150 sm:w-[390px]">
-                      <div className="relative overflow-hidden border-b border-[#E7EAF1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F5F8FF_60%,#FFF9E9_100%)] px-4 py-3.5">
+                    <div className="absolute right-0 top-full z-50 mt-2 max-h-[85vh] w-[320px] overflow-y-auto rounded-[24px] border border-[#DDE3F2] bg-white shadow-[0_22px_55px_rgba(5,14,64,0.16)] animate-in fade-in zoom-in-95 duration-150 sm:w-[420px]">
+                      <div className="sticky top-0 z-10 overflow-hidden border-b border-[#E7EAF1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F5F8FF_60%,#FFF9E9_100%)] px-4 py-3.5 backdrop-blur-md">
                         <div className="pointer-events-none absolute -right-5 -top-7 h-20 w-20 rounded-full bg-qc-yellow/10" />
 
                         <div className="relative flex items-center justify-between">
@@ -534,7 +617,7 @@ export function ExaminationsHub({
                               </p>
 
                               <p className="text-[10px] text-muted-foreground">
-                                Narrow the examination queue
+                                Filter by modality, patient category & date
                               </p>
                             </div>
                           </div>
@@ -555,13 +638,13 @@ export function ExaminationsHub({
                       </div>
 
                       <div className="space-y-4 p-4">
-                        {/* Date */}
+                        {/* 1. Date Presets */}
                         <div>
                           <div className="mb-2 flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5 text-qc-blue" />
 
                             <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-                              Date
+                              Date Range
                             </span>
                           </div>
 
@@ -594,58 +677,151 @@ export function ExaminationsHub({
                           </div>
                         </div>
 
-                        {/* Modality */}
-                        <div>
-                          <div className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-                            Modality
+                        {/* 2. Modality Checkboxes */}
+                        <div className="border-t border-[#EAEFF8] pt-3.5">
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Layers className="h-3.5 w-3.5 text-qc-blue" />
+
+                              <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                                Modalities
+                              </span>
+                            </div>
+
+                            <span className="text-[10px] font-semibold text-muted-foreground">
+                              {selectedModalities.length}/{ALL_MODALITIES.length} selected
+                            </span>
                           </div>
 
-                          <select
-                            value={
-                              modalityCode
-                            }
-                            onChange={(
-                              event,
-                            ) =>
-                              setModalityCode(
-                                event.target
-                                  .value,
-                              )
-                            }
-                            className="h-10 w-full rounded-xl border border-[#DDE3F2] bg-[#FAFBFD] px-3 text-xs font-bold text-qc-navy outline-none transition-all focus:border-qc-blue/25 focus:bg-white focus:ring-4 focus:ring-qc-blue/[0.06]"
+                          {/* Master All Modalities Checkbox */}
+                          <label
+                            className={`mb-2 flex items-center gap-2.5 rounded-xl border p-2 text-xs font-extrabold transition-all cursor-pointer ${
+                              isAllModalitiesSelected
+                                ? "border-qc-blue/30 bg-qc-blue/10 text-qc-blue"
+                                : "border-border bg-[#FAFBFD] text-slate-600 hover:bg-qc-blue/[0.03]"
+                            }`}
                           >
-                            <option value="ALL">
-                              All modalities
-                            </option>
+                            <input
+                              type="checkbox"
+                              checked={isAllModalitiesSelected}
+                              onChange={toggleAllModalities}
+                              className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
+                            />
+                            <span className="flex-1">All modalities</span>
+                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                              ALL
+                            </span>
+                          </label>
 
-                            {Object.entries(
-                              MODALITY_CONFIG,
-                            ).map(
-                              ([
-                                code,
-                                config,
-                              ]) => (
-                                <option
-                                  key={
-                                    code
-                                  }
-                                  value={
-                                    code
-                                  }
+                          {/* Individual Modality Checkboxes */}
+                          <div className="space-y-1.5">
+                            {ALL_MODALITIES.map((code) => {
+                              const isChecked = selectedModalities.includes(code);
+                              const config = MODALITY_CONFIG[code];
+
+                              return (
+                                <label
+                                  key={code}
+                                  className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
+                                    isChecked
+                                      ? "border-qc-blue/25 bg-qc-blue/[0.04] text-qc-navy shadow-xs"
+                                      : "border-border/80 bg-[#FAFBFD] text-slate-400 hover:border-qc-blue/15 hover:bg-qc-blue/[0.02]"
+                                  }`}
                                 >
-                                  {
-                                    config.shortName
-                                  }
-                                </option>
-                              ),
-                            )}
-                          </select>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleModality(code)}
+                                    className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
+                                  />
+                                  <span className="flex-1 font-bold">
+                                    {config?.name ?? code}
+                                  </span>
+                                  <span className="shrink-0 rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[10px] font-mono font-extrabold text-slate-500">
+                                    {code}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
                         </div>
 
-                        {/* Custom dates */}
+                        {/* 3. Patient Category Checkboxes (OPD, ER, IN) */}
+                        <div className="border-t border-[#EAEFF8] pt-3.5">
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <UserCheck className="h-3.5 w-3.5 text-qc-blue" />
+
+                              <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                                Patient Category
+                              </span>
+                            </div>
+
+                            <span className="text-[10px] font-semibold text-muted-foreground">
+                              {selectedCategories.length}/{ALL_CATEGORIES.length} selected
+                            </span>
+                          </div>
+
+                          {/* Master All Categories Checkbox */}
+                          <label
+                            className={`mb-2 flex items-center gap-2.5 rounded-xl border p-2 text-xs font-extrabold transition-all cursor-pointer ${
+                              isAllCategoriesSelected
+                                ? "border-qc-blue/30 bg-qc-blue/10 text-qc-blue"
+                                : "border-border bg-[#FAFBFD] text-slate-600 hover:bg-qc-blue/[0.03]"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isAllCategoriesSelected}
+                              onChange={toggleAllCategories}
+                              className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
+                            />
+                            <span className="flex-1">All patient categories</span>
+                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                              ALL
+                            </span>
+                          </label>
+
+                          {/* Individual Category Checkboxes (OPD, ER, IN) */}
+                          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+                            {ALL_CATEGORIES.map((cat) => {
+                              const isChecked = selectedCategories.includes(cat);
+
+                              return (
+                                <label
+                                  key={cat}
+                                  className={`flex items-center gap-2 rounded-xl border p-2 text-xs font-bold transition-all cursor-pointer ${
+                                    isChecked
+                                      ? "border-qc-blue/30 bg-qc-blue/5 text-qc-navy shadow-xs"
+                                      : "border-border/80 bg-[#FAFBFD] text-slate-400 hover:border-qc-blue/15 hover:bg-qc-blue/[0.02]"
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleCategory(cat)}
+                                    className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
+                                  />
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-extrabold text-qc-navy">{cat}</span>
+                                    <span className="text-[10px] text-muted-foreground truncate">
+                                      {cat === TriageLevel.OPD
+                                        ? "Outpatient"
+                                        : cat === TriageLevel.ER
+                                        ? "Emergency"
+                                        : "Inpatient"}
+                                    </span>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 4. Custom dates */}
                         {datePreset ===
                           "custom" && (
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="border-t border-[#EAEFF8] pt-3.5 grid grid-cols-2 gap-2">
                             <label className="space-y-1.5">
                               <span className="text-[10px] font-bold text-muted-foreground">
                                 Start
@@ -715,7 +891,7 @@ export function ExaminationsHub({
                           >
                             <RotateCcw className="h-3.5 w-3.5" />
 
-                            Reset filters
+                            Reset all filters
                           </button>
                         )}
                       </div>
@@ -737,32 +913,79 @@ export function ExaminationsHub({
                   Active
                 </span>
 
-                {datePreset !==
-                  "all" && (
-                  <span className="rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-[10px] font-bold text-qc-blue">
-                    {
-                      datePresets.find(
-                        (preset) =>
-                          preset.id ===
-                          datePreset,
-                      )?.label
-                    }
+                {isDateFiltered && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-[10px] font-bold text-qc-blue">
+                    <span>
+                      {
+                        datePresets.find(
+                          (preset) =>
+                            preset.id ===
+                            datePreset,
+                        )?.label
+                      }
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDatePreset("all")}
+                      className="hover:text-qc-navy"
+                      title="Clear date filter"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </span>
                 )}
 
-                {modalityCode !==
-                  "ALL" && (
-                  <span className="rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-[10px] font-bold text-qc-navy">
-                    {MODALITY_CONFIG[
-                      modalityCode as ModalityCode
-                    ]?.shortName ??
-                      modalityCode}
+                {isModalityFiltered && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-[10px] font-bold text-qc-navy">
+                    <span>
+                      Modalities:{" "}
+                      {selectedModalities.length === 0
+                        ? "None (0)"
+                        : selectedModalities
+                            .map((m) => MODALITY_CONFIG[m as ModalityCode]?.shortName || m)
+                            .join(", ")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedModalities(ALL_MODALITIES)}
+                      className="text-slate-400 hover:text-qc-navy"
+                      title="Reset to all modalities"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </span>
                 )}
 
-                {searchTerm.trim() && (
-                  <span className="max-w-[180px] truncate rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-[10px] font-bold text-qc-navy">
-                    “{searchTerm}”
+                {isCategoryFiltered && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-[10px] font-bold text-qc-navy">
+                    <span>
+                      Patient:{" "}
+                      {selectedCategories.length === 0
+                        ? "None (0)"
+                        : selectedCategories.join(", ")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategories(ALL_CATEGORIES)}
+                      className="text-slate-400 hover:text-qc-navy"
+                      title="Reset to all patient categories"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+
+                {isSearchFiltered && (
+                  <span className="inline-flex items-center gap-1.5 max-w-[200px] truncate rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-[10px] font-bold text-qc-navy">
+                    <span className="truncate">“{searchTerm}”</span>
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm("")}
+                      className="text-slate-400 hover:text-qc-navy shrink-0"
+                      title="Clear search"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </span>
                 )}
 
@@ -773,7 +996,7 @@ export function ExaminationsHub({
                   }
                   className="ml-auto text-[10px] font-extrabold text-muted-foreground transition-colors hover:text-qc-blue"
                 >
-                  Clear
+                  Clear all
                 </button>
               </div>
             )}

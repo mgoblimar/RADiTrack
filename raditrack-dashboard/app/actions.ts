@@ -1305,7 +1305,10 @@ export interface ExaminationFilterOptions {
   startDate?: string;
   endDate?: string;
   modalityCode?: string;
+  modalityCodes?: string[];
   triageLevel?: string;
+  triageLevels?: string[];
+  patientCategories?: string[];
   urgencyLevel?: string;
   searchTerm?: string;
 }
@@ -1401,11 +1404,38 @@ export async function fetchFilteredExaminationsAction(
     whereClause.report = { reportSignedAt: { not: null } };
   }
 
-  if (options.modalityCode && options.modalityCode !== "ALL") {
-    whereClause.modalityCode = options.modalityCode;
+  // Modality filter: supports multiple codes or "ALL"
+  if (options.modalityCodes !== undefined) {
+    if (options.modalityCodes.includes("ALL")) {
+      // All modalities selected -> no filter restriction
+    } else if (options.modalityCodes.length === 0) {
+      whereClause.modalityCode = { in: [] };
+    } else {
+      const expandedCodes = [...options.modalityCodes];
+      if (expandedCodes.includes("XRAY") && !expandedCodes.includes("XR")) {
+        expandedCodes.push("XR");
+      }
+      whereClause.modalityCode = { in: expandedCodes };
+    }
+  } else if (options.modalityCode && options.modalityCode !== "ALL") {
+    if (options.modalityCode === "XRAY") {
+      whereClause.modalityCode = { in: ["XRAY", "XR"] };
+    } else {
+      whereClause.modalityCode = options.modalityCode;
+    }
   }
 
-  if (options.triageLevel && options.triageLevel !== "ALL") {
+  // Patient Category / Triage Level filter (OPD, ER, IN): supports multiple or "ALL"
+  const catList = options.triageLevels ?? options.patientCategories;
+  if (catList !== undefined) {
+    if (catList.includes("ALL")) {
+      // All patient categories selected -> no filter restriction
+    } else if (catList.length === 0) {
+      whereClause.triageLevel = { in: [] };
+    } else {
+      whereClause.triageLevel = { in: catList };
+    }
+  } else if (options.triageLevel && options.triageLevel !== "ALL") {
     whereClause.triageLevel = options.triageLevel;
   }
 
