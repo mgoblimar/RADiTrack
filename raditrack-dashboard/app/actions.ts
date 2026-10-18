@@ -151,6 +151,32 @@ export async function getDashboardData() {
         )
       : 100;
 
+  const volumeByModality: Record<string, number> = {
+    XRAY: 0,
+    US: 0,
+    CT: 0,
+    MRI: 0,
+    MAMMO: 0,
+  };
+  allExams.forEach((e) => {
+    if (volumeByModality[e.modalityCode] !== undefined) {
+      volumeByModality[e.modalityCode]++;
+    }
+  });
+
+  const pendingByModality: Record<string, number> = {
+    XRAY: 0,
+    US: 0,
+    CT: 0,
+    MRI: 0,
+    MAMMO: 0,
+  };
+  pendingReadingExams.forEach((e) => {
+    if (pendingByModality[e.modalityCode] !== undefined) {
+      pendingByModality[e.modalityCode]++;
+    }
+  });
+
   return {
     totalVolume: allExams.length,
     finalizedCount: allReports.length,
@@ -158,6 +184,8 @@ export async function getDashboardData() {
     avgTatMinutes: avgTat,
     medianTatMinutes: medianTat,
     pctOnTime,
+    volumeByModality,
+    pendingByModality,
     pendingReadingQueue: pendingReadingExams.map((e) => {
       const dwellMinutes = Number(
         (
@@ -1778,6 +1806,8 @@ export interface FilteredKpiResult {
   tatDeltaPercent: number | null;
   volumeDeltaPercent: number | null;
   modalityOverview: ModalityTatOverviewItem[];
+  volumeByModality: Record<string, number>;
+  pendingByModality: Record<string, number>;
 }
 
 export async function fetchFilteredExecutiveKpiAction(
@@ -1938,7 +1968,7 @@ export async function fetchFilteredExecutiveKpiAction(
         },
         report: { is: null },
       },
-      select: { examId: true, studyDate: true },
+      select: { examId: true, studyDate: true, modalityCode: true },
     }),
     prisma.modality.findMany({
       include: {
@@ -1963,6 +1993,35 @@ export async function fetchFilteredExecutiveKpiAction(
   const pendingReadingCount = isAllTime
     ? allActivePendingExams.length
     : currentExams.filter((e) => !e.report || !e.report.reportSignedAt).length;
+
+  const volumeByModality: Record<string, number> = {
+    XRAY: 0,
+    US: 0,
+    CT: 0,
+    MRI: 0,
+    MAMMO: 0,
+  };
+  currentExams.forEach((e) => {
+    if (volumeByModality[e.modalityCode] !== undefined) {
+      volumeByModality[e.modalityCode]++;
+    }
+  });
+
+  const pendingByModality: Record<string, number> = {
+    XRAY: 0,
+    US: 0,
+    CT: 0,
+    MRI: 0,
+    MAMMO: 0,
+  };
+  const activePendingExams = isAllTime
+    ? allActivePendingExams
+    : currentExams.filter((e) => !e.report || !e.report.reportSignedAt);
+  activePendingExams.forEach((e) => {
+    if (pendingByModality[e.modalityCode] !== undefined) {
+      pendingByModality[e.modalityCode]++;
+    }
+  });
 
   const tatValues = finalizedExams
     .map((e) => e.report?.tatExamToSignMinutes || 0)
@@ -2077,6 +2136,8 @@ export async function fetchFilteredExecutiveKpiAction(
     tatDeltaPercent,
     volumeDeltaPercent,
     modalityOverview,
+    volumeByModality,
+    pendingByModality,
   };
 }
 

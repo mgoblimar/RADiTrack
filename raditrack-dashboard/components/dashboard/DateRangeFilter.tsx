@@ -13,12 +13,14 @@ import {
   Check,
   ChevronDown,
   Filter,
+  Layers,
   Loader2,
   RotateCcw,
   X,
 } from "lucide-react";
 
 import { type KpiPreset } from "@/app/actions";
+import { ModalityCode } from "@/lib/enums";
 
 export interface DateRangeFilterProps {
   currentPreset: KpiPreset;
@@ -30,6 +32,8 @@ export interface DateRangeFilterProps {
     endDate: string,
   ) => void;
   isPending?: boolean;
+  selectedModality?: "ALL" | ModalityCode;
+  onModalityChange?: (modality: "ALL" | ModalityCode) => void;
 
   // Kept for compatibility with DashboardShell.
   // Intentionally not displayed in this component.
@@ -81,6 +85,19 @@ const PRESETS: {
   },
 ];
 
+const MODALITY_OPTIONS: {
+  id: "ALL" | ModalityCode;
+  label: string;
+  dotColor?: string;
+}[] = [
+  { id: "ALL", label: "All Modalities" },
+  { id: ModalityCode.XRAY, label: "X-ray", dotColor: "bg-blue-500" },
+  { id: ModalityCode.US, label: "Ultrasound", dotColor: "bg-emerald-500" },
+  { id: ModalityCode.CT, label: "CT-Scan", dotColor: "bg-amber-500" },
+  { id: ModalityCode.MRI, label: "MRI", dotColor: "bg-purple-500" },
+  { id: ModalityCode.MAMMO, label: "Mammogram", dotColor: "bg-pink-500" },
+];
+
 export function DateRangeFilter({
   currentPreset,
   startDate,
@@ -88,8 +105,11 @@ export function DateRangeFilter({
   onPresetChange,
   onCustomRangeApply,
   isPending = false,
+  selectedModality = "ALL",
+  onModalityChange,
 }: DateRangeFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isModalityOpen, setIsModalityOpen] = useState(false);
   const [localStart, setLocalStart] =
     useState(startDate);
   const [localEnd, setLocalEnd] =
@@ -101,11 +121,24 @@ export function DateRangeFilter({
   const popoverRef =
     useRef<HTMLDivElement>(null);
 
+  const modalityButtonRef =
+    useRef<HTMLButtonElement>(null);
+
+  const modalityPopoverRef =
+    useRef<HTMLDivElement>(null);
+
   const [popoverPosition, setPopoverPosition] =
     useState({
       top: 0,
       left: 0,
       width: 500,
+    });
+
+  const [modalityPopoverPosition, setModalityPopoverPosition] =
+    useState({
+      top: 0,
+      left: 0,
+      width: 220,
     });
 
   // =========================================================
@@ -166,6 +199,33 @@ export function DateRangeFilter({
     });
   };
 
+  const updateModalityPopoverPosition = () => {
+    if (!modalityButtonRef.current) {
+      return;
+    }
+
+    const rect =
+      modalityButtonRef.current.getBoundingClientRect();
+
+    const viewportPadding = 12;
+    const width = 230;
+
+    let left = rect.left;
+
+    if (left + width > window.innerWidth - viewportPadding) {
+      left = window.innerWidth - width - viewportPadding;
+    }
+
+    left = Math.max(viewportPadding, left);
+    const top = rect.bottom + 8;
+
+    setModalityPopoverPosition({
+      top,
+      left,
+      width,
+    });
+  };
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -206,12 +266,36 @@ export function DateRangeFilter({
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isModalityOpen) {
+      return;
+    }
+
+    updateModalityPopoverPosition();
+
+    const handleResize = () => {
+      updateModalityPopoverPosition();
+    };
+
+    const handleScroll = () => {
+      updateModalityPopoverPosition();
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleScroll, true);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [isModalityOpen]);
+
   // =========================================================
   // Close when clicking outside / Escape
   // =========================================================
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen && !isModalityOpen) {
       return;
     }
 
@@ -222,22 +306,20 @@ export function DateRangeFilter({
         event.target as Node;
 
       if (
-        buttonRef.current?.contains(
-          target,
-        )
+        isOpen &&
+        !buttonRef.current?.contains(target) &&
+        !popoverRef.current?.contains(target)
       ) {
-        return;
+        setIsOpen(false);
       }
 
       if (
-        popoverRef.current?.contains(
-          target,
-        )
+        isModalityOpen &&
+        !modalityButtonRef.current?.contains(target) &&
+        !modalityPopoverRef.current?.contains(target)
       ) {
-        return;
+        setIsModalityOpen(false);
       }
-
-      setIsOpen(false);
     };
 
     const handleKeyDown = (
@@ -245,6 +327,7 @@ export function DateRangeFilter({
     ) => {
       if (event.key === "Escape") {
         setIsOpen(false);
+        setIsModalityOpen(false);
       }
     };
 
@@ -269,10 +352,10 @@ export function DateRangeFilter({
         handleKeyDown,
       );
     };
-  }, [isOpen]);
+  }, [isOpen, isModalityOpen]);
 
   // =========================================================
-  // Active preset
+  // Active preset & modality
   // =========================================================
 
   const activePreset =
@@ -281,11 +364,16 @@ export function DateRangeFilter({
         preset.id === currentPreset,
     ) ?? PRESETS[0];
 
+  const activeModalityOption =
+    MODALITY_OPTIONS.find(
+      (opt) => opt.id === selectedModality,
+    ) ?? MODALITY_OPTIONS[0];
+
   const isCustom =
     currentPreset === "CUSTOM";
 
   // =========================================================
-  // Open / close dropdown
+  // Open / close dropdowns
   // =========================================================
 
   const toggleDropdown = () => {
@@ -293,7 +381,17 @@ export function DateRangeFilter({
       return;
     }
 
+    setIsModalityOpen(false);
     setIsOpen((previous) => !previous);
+  };
+
+  const toggleModalityDropdown = () => {
+    if (isPending) {
+      return;
+    }
+
+    setIsOpen(false);
+    setIsModalityOpen((previous) => !previous);
   };
 
   // =========================================================
@@ -405,6 +503,17 @@ export function DateRangeFilter({
 
     onPresetChange("ALL");
     setIsOpen(false);
+  };
+
+  const handleResetAll = () => {
+    if (isPending) {
+      return;
+    }
+
+    onPresetChange("ALL");
+    onModalityChange?.("ALL");
+    setIsOpen(false);
+    setIsModalityOpen(false);
   };
 
   // =========================================================
@@ -612,83 +721,190 @@ export function DateRangeFilter({
     </div>
   ) : null;
 
+  // =========================================================
+  // Popover: Modality Filter
+  // =========================================================
+
+  const modalityPopover = isModalityOpen ? (
+    <div
+      ref={modalityPopoverRef}
+      role="dialog"
+      aria-label="Filter by Modality"
+      style={{
+        position: "fixed",
+        top: `${modalityPopoverPosition.top}px`,
+        left: `${modalityPopoverPosition.left}px`,
+        width: `${modalityPopoverPosition.width}px`,
+        zIndex: 9999,
+      }}
+      className="overflow-hidden rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-[0_20px_50px_rgba(5,14,64,0.18)] backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-100"
+    >
+      <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground border-b border-border/60 mb-1">
+        Select Modality
+      </div>
+      <div className="space-y-0.5">
+        {MODALITY_OPTIONS.map((opt) => {
+          const isSelected = selectedModality === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                onModalityChange?.(opt.id);
+                setIsModalityOpen(false);
+              }}
+              className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all ${
+                isSelected
+                  ? "border border-qc-blue/15 bg-qc-blue/10 text-qc-blue"
+                  : "border border-transparent hover:border-qc-blue/15 hover:bg-qc-blue/5 text-qc-navy"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                {opt.dotColor ? (
+                  <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${opt.dotColor}`} />
+                ) : (
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0 bg-slate-300" />
+                )}
+                <span className="truncate">{opt.label}</span>
+              </div>
+              {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-qc-blue" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="relative">
       {/* =====================================================
-          FILTER BAR
+          FILTER BAR: MERGED DATE & MODALITY CONTROLS
       ===================================================== */}
 
-      <div className="flex min-h-[68px] items-center px-3 py-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2">
-          {/* One icon only */}
-          <button
-            ref={buttonRef}
-            type="button"
-            onClick={toggleDropdown}
-            disabled={isPending}
-            className={`group inline-flex min-w-0 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-all duration-150 ${
-              isOpen
-                ? "border-qc-navy bg-qc-navy text-white"
-                : isCustom
-                  ? "border-qc-blue/20 bg-qc-blue/5 text-qc-blue hover:bg-qc-blue/10"
-                  : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
-            }`}
-            aria-expanded={isOpen}
-            aria-haspopup="dialog"
-            aria-label="Change time window"
-          >
-            <Calendar
-              className={`h-4 w-4 shrink-0 ${
+      <div className="flex min-h-[64px] items-center px-3 py-3 sm:px-4">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Merged Filter Pill */}
+          <div className="inline-flex items-center rounded-2xl border border-border bg-background p-1 shadow-sm transition-all focus-within:border-qc-blue/30">
+            {/* Date time filter button */}
+            <button
+              ref={buttonRef}
+              type="button"
+              onClick={toggleDropdown}
+              disabled={isPending}
+              className={`group inline-flex min-w-0 items-center gap-2 rounded-xl px-3.5 py-2 text-left transition-all duration-150 ${
                 isOpen
-                  ? "text-qc-yellow"
+                  ? "border border-qc-navy bg-qc-navy text-white shadow-sm"
                   : isCustom
-                    ? "text-qc-blue"
-                    : "text-muted-foreground"
+                    ? "bg-qc-blue/10 text-qc-blue font-extrabold"
+                    : "text-qc-navy hover:bg-qc-blue/5 font-extrabold"
               }`}
-            />
-
-            <span
-              className={`truncate text-sm font-extrabold ${
-                isOpen
-                  ? "text-white"
-                  : "text-qc-navy"
-              }`}
+              aria-expanded={isOpen}
+              aria-haspopup="dialog"
+              aria-label="Change time window"
             >
-              {isCustom
-                ? `${startDate} → ${endDate}`
-                : activePreset.label}
-            </span>
-
-            {isPending ? (
-              <Loader2
-                className={`h-4 w-4 shrink-0 animate-spin ${
+              <Calendar
+                className={`h-4 w-4 shrink-0 ${
                   isOpen
                     ? "text-qc-yellow"
-                    : "text-qc-blue"
+                    : isCustom
+                      ? "text-qc-blue"
+                      : "text-muted-foreground group-hover:text-qc-blue"
                 }`}
               />
-            ) : (
-              <ChevronDown
-                className={`h-4 w-4 shrink-0 transition-transform duration-150 ${
-                  isOpen
-                    ? "rotate-180 text-white"
-                    : "text-muted-foreground group-hover:text-qc-blue"
-                }`}
-              />
-            )}
-          </button>
 
-          {/* Reset */}
-          {currentPreset !== "ALL" && (
+              <span
+                className={`truncate text-sm ${
+                  isOpen ? "text-white" : "text-qc-navy"
+                }`}
+              >
+                {isCustom
+                  ? `${startDate} → ${endDate}`
+                  : activePreset.label}
+              </span>
+
+              {isPending ? (
+                <Loader2
+                  className={`h-4 w-4 shrink-0 animate-spin ${
+                    isOpen
+                      ? "text-qc-yellow"
+                      : "text-qc-blue"
+                  }`}
+                />
+              ) : (
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 transition-transform duration-150 ${
+                    isOpen
+                      ? "rotate-180 text-white"
+                      : "text-muted-foreground group-hover:text-qc-blue"
+                  }`}
+                />
+              )}
+            </button>
+
+            {/* Divider */}
+            {onModalityChange && (
+              <div className="mx-1 h-5 w-px bg-border/80" />
+            )}
+
+            {/* Modality Filter merged right beside */}
+            {onModalityChange && (
+              <button
+                ref={modalityButtonRef}
+                type="button"
+                onClick={toggleModalityDropdown}
+                disabled={isPending}
+                className={`group inline-flex min-w-0 items-center gap-2 rounded-xl px-3.5 py-2 text-left transition-all duration-150 ${
+                  isModalityOpen
+                    ? "border border-qc-navy bg-qc-navy text-white shadow-sm"
+                    : selectedModality !== "ALL"
+                      ? "bg-qc-blue/10 text-qc-blue font-extrabold"
+                      : "text-qc-navy hover:bg-qc-blue/5 font-extrabold"
+                }`}
+                aria-expanded={isModalityOpen}
+                aria-haspopup="dialog"
+                aria-label="Filter dashboard by modality"
+              >
+                <Layers
+                  className={`h-4 w-4 shrink-0 ${
+                    isModalityOpen
+                      ? "text-qc-yellow"
+                      : selectedModality !== "ALL"
+                        ? "text-qc-blue"
+                        : "text-muted-foreground group-hover:text-qc-blue"
+                  }`}
+                />
+
+                <span
+                  className={`truncate text-sm ${
+                    isModalityOpen ? "text-white" : "text-qc-navy"
+                  }`}
+                >
+                  {activeModalityOption.label}
+                </span>
+
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 transition-transform duration-150 ${
+                    isModalityOpen
+                      ? "rotate-180 text-white"
+                      : "text-muted-foreground group-hover:text-qc-blue"
+                  }`}
+                />
+              </button>
+            )}
+          </div>
+
+          {/* Reset Filters button */}
+          {(currentPreset !== "ALL" || (selectedModality && selectedModality !== "ALL")) && (
             <button
               type="button"
-              onClick={handleReset}
+              onClick={handleResetAll}
               disabled={isPending}
-              title="Reset to All Time"
-              aria-label="Reset time window"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue disabled:opacity-50"
+              title="Reset all filters to default"
+              aria-label="Reset all filters"
+              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-bold text-muted-foreground shadow-sm transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue disabled:opacity-50"
             >
               <RotateCcw className="h-3.5 w-3.5" />
+              <span>Reset</span>
             </button>
           )}
         </div>
@@ -697,10 +913,11 @@ export function DateRangeFilter({
       {/* Render outside the dashboard layout so it cannot be clipped */}
       {typeof document !== "undefined" &&
         isOpen &&
-        createPortal(
-          popover,
-          document.body,
-        )}
+        createPortal(popover, document.body)}
+
+      {typeof document !== "undefined" &&
+        isModalityOpen &&
+        createPortal(modalityPopover, document.body)}
     </div>
   );
 }
