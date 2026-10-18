@@ -238,6 +238,30 @@ export function DashboardShell({
     });
   };
 
+  useEffect(() => {
+    if (filterPreset !== "ALL") {
+      startKpiTransition(async () => {
+        try {
+          if (filterPreset === "CUSTOM") {
+            const result = await fetchFilteredExecutiveKpiAction({
+              preset: "CUSTOM",
+              startDate: customStart,
+              endDate: customEnd,
+            });
+            setKpiData(result);
+            setFilteredModalityData(result.modalityOverview);
+            return;
+          }
+          const result = await fetchFilteredExecutiveKpiAction({ preset: filterPreset });
+          setKpiData(result);
+          setFilteredModalityData(result.modalityOverview);
+        } catch (error) {
+          console.error("Failed to re-sync filtered KPIs:", error);
+        }
+      });
+    }
+  }, [data, filterPreset, customStart, customEnd]);
+
   /* =========================================================
      Resolved metrics
   ========================================================= */

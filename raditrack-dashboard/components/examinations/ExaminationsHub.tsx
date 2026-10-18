@@ -33,6 +33,7 @@ import {
   signOffReportAction,
   type FilteredExaminationsResult,
 } from "@/app/actions";
+import { notifyDatabaseChanged } from "@/lib/broadcast";
 
 import {
   MODALITY_CONFIG,
@@ -1224,6 +1225,7 @@ export function ExaminationsHub({
                               );
 
                               loadExaminations();
+                              notifyDatabaseChanged();
                             }}
                             className="inline"
                           >
@@ -1346,6 +1348,7 @@ export function ExaminationsHub({
                               );
 
                               loadExaminations();
+                              notifyDatabaseChanged();
                             }}
                             className="inline"
                           >

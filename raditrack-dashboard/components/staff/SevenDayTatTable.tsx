@@ -135,6 +135,10 @@ export function SevenDayTatTable({
   const [analytics, setAnalytics] =
     useState(initialAnalytics);
 
+  useEffect(() => {
+    setAnalytics(initialAnalytics);
+  }, [initialAnalytics]);
+
   const [isPending, startTransition] =
     useTransition();
 

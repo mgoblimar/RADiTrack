@@ -60,6 +60,10 @@ export function TwelveMonthTrendChart({
       initialData,
     );
 
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
+
   const [selectedPeriod, setSelectedPeriod] =
     useState<string>(
       initialData.selectedPeriod ||

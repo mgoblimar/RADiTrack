@@ -3,16 +3,57 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function AutoRefresh({ intervalMs = 15000 }: { intervalMs?: number }) {
+interface AutoRefreshProps {
+  /**
+   * Interval in milliseconds between background refreshes.
+   * Defaults to 10000 (10 seconds).
+   */
+  intervalMs?: number;
+  /**
+   * Optional channel name to listen for instant cross-tab events.
+   * Defaults to "raditrack_sync".
+   */
+  channelName?: string;
+}
+
+export function AutoRefresh({
+  intervalMs = 10000,
+  channelName = "raditrack_sync",
+}: AutoRefreshProps) {
   const router = useRouter();
 
   useEffect(() => {
+    // 1. Periodic background timer (runs only when tab is visible to save CPU/battery)
     const timer = setInterval(() => {
-      router.refresh(); // Fetches fresh data from Server Components without page flash
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        router.refresh();
+      }
     }, intervalMs);
 
-    return () => clearInterval(timer);
-  }, [router, intervalMs]);
+    // 2. Instant cross-tab broadcast listener (e.g. scan logged in Simulator tab)
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        channel = new BroadcastChannel(channelName);
+        channel.onmessage = (event) => {
+          if (event?.data === "DB_CHANGED") {
+            router.refresh();
+          }
+        };
+      }
+    } catch {
+      // BroadcastChannel not supported in environment
+    }
+
+    return () => {
+      clearInterval(timer);
+      if (channel) {
+        channel.close();
+      }
+    };
+  }, [intervalMs, channelName, router]);
 
   return null;
 }
+
+export default AutoRefresh;

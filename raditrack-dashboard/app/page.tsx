@@ -6,6 +6,7 @@ import {
   getConfigurationsAction,
 } from "./actions";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { AutoRefresh } from "@/components/common/AutoRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +31,16 @@ export default async function DashboardPage() {
       : null;
 
   return (
-    <DashboardShell
-      data={data}
-      sevenDayAnalytics={sevenDayAnalytics}
-      twelveMonthTrend={twelveMonthTrend}
-      modalityTatOverview={modalityTatOverview}
-      prevMonth={prevMonth}
-      configurationsData={configurationsData}
-    />
+    <>
+      <AutoRefresh intervalMs={10000} />
+      <DashboardShell
+        data={data}
+        sevenDayAnalytics={sevenDayAnalytics}
+        twelveMonthTrend={twelveMonthTrend}
+        modalityTatOverview={modalityTatOverview}
+        prevMonth={prevMonth}
+        configurationsData={configurationsData}
+      />
+    </>
   );
 }
