@@ -1011,7 +1011,15 @@ export interface ModalityTatStats {
   volume: number;
 }
 
-export type ModalityTemporalPeriod = "ALL" | "7D" | "ROLLING_7D" | "MONTH" | "YEAR";
+export type ModalityTemporalPeriod =
+  | "ALL"
+  | "7D"
+  | "ROLLING_7D"
+  | "WEEK"
+  | "PAST_WEEK"
+  | "LAST_WEEK"
+  | "MONTH"
+  | "YEAR";
 
 export interface ModalityTatOverviewItem {
   modality: string;
@@ -1030,6 +1038,9 @@ export interface MultiPeriodModalityTatOverview {
     ALL: ModalityTatOverviewItem[];
     "7D": ModalityTatOverviewItem[];
     ROLLING_7D?: ModalityTatOverviewItem[];
+    WEEK?: ModalityTatOverviewItem[];
+    PAST_WEEK?: ModalityTatOverviewItem[];
+    LAST_WEEK?: ModalityTatOverviewItem[];
     MONTH: ModalityTatOverviewItem[];
     YEAR: ModalityTatOverviewItem[];
   };
@@ -1055,6 +1066,14 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
+  const dayOfWeek = now.getDay();
+  const diffToMonday = now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+  const startOfThisWeek = new Date(now.getFullYear(), now.getMonth(), diffToMonday, 0, 0, 0, 0);
+  const startOfPastWeek = new Date(now.getFullYear(), now.getMonth(), diffToMonday - 7, 0, 0, 0, 0);
+  const endOfPastWeek = new Date(startOfPastWeek);
+  endOfPastWeek.setDate(startOfPastWeek.getDate() + 6);
+  endOfPastWeek.setHours(23, 59, 59, 999);
+
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
 
@@ -1069,6 +1088,8 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
           : null;
         if (!examDate) return false;
         if (period === "7D" || period === "ROLLING_7D") return examDate >= sevenDaysAgo && examDate <= now;
+        if (period === "WEEK") return examDate >= startOfThisWeek && examDate <= now;
+        if (period === "PAST_WEEK" || period === "LAST_WEEK") return examDate >= startOfPastWeek && examDate <= endOfPastWeek;
         if (period === "MONTH") return examDate >= startOfMonth && examDate <= now;
         if (period === "YEAR") return examDate >= startOfYear && examDate <= now;
         return true;
@@ -1102,7 +1123,10 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
         } else if (filterType === "IN") {
           sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
         } else {
-          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) || m.slaConfigs[0];
+          sla =
+            m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD && s.urgencyLevel === UrgencyLevel.ROUTINE) ||
+            m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) ||
+            m.slaConfigs[0];
         }
 
         const defaultTarget =
@@ -1133,6 +1157,8 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
   };
 
   const rolling7Data = buildPeriodData("7D");
+  const weekData = buildPeriodData("WEEK");
+  const pastWeekData = buildPeriodData("PAST_WEEK");
 
   return {
     currentPeriod: "ALL",
@@ -1140,6 +1166,9 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
       ALL: buildPeriodData("ALL"),
       "7D": rolling7Data,
       ROLLING_7D: rolling7Data,
+      WEEK: weekData,
+      PAST_WEEK: pastWeekData,
+      LAST_WEEK: pastWeekData,
       MONTH: buildPeriodData("MONTH"),
       YEAR: buildPeriodData("YEAR"),
     },
@@ -1163,6 +1192,13 @@ export async function fetchModalityTatDataAction(options: {
   } else if (options.period === "WEEK") {
     const day = now.getDay();
     const diffToMon = now.getDate() - (day === 0 ? 6 : day - 1);
+    start = new Date(now.getFullYear(), now.getMonth(), diffToMon, 0, 0, 0, 0);
+    end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  } else if (options.period === "PAST_WEEK" || options.period === "LAST_WEEK") {
+    const day = now.getDay();
+    const diffToMon = now.getDate() - (day === 0 ? 6 : day - 1) - 7;
     start = new Date(now.getFullYear(), now.getMonth(), diffToMon, 0, 0, 0, 0);
     end = new Date(start);
     end.setDate(start.getDate() + 6);
@@ -1221,7 +1257,10 @@ export async function fetchModalityTatDataAction(options: {
       } else if (filterType === "IN") {
         sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
       } else {
-        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) || m.slaConfigs[0];
+        sla =
+          m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD && s.urgencyLevel === UrgencyLevel.ROUTINE) ||
+          m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) ||
+          m.slaConfigs[0];
       }
 
       const defaultTarget =

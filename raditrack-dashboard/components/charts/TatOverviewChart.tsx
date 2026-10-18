@@ -49,19 +49,7 @@ interface Props {
 
 type ExtendedTemporalPeriod =
   | ModalityTemporalPeriod
-  | "WEEK"
   | "CUSTOM";
-
-type UrgencyFilter =
-  | "ALL"
-  | "EMERGENCY"
-  | "ROUTINE";
-
-type PatientCategoryFilter =
-  | "ALL"
-  | "OPD"
-  | "ER"
-  | "IN";
 
 /* =========================================================
    RADiTrack palette
@@ -80,12 +68,6 @@ export function TatOverviewChart({
 }: Props) {
   const [temporalPeriod, setTemporalPeriod] =
     useState<ExtendedTemporalPeriod>("ALL");
-
-  const [urgencyFilter, setUrgencyFilter] =
-    useState<UrgencyFilter>("ALL");
-
-  const [patientCategory, setPatientCategory] =
-    useState<PatientCategoryFilter>("ALL");
 
   const [periodDataset, setPeriodDataset] =
     useState<ModalityTatOverviewItem[] | null>(null);
@@ -403,19 +385,7 @@ export function TatOverviewChart({
 
   const displayData =
     activeDataset.map((item) => {
-      let stats = item.all;
-
-      if (patientCategory === "OPD" && item.opd) {
-        stats = item.opd;
-      } else if (patientCategory === "ER" && (item.er || item.emergency)) {
-        stats = item.er ?? item.emergency;
-      } else if (patientCategory === "IN" && item.inpatient) {
-        stats = item.inpatient;
-      } else if (urgencyFilter === "EMERGENCY" && item.emergency) {
-        stats = item.emergency;
-      } else if (urgencyFilter === "ROUTINE" && item.routine) {
-        stats = item.routine;
-      }
+      const stats = item.all;
 
       const avgTatHours = Number((stats.avgTat / 60).toFixed(1));
       const targetHours = Number((stats.target / 60).toFixed(1));
@@ -431,15 +401,10 @@ export function TatOverviewChart({
       };
     });
 
-  const isFiltered =
-    temporalPeriod !== "ALL" ||
-    urgencyFilter !== "ALL" ||
-    patientCategory !== "ALL";
+  const isFiltered = temporalPeriod !== "ALL";
 
   const handleResetFilters = () => {
     setTemporalPeriod("ALL");
-    setUrgencyFilter("ALL");
-    setPatientCategory("ALL");
     setPeriodDataset(null);
     setCustomDataset(null);
     setIsFilterOpen(false);
@@ -453,6 +418,8 @@ export function TatOverviewChart({
     ROLLING_7D: "Rolling 7 days",
     "7D": "Past 7 days",
     WEEK: "This week",
+    PAST_WEEK: "Past week",
+    LAST_WEEK: "Past week",
     MONTH: "This month",
     YEAR: "This year",
     CUSTOM: "Custom range",
@@ -485,29 +452,11 @@ export function TatOverviewChart({
       point.volume > 0 &&
       point.avgTat > point.target;
 
-    const patientCategoryLabel =
-      patientCategory === "OPD"
-        ? "OPD Patients"
-        : patientCategory === "ER"
-          ? "ER Patients"
-          : patientCategory === "IN"
-            ? "Inpatients"
-            : urgencyFilter === "EMERGENCY"
-              ? "STAT / ER Priority"
-              : urgencyFilter === "ROUTINE"
-                ? "Routine Priority"
-                : "All Patients";
-
     return (
-      <div className="min-w-[200px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_14px_35px_rgba(5,14,64,0.14)]">
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-extrabold text-qc-navy">
-            {point.name || point.modality}
-          </p>
-          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
-            {patientCategoryLabel}
-          </span>
-        </div>
+      <div className="min-w-[190px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_14px_35px_rgba(5,14,64,0.14)]">
+        <p className="font-extrabold text-qc-navy">
+          {point.name || point.modality}
+        </p>
 
         <div className="mt-2.5 space-y-2 border-t border-border pt-2.5">
           <div className="flex items-center justify-between gap-5">
@@ -586,7 +535,7 @@ export function TatOverviewChart({
       <div
         ref={filterPopoverRef}
         role="dialog"
-        aria-label="Chart filters"
+        aria-label="Chart time filters"
         style={{
           position: "fixed",
           top: filterPosition.top,
@@ -599,7 +548,7 @@ export function TatOverviewChart({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <span className="text-sm font-extrabold text-qc-navy">
-            Filters
+            Time Period Filter
           </span>
           <button
             type="button"
@@ -612,43 +561,10 @@ export function TatOverviewChart({
         </div>
 
         <div className="space-y-4 p-4">
-          {/* Patient Category */}
+          {/* Time */}
           <div>
             <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-              Patient Category
-            </div>
-            <div className="grid grid-cols-4 gap-1.5">
-              {(
-                [
-                  { id: "ALL", label: "All" },
-                  { id: "OPD", label: "OPD" },
-                  { id: "ER", label: "ER" },
-                  { id: "IN", label: "Inpatient" },
-                ] as const
-              ).map((cat) => {
-                const isActive = patientCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setPatientCategory(cat.id)}
-                    className={`rounded-xl px-2 py-2 text-[10px] font-bold transition-colors ${
-                      isActive
-                        ? "bg-qc-navy text-white"
-                        : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Time */}
-          <div className="border-t border-border pt-3">
-            <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-              Time Period
+              Select Time Range
             </div>
 
             <div className="grid grid-cols-2 gap-1.5">
@@ -657,6 +573,7 @@ export function TatOverviewChart({
                   "ALL",
                   "ROLLING_7D",
                   "WEEK",
+                  "PAST_WEEK",
                   "MONTH",
                   "YEAR",
                 ] as ExtendedTemporalPeriod[]
@@ -757,44 +674,6 @@ export function TatOverviewChart({
             )}
           </div>
 
-          {/* Priority */}
-          <div className="border-t border-border pt-3">
-            <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-              Priority
-            </div>
-
-            <div className="grid grid-cols-3 gap-1.5">
-              {(
-                [
-                  "ALL",
-                  "EMERGENCY",
-                  "ROUTINE",
-                ] as const
-              ).map((urgency) => {
-                const isActive = urgencyFilter === urgency;
-
-                return (
-                  <button
-                    key={urgency}
-                    type="button"
-                    onClick={() => setUrgencyFilter(urgency)}
-                    className={`rounded-xl px-2 py-2.5 text-[10px] font-bold transition-colors ${
-                      isActive
-                        ? "bg-qc-blue text-white"
-                        : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-                    }`}
-                  >
-                    {urgency === "ALL"
-                      ? "All"
-                      : urgency === "EMERGENCY"
-                        ? "STAT / ER"
-                        : "Routine"}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Reset */}
           {isFiltered && (
             <button
@@ -836,69 +715,39 @@ export function TatOverviewChart({
             </div>
           </div>
 
-          {/* Controls: Patient Category Pills + Filter Button */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center rounded-xl border border-border/80 bg-white/90 p-1 shadow-xs">
-              {(
-                [
-                  { id: "ALL", label: "All" },
-                  { id: "OPD", label: "OPD" },
-                  { id: "ER", label: "ER" },
-                  { id: "IN", label: "Inpatient" },
-                ] as const
-              ).map((cat) => {
-                const isActive = patientCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setPatientCategory(cat.id)}
-                    className={`rounded-lg px-2.5 py-1 text-[11px] font-extrabold transition-all ${
-                      isActive
-                        ? "bg-qc-navy text-white shadow-xs"
-                        : "text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Filter Button */}
-            <button
-              ref={filterButtonRef}
-              type="button"
-              onClick={() => setIsFilterOpen((previous) => !previous)}
-              className={`group inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-extrabold shadow-xs transition-all ${
+          {/* Filter Button */}
+          <button
+            ref={filterButtonRef}
+            type="button"
+            onClick={() => setIsFilterOpen((previous) => !previous)}
+            className={`group inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-extrabold shadow-xs transition-all ${
+              isFilterOpen
+                ? "border-qc-navy bg-qc-navy text-white shadow-[0_6px_14px_rgba(5,14,64,0.12)]"
+                : isFiltered
+                  ? "border-qc-blue/20 bg-white text-qc-blue hover:border-qc-blue/30 hover:bg-white"
+                  : "border-border/80 bg-white/90 text-qc-navy hover:border-qc-blue/15 hover:bg-white"
+            }`}
+            aria-expanded={isFilterOpen}
+            aria-haspopup="dialog"
+          >
+            <Filter
+              className={`h-3 w-3 transition-colors ${
                 isFilterOpen
-                  ? "border-qc-navy bg-qc-navy text-white shadow-[0_6px_14px_rgba(5,14,64,0.12)]"
-                  : isFiltered
-                    ? "border-qc-blue/20 bg-white text-qc-blue hover:border-qc-blue/30 hover:bg-white"
-                    : "border-border/80 bg-white/90 text-qc-navy hover:border-qc-blue/15 hover:bg-white"
+                  ? "text-qc-yellow"
+                  : "text-qc-blue"
               }`}
-              aria-expanded={isFilterOpen}
-              aria-haspopup="dialog"
-            >
-              <Filter
-                className={`h-3 w-3 transition-colors ${
-                  isFilterOpen
-                    ? "text-qc-yellow"
-                    : "text-qc-blue"
-                }`}
-              />
-              <span>
-                {temporalPeriod !== "ALL"
-                  ? temporalLabels[temporalPeriod]
-                  : "Filter"}
-              </span>
-              <ChevronDown
-                className={`h-3 w-3 transition-transform ${
-                  isFilterOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-          </div>
+            />
+            <span>
+              {temporalPeriod !== "ALL"
+                ? temporalLabels[temporalPeriod]
+                : "Filter time"}
+            </span>
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${
+                isFilterOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
         </div>
       </div>
 
