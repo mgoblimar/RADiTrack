@@ -193,6 +193,7 @@ export async function getDashboardData() {
           (1000 * 60)
         ).toFixed(1),
       );
+      const dwellHours = Number((dwellMinutes / 60).toFixed(1));
       const targetRule = e.modality.slaConfigs.find(
         (s) =>
           s.triageLevel === e.triageLevel && s.urgencyLevel === e.urgencyLevel,
@@ -209,6 +210,7 @@ export async function getDashboardData() {
         triageLevel: e.triageLevel,
         urgencyLevel: e.urgencyLevel,
         dwellMinutes,
+        dwellHours,
         targetTat: targetRule?.targetTatMinutes ?? null,
         isBreached,
         isCarryOver,
@@ -1189,6 +1191,7 @@ export interface FilteredExaminationItem {
   examCompletedAtFormatted: string | null;
   reportSignedAtFormatted: string | null;
   dwellMinutes: number | null;
+  dwellHours: number | null;
   tatMinutes: number | null;
   tatHours: number | null;
   targetTatMinutes: number | null;
@@ -1306,6 +1309,7 @@ export async function fetchFilteredExaminationsAction(
     const targetTat = targetRule?.targetTatMinutes ?? null;
 
     let dwellMinutes: number | null = null;
+    let dwellHours: number | null = null;
     let tatMinutes: number | null = null;
     let tatHours: number | null = null;
     let isBreached = false;
@@ -1327,6 +1331,7 @@ export async function fetchFilteredExaminationsAction(
         dwellMinutes = Number(
           ((now.getTime() - new Date(e.examCompletedAt).getTime()) / (1000 * 60)).toFixed(1)
         );
+        dwellHours = Number((dwellMinutes / 60).toFixed(1));
         if (targetTat && dwellMinutes > targetTat) {
           isBreached = true;
           totalBreached++;
@@ -1359,6 +1364,7 @@ export async function fetchFilteredExaminationsAction(
           })
         : null,
       dwellMinutes,
+      dwellHours,
       tatMinutes,
       tatHours,
       targetTatMinutes: targetTat,

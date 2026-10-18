@@ -1182,7 +1182,11 @@ export function ExaminationsHub({
                                 : "text-qc-orange"
                             }`}
                           >
-                            {item.dwellMinutes}m
+                            {item.dwellHours !== null && item.dwellHours !== undefined
+                              ? `${item.dwellHours}h`
+                              : item.dwellMinutes !== null && item.dwellMinutes !== undefined
+                                ? `${Number((item.dwellMinutes / 60).toFixed(1))}h`
+                                : "—"}
                           </span>
 
                           {item.isBreached && (
@@ -1332,7 +1336,11 @@ export function ExaminationsHub({
                           </span>
                         ) : (
                           <span className="font-mono text-xs font-extrabold text-qc-orange">
-                            {item.dwellMinutes}m
+                            {item.dwellHours !== null && item.dwellHours !== undefined
+                              ? `${item.dwellHours}h`
+                              : item.dwellMinutes !== null && item.dwellMinutes !== undefined
+                                ? `${Number((item.dwellMinutes / 60).toFixed(1))}h`
+                                : "—"}
                           </span>
                         )}
                       </td>
