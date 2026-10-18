@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import {
   ShieldCheck,
   Clock,
@@ -28,6 +28,400 @@ import {
   createRadiologistAction,
   toggleRadiologistStatusAction,
 } from "@/app/actions";
+
+export function formatSlaDuration(minutes: number) {
+  if (minutes < 60) {
+    return `${minutes} mins`;
+  }
+
+  const days = minutes / 1440;
+  const hrs = minutes / 60;
+
+  if (days >= 1) {
+    if (Number.isInteger(days)) {
+      return `${days} ${days === 1 ? "day" : "days"} (${hrs} hrs)`;
+    }
+    const formattedDays = parseFloat(days.toFixed(2));
+    const formattedHrs = Number.isInteger(hrs) ? hrs : parseFloat(hrs.toFixed(1));
+    return `${formattedDays} days (${formattedHrs} hrs)`;
+  }
+
+  return Number.isInteger(hrs)
+    ? `${hrs} ${hrs === 1 ? "hr" : "hrs"} (${minutes}m)`
+    : `${hrs.toFixed(1)} hrs (${minutes}m)`;
+}
+
+type SlaUnit = "minutes" | "hours" | "days";
+
+interface EditSlaModalProps {
+  editingSla: {
+    modalityCode: string;
+    modalityName: string;
+    triageLevel: string;
+    urgencyLevel: string;
+    currentTargetMinutes: number;
+  };
+  onClose: () => void;
+  onSuccess: (updatedMinutes: number) => void;
+  onError: (errorMsg: string) => void;
+}
+
+function EditSlaModal({
+  editingSla,
+  onClose,
+  onSuccess,
+  onError,
+}: EditSlaModalProps) {
+  const [isPending, startTransition] = useTransition();
+
+  // Determine initial unit based on current target
+  const initialUnit: SlaUnit = useMemo(() => {
+    const mins = editingSla.currentTargetMinutes;
+    if (mins >= 1440 && mins % 1440 === 0) return "days";
+    if (mins >= 60 && mins % 60 === 0) return "hours";
+    return "minutes";
+  }, [editingSla.currentTargetMinutes]);
+
+  const [unit, setUnit] = useState<SlaUnit>(initialUnit);
+
+  // Helper to format minutes to a unit's string value
+  const formatValueForUnit = (mins: number, targetUnit: SlaUnit): string => {
+    if (mins <= 0) return "";
+    if (targetUnit === "days") {
+      const d = mins / 1440;
+      return Number.isInteger(d) ? d.toString() : parseFloat(d.toFixed(2)).toString();
+    }
+    if (targetUnit === "hours") {
+      const h = mins / 60;
+      return Number.isInteger(h) ? h.toString() : parseFloat(h.toFixed(2)).toString();
+    }
+    return mins.toString();
+  };
+
+  const [inputValue, setInputValue] = useState<string>(() =>
+    formatValueForUnit(editingSla.currentTargetMinutes, initialUnit)
+  );
+
+  // Calculated total minutes based on active input & unit
+  const calculatedMinutes = useMemo(() => {
+    const num = parseFloat(inputValue);
+    if (isNaN(num) || num <= 0) return 0;
+    if (unit === "days") return Math.round(num * 1440);
+    if (unit === "hours") return Math.round(num * 60);
+    return Math.round(num);
+  }, [inputValue, unit]);
+
+  // Unit switch with seamless value conversion
+  const handleUnitChange = (newUnit: SlaUnit) => {
+    if (newUnit === unit) return;
+    if (calculatedMinutes > 0) {
+      setInputValue(formatValueForUnit(calculatedMinutes, newUnit));
+    }
+    setUnit(newUnit);
+  };
+
+  // Boundary validations (5 mins min, 7 days / 10,080 mins max)
+  const isTooHigh = calculatedMinutes > 10080;
+  const isTooLow = calculatedMinutes > 0 && calculatedMinutes < 5;
+  const isValid = calculatedMinutes >= 5 && calculatedMinutes <= 10080;
+
+  const totalDays = calculatedMinutes > 0 ? calculatedMinutes / 1440 : 0;
+  const totalHours = calculatedMinutes > 0 ? calculatedMinutes / 60 : 0;
+
+  const presets = [
+    { label: "30m", unit: "minutes" as SlaUnit, val: 30, mins: 30 },
+    { label: "45m", unit: "minutes" as SlaUnit, val: 45, mins: 45 },
+    { label: "1 hr", unit: "hours" as SlaUnit, val: 1, mins: 60 },
+    { label: "2 hrs", unit: "hours" as SlaUnit, val: 2, mins: 120 },
+    { label: "4 hrs", unit: "hours" as SlaUnit, val: 4, mins: 240 },
+    { label: "8 hrs", unit: "hours" as SlaUnit, val: 8, mins: 480 },
+    { label: "12 hrs", unit: "hours" as SlaUnit, val: 12, mins: 720 },
+    { label: "1 day (24h)", unit: "days" as SlaUnit, val: 1, mins: 1440 },
+    { label: "2 days (48h)", unit: "days" as SlaUnit, val: 2, mins: 2880 },
+    { label: "3 days (72h)", unit: "days" as SlaUnit, val: 3, mins: 4320 },
+    { label: "4 days (96h)", unit: "days" as SlaUnit, val: 4, mins: 5760 },
+    { label: "5 days (120h)", unit: "days" as SlaUnit, val: 5, mins: 7200 },
+    { label: "7 days (168h)", unit: "days" as SlaUnit, val: 7, mins: 10080 },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-qc-navy/45 p-4 backdrop-blur-[4px] animate-in fade-in duration-150"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_24px_70px_rgba(5,6,64,0.18)]">
+        <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-qc-yellow/10" />
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-qc-navy"
+          aria-label="Close SLA dialog"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="relative pr-8">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-blue/10 text-qc-blue">
+              <Clock className="h-4 w-4" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-extrabold tracking-tight text-qc-navy">
+                Edit SLA benchmark
+              </h3>
+
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                {editingSla.modalityName} ({editingSla.modalityCode}) ·{" "}
+                {editingSla.triageLevel} / {editingSla.urgencyLevel}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form
+          action={async (formData: FormData) => {
+            if (!isValid) return;
+            startTransition(async () => {
+              const res = await updateSlaTargetAction(formData);
+              if (res.success) {
+                onSuccess(calculatedMinutes);
+              } else {
+                onError(res.message || "Failed to update SLA");
+              }
+            });
+          }}
+          className="relative mt-6 space-y-5"
+        >
+          <input
+            type="hidden"
+            name="modalityCode"
+            value={editingSla.modalityCode}
+          />
+          <input
+            type="hidden"
+            name="triageLevel"
+            value={editingSla.triageLevel}
+          />
+          <input
+            type="hidden"
+            name="urgencyLevel"
+            value={editingSla.urgencyLevel}
+          />
+          <input
+            type="hidden"
+            name="targetTatMinutes"
+            value={calculatedMinutes}
+          />
+
+          {/* Unit selection tabs */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Configure Target By
+              </label>
+              <span className="text-[11px] font-semibold text-slate-400">
+                Up to 7 days max
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200/80 bg-slate-100/70 p-1">
+              <button
+                type="button"
+                onClick={() => handleUnitChange("minutes")}
+                className={`rounded-xl py-2 text-xs font-bold transition-all ${
+                  unit === "minutes"
+                    ? "bg-white text-qc-navy shadow-sm"
+                    : "text-slate-500 hover:text-qc-navy"
+                }`}
+              >
+                Minutes
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUnitChange("hours")}
+                className={`rounded-xl py-2 text-xs font-bold transition-all ${
+                  unit === "hours"
+                    ? "bg-white text-qc-navy shadow-sm"
+                    : "text-slate-500 hover:text-qc-navy"
+                }`}
+              >
+                Hours
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUnitChange("days")}
+                className={`rounded-xl py-2 text-xs font-bold transition-all ${
+                  unit === "days"
+                    ? "bg-white text-qc-navy shadow-sm"
+                    : "text-slate-500 hover:text-qc-navy"
+                }`}
+              >
+                Days (up to 7d)
+              </button>
+            </div>
+          </div>
+
+          {/* Numeric Input */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="text-sm font-bold text-qc-navy">
+                {unit === "days"
+                  ? "Target duration in days"
+                  : unit === "hours"
+                  ? "Target duration in hours"
+                  : "Target duration in minutes"}
+              </label>
+              <span className="text-xs text-slate-400">
+                Current:{" "}
+                <strong className="text-qc-navy">
+                  {formatSlaDuration(editingSla.currentTargetMinutes)}
+                </strong>
+              </span>
+            </div>
+
+            <div className="relative">
+              <input
+                type="number"
+                required
+                min={unit === "days" ? 0.1 : unit === "hours" ? 0.1 : 5}
+                max={unit === "days" ? 7 : unit === "hours" ? 168 : 10080}
+                step={unit === "days" ? "0.25" : unit === "hours" ? "0.5" : "1"}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={
+                  unit === "days"
+                    ? "e.g. 1, 2, 3 (up to 7)"
+                    : unit === "hours"
+                    ? "e.g. 1, 8, 24, 72"
+                    : "e.g. 30, 60, 1440"
+                }
+                className="w-full rounded-2xl border border-slate-200/80 bg-white/80 px-3.5 py-3 pr-20 font-mono text-sm font-semibold text-qc-navy outline-none transition-all placeholder:text-slate-400 focus:border-qc-blue/30 focus:bg-white focus:ring-2 focus:ring-qc-blue/10"
+              />
+
+              <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold capitalize text-slate-400">
+                {unit}
+              </span>
+            </div>
+
+            {/* Validation messages */}
+            {isTooHigh && (
+              <div className="mt-2 flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>Target SLA cannot exceed 7 days (168 hours / 10,080 minutes).</span>
+              </div>
+            )}
+            {isTooLow && (
+              <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>Target SLA benchmark must be at least 5 minutes.</span>
+              </div>
+            )}
+          </div>
+
+          {/* Live Equivalent Breakdown Card */}
+          {calculatedMinutes > 0 && (
+            <div className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-3.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-500">Equivalent breakdown:</span>
+                <span className="font-mono text-xs font-bold text-qc-blue">
+                  {calculatedMinutes.toLocaleString()} total mins
+                </span>
+              </div>
+
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl border border-slate-200/60 bg-white p-2">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Minutes
+                  </div>
+                  <div className="mt-0.5 font-mono text-xs font-extrabold text-qc-navy">
+                    {calculatedMinutes.toLocaleString()}m
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200/60 bg-white p-2">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Hours
+                  </div>
+                  <div className="mt-0.5 font-mono text-xs font-extrabold text-qc-navy">
+                    {Number.isInteger(totalHours)
+                      ? `${totalHours} hrs`
+                      : `${totalHours.toFixed(1)} hrs`}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200/60 bg-white p-2">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Days
+                  </div>
+                  <div className="mt-0.5 font-mono text-xs font-extrabold text-qc-navy">
+                    {Number.isInteger(totalDays)
+                      ? `${totalDays} ${totalDays === 1 ? "day" : "days"}`
+                      : `${totalDays.toFixed(2)} days`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick presets */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-500">
+                Quick duration presets (up to 7 days)
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {presets.map((p) => {
+                const isSelected = calculatedMinutes === p.mins;
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      setUnit(p.unit);
+                      setInputValue(p.val.toString());
+                    }}
+                    className={`rounded-xl border px-2.5 py-1.5 text-xs font-bold transition-all ${
+                      isSelected
+                        ? "border-qc-blue bg-qc-blue text-white shadow-sm"
+                        : "border-slate-200/80 bg-white text-qc-navy hover:border-qc-blue/30 hover:bg-qc-blue/5 hover:text-qc-blue"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Modal Footer Actions */}
+          <div className="flex flex-col-reverse gap-2 border-t border-slate-200/80 pt-5 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-qc-navy"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={isPending || !isValid}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-qc-yellow px-5 py-2.5 text-sm font-extrabold text-qc-navy transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              {isPending ? "Saving..." : "Save benchmark"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 interface ConfigurationsHubProps {
   initialData?: ConfigurationsData;
@@ -126,17 +520,7 @@ export function ConfigurationsHub({
   // Duration formatter
   // =========================================================
 
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) {
-      return `${minutes} mins`;
-    }
-
-    const hrs = minutes / 60;
-
-    return Number.isInteger(hrs)
-      ? `${hrs} hrs (${minutes}m)`
-      : `${hrs.toFixed(1)} hrs (${minutes}m)`;
-  };
+  const formatDuration = formatSlaDuration;
 
   // =========================================================
   // Shared styles
@@ -1014,189 +1398,19 @@ export function ConfigurationsHub({
           ========================================================= */}
 
       {editingSla && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-qc-navy/45 p-4 backdrop-blur-[4px] animate-in fade-in duration-150"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_24px_70px_rgba(5,6,64,0.18)]">
-            <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-qc-yellow/10" />
-
-            <button
-              type="button"
-              onClick={() => setEditingSla(null)}
-              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-qc-navy"
-              aria-label="Close SLA dialog"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <div className="relative pr-8">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-blue/10 text-qc-blue">
-                  <Clock className="h-4 w-4" />
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-extrabold tracking-tight text-qc-navy">
-                    Edit SLA benchmark
-                  </h3>
-
-                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    {editingSla.modalityName} (
-                    {editingSla.modalityCode}) ·{" "}
-                    {editingSla.triageLevel} /{" "}
-                    {editingSla.urgencyLevel}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <form
-              action={async (formData: FormData) => {
-                startTransition(async () => {
-                  const res =
-                    await updateSlaTargetAction(
-                      formData,
-                    );
-
-                  if (res.success) {
-                    showFeedback(
-                      `Updated SLA target for ${editingSla.modalityCode} (${editingSla.urgencyLevel}) to ${formData.get(
-                        "targetTatMinutes",
-                      )} minutes!`,
-                    );
-
-                    setEditingSla(null);
-                  } else {
-                    showFeedback(
-                      res.message ||
-                        "Failed to update SLA",
-                      "error",
-                    );
-                  }
-                });
-              }}
-              className="relative mt-6 space-y-5"
-            >
-              <input
-                type="hidden"
-                name="modalityCode"
-                value={editingSla.modalityCode}
-              />
-
-              <input
-                type="hidden"
-                name="triageLevel"
-                value={editingSla.triageLevel}
-              />
-
-              <input
-                type="hidden"
-                name="urgencyLevel"
-                value={editingSla.urgencyLevel}
-              />
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-qc-navy">
-                  Target turnaround time
-                </label>
-
-                <div className="relative">
-                  <input
-                    type="number"
-                    name="targetTatMinutes"
-                    required
-                    min={5}
-                    max={10080}
-                    defaultValue={
-                      editingSla.currentTargetMinutes
-                    }
-                    className={
-                      inputBase + " pr-20 font-mono"
-                    }
-                  />
-
-                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    minutes
-                  </span>
-                </div>
-
-                <p className="mt-2 text-xs text-slate-500">
-                  Current target:{" "}
-                  <strong className="text-qc-navy">
-                    {formatDuration(
-                      editingSla.currentTargetMinutes,
-                    )}
-                  </strong>
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold text-slate-500">
-                  Quick duration presets
-                </label>
-
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { label: "30m", val: 30 },
-                    { label: "45m", val: 45 },
-                    {
-                      label: "60m (1h)",
-                      val: 60,
-                    },
-                    { label: "2 hrs", val: 120 },
-                    { label: "8 hrs", val: 480 },
-                    { label: "12 hrs", val: 720 },
-                    { label: "24 hrs (1 day)", val: 1440 },
-                    { label: "48 hrs (2 days)", val: 2880 },
-                    { label: "72 hrs (3 days)", val: 4320 },
-                  ].map((p) => (
-                    <button
-                      key={p.val}
-                      type="button"
-                      onClick={(e) => {
-                        const input =
-                          e.currentTarget.form?.elements.namedItem(
-                            "targetTatMinutes",
-                          ) as HTMLInputElement;
-
-                        if (input) {
-                          input.value =
-                            p.val.toString();
-                        }
-                      }}
-                      className="rounded-xl border border-slate-200/80 bg-white px-2.5 py-1.5 text-xs font-bold text-qc-navy transition-all hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue"
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col-reverse gap-2 border-t border-slate-200/80 pt-5 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEditingSla(null)
-                  }
-                  className="rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-qc-navy"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="flex items-center justify-center gap-2 rounded-2xl bg-qc-yellow px-4 py-2.5 text-sm font-extrabold text-qc-navy transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Save className="h-4 w-4" />
-                  Save benchmark
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EditSlaModal
+          editingSla={editingSla}
+          onClose={() => setEditingSla(null)}
+          onSuccess={(targetMinutes) => {
+            showFeedback(
+              `Updated SLA target for ${editingSla.modalityCode} (${editingSla.urgencyLevel}) to ${formatSlaDuration(targetMinutes)}!`,
+            );
+            setEditingSla(null);
+          }}
+          onError={(msg) => {
+            showFeedback(msg, "error");
+          }}
+        />
       )}
 
       {/* =========================================================

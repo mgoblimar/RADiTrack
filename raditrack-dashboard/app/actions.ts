@@ -1755,6 +1755,10 @@ export async function updateSlaTargetAction(formData: FormData) {
     return { success: false, message: "Invalid modality or target TAT duration." };
   }
 
+  if (targetTatMinutes > 10080) {
+    return { success: false, message: "SLA target benchmark cannot exceed 7 days (10,080 minutes)." };
+  }
+
   await prisma.slaConfiguration.upsert({
     where: {
       modalityCode_triageLevel_urgencyLevel: {
