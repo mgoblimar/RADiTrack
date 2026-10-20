@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
 const tableColumns =
-  "grid-cols-[minmax(0,1fr)_70px_70px_100px_60px]";
+  "grid-cols-[2.5fr_1fr_1fr_1fr_1fr_1fr_1fr]";
 
 export default async function PatientActivityPage() {
   const data = await getPublicActivityData();
@@ -236,128 +236,110 @@ export default async function PatientActivityPage() {
                   IMAGING ACTIVITIES
               ================================================= */}
 
-              <div className="col-span-12 flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-qc-blue/10 bg-white shadow-[0_8px_24px_rgba(5,14,64,0.05)] lg:col-span-8">
-
-                <div className="relative flex h-[60px] shrink-0 items-center overflow-hidden border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-6">
-
+            <div className="col-span-12 flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-qc-blue/10 bg-white shadow-[0_8px_24px_rgba(5,14,64,0.05)] lg:col-span-8">
+              {/* TOP HEADER ROW: IMAGING ACTIVITIES | TODAY | YESTERDAY */}
+              <div className={`grid ${tableColumns} shrink-0 items-center border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)]`}>
+                {/* TITLE / MODALITY COL */}
+                <div className="relative flex h-[50px] items-center overflow-hidden border-r border-slate-200/80 px-6">
                   <div className="pointer-events-none absolute -right-8 -top-12 h-24 w-24 rounded-full bg-qc-yellow/10" />
-
-                  <h2 className="relative z-10 text-xl font-extrabold tracking-tight text-qc-navy">
-                    Imaging Activities Today
+                  <h2 className="relative z-10 text-lg font-extrabold tracking-tight text-qc-navy">
+                    Imaging Activities
                   </h2>
-
                 </div>
 
-                {/* TABLE HEADER */}
-                <div
-                  className={`grid ${tableColumns} shrink-0 items-center border-b border-slate-200/70 bg-qc-blue/[0.035] px-6 py-2.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-qc-blue`}
-                >
-                  <span>
-                    Modality
-                  </span>
-
-                  <span className="whitespace-nowrap text-right">
-                    Total
-                  </span>
-
-                  <span className="whitespace-nowrap text-right">
-                    OPD
-                  </span>
-
-                  <span className="whitespace-nowrap text-right">
-                    Inpatient
-                  </span>
-
-                  <span className="whitespace-nowrap text-right text-qc-red">
-                    ER
-                  </span>
+                {/* TODAY BLOCK */}
+                <div className="col-span-3 flex h-[50px] items-center justify-center gap-2 border-r border-slate-200/80 bg-qc-blue/[0.03] text-sm font-extrabold uppercase tracking-wider text-qc-navy">
+                  <span className="h-2.5 w-2.5 rounded-full bg-qc-blue" />
+                  <span>TODAY</span>
                 </div>
 
-                {/* TABLE ROWS */}
-                <div className="min-h-0 flex-1 overflow-hidden">
-
-                  <div className="h-full">
-
-                    {data.modalities.map(
-                      (item) => (
-                        <div
-                          key={
-                            item.modalityCode
-                          }
-                          className={`grid ${tableColumns} h-[64px] items-center border-b border-slate-200/70 px-6 last:border-b-0`}
-                        >
-
-                          <div className="flex min-w-0 items-center gap-3 pr-3">
-
-                            <span className="flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg bg-qc-navy px-2 text-[11px] font-extrabold text-qc-yellow">
-                              {
-                                item.modalityCode
-                              }
-                            </span>
-
-                            <span className="truncate text-sm font-extrabold text-qc-navy xl:text-[15px]">
-                              {
-                                item.modalityName
-                              }
-                            </span>
-
-                          </div>
-
-                          {/* TOTAL */}
-                          <span className="whitespace-nowrap text-right text-lg font-extrabold text-qc-blue xl:text-xl">
-                            {item.today.total}
-                          </span>
-
-                          {/* OPD */}
-                          <span className="whitespace-nowrap text-right text-sm font-bold text-qc-blue xl:text-[15px]">
-                            {item.today.opd}
-                          </span>
-
-                          {/* INPATIENT — same visual treatment as OPD */}
-                          <span className="whitespace-nowrap text-right text-sm font-bold text-qc-blue xl:text-[15px]">
-                            {item.today.in}
-                          </span>
-
-                          {/* ER */}
-                          <span className="whitespace-nowrap text-right text-sm font-extrabold text-qc-red xl:text-[15px]">
-                            {item.today.er}
-                          </span>
-
-                        </div>
-                      ),
-                    )}
-
-                  </div>
+                {/* YESTERDAY BLOCK */}
+                <div className="col-span-3 flex h-[50px] items-center justify-center gap-2 bg-slate-50 text-sm font-extrabold uppercase tracking-wider text-slate-500">
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
+                  <span>YESTERDAY</span>
                 </div>
-
               </div>
+
+              {/* SUB-HEADER ROW: [BADGE + NAME] | OPD | IN | ER | OPD | IN | ER */}
+              <div className={`grid ${tableColumns} shrink-0 items-center border-b border-slate-200/70 bg-slate-50/60 px-6 py-2 text-[10px] font-extrabold uppercase tracking-[0.08em] text-qc-blue`}>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span className="h-2 w-4 rounded-full border border-slate-300" />
+                  <span>Code & Name</span>
+                </div>
+
+                {/* TODAY SUB-COLUMNS */}
+                <span className="text-right">OPD</span>
+                <span className="text-right">IN</span>
+                <span className="text-right border-r border-slate-200/80 pr-4 text-qc-red">ER</span>
+
+                {/* YESTERDAY SUB-COLUMNS */}
+                <span className="text-right pl-4 text-slate-500">OPD</span>
+                <span className="text-right text-slate-500">IN</span>
+                <span className="text-right text-slate-500">ER</span>
+              </div>
+
+              {/* TABLE DATA ROWS */}
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <div className="h-full">
+                  {data.modalities.map((item) => (
+                    <div
+                      key={item.modalityCode}
+                      className={`grid ${tableColumns} h-[64px] items-center border-b border-slate-200/70 px-6 last:border-b-0 transition-colors hover:bg-qc-blue/[0.015]`}
+                    >
+                      {/* ICON / BADGE + MODALITY NAME */}
+                      <div className="flex min-w-0 items-center gap-3 pr-2">
+                        <span className="flex h-8 min-w-11 shrink-0 items-center justify-center rounded-lg bg-qc-navy px-2 text-[11px] font-extrabold text-qc-yellow shadow-sm">
+                          {item.modalityCode}
+                        </span>
+                        <span className="truncate text-sm font-extrabold text-qc-navy xl:text-[15px]">
+                          {item.modalityName}
+                        </span>
+                      </div>
+
+                      {/* TODAY VALUES */}
+                      <span className="whitespace-nowrap text-right text-base font-bold text-qc-blue xl:text-lg">
+                        {item.today.opd}
+                      </span>
+                      <span className="whitespace-nowrap text-right text-base font-bold text-qc-blue xl:text-lg">
+                        {item.today.in}
+                      </span>
+                      <span className="whitespace-nowrap text-right text-base font-extrabold border-r border-slate-200/80 pr-4 text-qc-red xl:text-lg">
+                        {item.today.er}
+                      </span>
+
+                      {/* YESTERDAY VALUES */}
+                      <span className="whitespace-nowrap text-right text-base font-semibold pl-4 text-slate-500 xl:text-lg">
+                        {item.yesterday.opd}
+                      </span>
+                      <span className="whitespace-nowrap text-right text-base font-semibold text-slate-500 xl:text-lg">
+                        {item.yesterday.in}
+                      </span>
+                      <span className="whitespace-nowrap text-right text-base font-semibold text-slate-500 xl:text-lg">
+                        {item.yesterday.er}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
 
               {/* =================================================
                   MODALITY DISTRIBUTION
               ================================================= */}
 
               <div className="col-span-12 flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-qc-blue/10 bg-white shadow-[0_8px_24px_rgba(5,14,64,0.05)] lg:col-span-4">
-
-                <div className="relative flex h-[60px] shrink-0 items-center overflow-hidden border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-6">
-
+                {/* HEADER */}
+                <div className="relative flex h-[60px] shrink-0 items-center border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-6">
                   <div className="pointer-events-none absolute -right-8 -top-12 h-24 w-24 rounded-full bg-qc-yellow/10" />
-
                   <h2 className="relative z-10 text-xl font-extrabold tracking-tight text-qc-navy">
-                    Modality Distribution
+                    Modality Distribution Today
                   </h2>
-
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-hidden px-4 py-2.5 sm:px-5">
-
-                  <ModalityPieChart
-                    modalities={
-                      data.modalities
-                    }
-                  />
-
+                {/* CHART BODY CONTAINER - Fills available vertical height */}
+                <div className="flex min-h-0 flex-1 flex-col p-4">
+                  <ModalityPieChart modalities={data.modalities} />
                 </div>
-
               </div>
 
             </section>
