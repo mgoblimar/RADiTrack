@@ -21,10 +21,19 @@ import {
   type FilteredKpiResult,
   type ModalityTatOverviewItem,
 } from "@/app/actions";
+import { ModalityCode, MODALITY_CONFIG } from "@/lib/enums";
 
 import {
   BarChart3,
 } from "lucide-react";
+
+const MODALITIES_LIST = [
+  { code: ModalityCode.XRAY, label: "X-ray", color: "bg-blue-500" },
+  { code: ModalityCode.US, label: "Ultrasound", color: "bg-emerald-500" },
+  { code: ModalityCode.CT, label: "CT-Scan", color: "bg-amber-500" },
+  { code: ModalityCode.MRI, label: "MRI", color: "bg-purple-500" },
+  { code: ModalityCode.MAMMO, label: "Mammogram", color: "bg-pink-500" },
+];
 
 interface DashboardShellProps {
   data: any;
@@ -238,6 +247,30 @@ export function DashboardShell({
     });
   };
 
+  useEffect(() => {
+    if (filterPreset !== "ALL") {
+      startKpiTransition(async () => {
+        try {
+          if (filterPreset === "CUSTOM") {
+            const result = await fetchFilteredExecutiveKpiAction({
+              preset: "CUSTOM",
+              startDate: customStart,
+              endDate: customEnd,
+            });
+            setKpiData(result);
+            setFilteredModalityData(result.modalityOverview);
+            return;
+          }
+          const result = await fetchFilteredExecutiveKpiAction({ preset: filterPreset });
+          setKpiData(result);
+          setFilteredModalityData(result.modalityOverview);
+        } catch (error) {
+          console.error("Failed to re-sync filtered KPIs:", error);
+        }
+      });
+    }
+  }, [data, filterPreset, customStart, customEnd]);
+
   /* =========================================================
      Resolved metrics
   ========================================================= */
@@ -263,6 +296,10 @@ export function DashboardShell({
       ? kpiData.medianTatMinutes
       : data.medianTatMinutes;
 
+  const displayMedianHours = Number(
+    ((displayMedianMinutes ?? 0) / 60).toFixed(1),
+  );
+
   const displayPctOnTime = kpiData
     ? kpiData.pctOnTime
     : data.pctOnTime;
@@ -274,6 +311,59 @@ export function DashboardShell({
   const displayPending = kpiData
     ? kpiData.pendingReadingCount
     : data.pendingReadingCount;
+
+  /* =========================================================
+     Modality breakdown & KPI filtering
+  ========================================================= */
+
+  const [selectedModality, setSelectedModality] =
+    useState<"ALL" | ModalityCode>("ALL");
+
+  const activeVolumeByModality: Record<string, number> = useMemo(() => {
+    return (
+      kpiData?.volumeByModality ??
+      data?.volumeByModality ?? {
+        XRAY: 0,
+        US: 0,
+        CT: 0,
+        MRI: 0,
+        MAMMO: 0,
+      }
+    );
+  }, [kpiData, data]);
+
+  const activePendingByModality: Record<string, number> = useMemo(() => {
+    return (
+      kpiData?.pendingByModality ??
+      data?.pendingByModality ?? {
+        XRAY: 0,
+        US: 0,
+        CT: 0,
+        MRI: 0,
+        MAMMO: 0,
+      }
+    );
+  }, [kpiData, data]);
+
+  const displayVolumeForCard =
+    selectedModality === "ALL"
+      ? displayVolume
+      : (activeVolumeByModality[selectedModality] ?? 0);
+
+  const volumeSubtitle =
+    selectedModality === "ALL"
+      ? "Across all modalities"
+      : `${MODALITY_CONFIG[selectedModality]?.shortName || selectedModality} · Selected modality`;
+
+  const displayPendingForCard =
+    selectedModality === "ALL"
+      ? displayPending
+      : (activePendingByModality[selectedModality] ?? 0);
+
+  const pendingSubtitle =
+    selectedModality === "ALL"
+      ? "Across all modalities"
+      : `${MODALITY_CONFIG[selectedModality]?.shortName || selectedModality} · Awaiting sign-off`;
 
   /* =========================================================
      Recent analytics
@@ -403,6 +493,12 @@ export function DashboardShell({
                   isPending={
                     isKpiPending
                   }
+                  selectedModality={
+                    selectedModality
+                  }
+                  onModalityChange={
+                    setSelectedModality
+                  }
                 />
               </section>
 
@@ -412,35 +508,86 @@ export function DashboardShell({
                 className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
               >
                 {/* Total scans */}
-                <div className="group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] border border-qc-navy/20 bg-qc-navy px-5 py-4 text-center shadow-[0_10px_26px_rgba(5,14,64,0.10)] transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/40 hover:shadow-[0_18px_34px_rgba(5,14,64,0.16)]">
-                  <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-qc-blue/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+                <div className="group relative isolate flex min-h-[132px] flex-col items-center justify-center rounded-[24px] border border-qc-navy/20 bg-qc-navy px-5 py-4 text-center shadow-[0_10px_26px_rgba(5,14,64,0.10)] transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/40 hover:shadow-[0_18px_34px_rgba(5,14,64,0.16)] hover:z-30">
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]">
+                    <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-qc-blue/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+                    <div className="absolute -bottom-12 -left-10 h-28 w-28 rounded-full bg-qc-yellow/[0.08] blur-2xl transition-transform duration-500 group-hover:scale-125" />
+                    <div className="absolute inset-x-8 top-0 h-px bg-white/20" />
+                  </div>
 
-                  <div className="pointer-events-none absolute -bottom-12 -left-10 h-28 w-28 rounded-full bg-qc-yellow/[0.08] blur-2xl transition-transform duration-500 group-hover:scale-125" />
-
-                  <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/20" />
-
-                  <div className="relative z-10">
+                  <div className="relative z-10 w-full flex flex-col items-center">
                     <div className="mb-1.5 flex items-center justify-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_8px_rgba(242,203,73,0.55)] motion-safe:animate-pulse" />
-
                       <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/55">
                         Total scans
                       </p>
                     </div>
 
                     <div className="text-4xl font-extrabold leading-none tracking-tight text-white transition-transform duration-300 group-hover:scale-[1.03]">
-                      {displayVolume}
+                      {displayVolumeForCard}
                     </div>
 
-                    <p className="mt-2.5 text-[11px] font-medium text-white/50">
-                      {filterPreset ===
-                      "ALL"
-                        ? "All recorded"
-                        : filterPreset ===
-                            "CUSTOM"
-                          ? "Selected range"
-                          : "Selected period"}
+                    <p className="mt-2 text-[11px] font-medium text-white/60">
+                      {volumeSubtitle}
                     </p>
+                  </div>
+
+                  {/* Hover Breakdown Popover */}
+                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0 translate-y-1">
+                    <div className="rounded-2xl border border-white/20 bg-[#061148]/95 p-3.5 text-left text-white shadow-[0_20px_50px_rgba(5,14,64,0.40)] backdrop-blur-xl">
+                      <div className="mb-2.5 flex items-center justify-between border-b border-white/10 pb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">
+                          Scans by Modality
+                        </span>
+                        <span className="text-[11px] font-extrabold text-qc-yellow">
+                          {displayVolume} Total
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {MODALITIES_LIST.map((m) => {
+                          const count = activeVolumeByModality[m.code] ?? 0;
+                          const pct = displayVolume > 0 ? Math.round((count / displayVolume) * 100) : 0;
+                          const isSelected = selectedModality === m.code;
+                          return (
+                            <button
+                              key={m.code}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedModality(isSelected ? "ALL" : m.code);
+                              }}
+                              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-white/15 ${
+                                isSelected ? "bg-white/20 ring-1 ring-qc-yellow font-bold" : "bg-white/5"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`h-2.5 w-2.5 rounded-full ${m.color}`} />
+                                <span className="text-white/95">{m.label}</span>
+                              </div>
+                              <div className="flex items-center gap-2.5">
+                                <span className="font-extrabold text-white">{count}</span>
+                                <span className="text-[10px] text-white/50 w-7 text-right">{pct}%</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-2.5 flex items-center justify-between border-t border-white/10 pt-2 text-[10px] text-white/50">
+                        <span>Click row to filter</span>
+                        {selectedModality !== "ALL" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedModality("ALL");
+                            }}
+                            className="text-qc-yellow hover:underline font-bold"
+                          >
+                            Reset to All
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -459,24 +606,18 @@ export function DashboardShell({
 
                     <div className="mt-1.5 flex items-baseline justify-center gap-1.5 transition-transform duration-300 group-hover:scale-[1.03]">
                       <span className="text-4xl font-extrabold leading-none tracking-tight text-qc-navy">
-                        {displayAvgHours >=
-                        1
-                          ? displayAvgHours
-                          : displayAvgMinutes}
+                        {displayAvgHours}
                       </span>
 
                       <span className="text-sm font-bold text-muted-foreground">
-                        {displayAvgHours >=
-                        1
-                          ? "hrs"
-                          : "mins"}
+                        hrs
                       </span>
                     </div>
 
                     <p className="mt-2.5 text-[11px] text-muted-foreground">
                       Median{" "}
                       <span className="font-extrabold text-qc-navy">
-                        {displayMedianMinutes}m
+                        {displayMedianHours}h
                       </span>
                     </p>
                   </div>
@@ -508,24 +649,25 @@ export function DashboardShell({
 
                 {/* Reading backlog */}
                 <div
-                  className={`group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] border px-5 py-4 text-center transition-all duration-300 ${
-                    displayPending > 0
+                  className={`group relative isolate flex min-h-[132px] flex-col items-center justify-center rounded-[24px] border px-5 py-4 text-center transition-all duration-300 hover:z-30 ${
+                    displayPendingForCard > 0
                       ? "border-orange-100 bg-[linear-gradient(145deg,#FFFDFC_0%,#FFF8F2_100%)] shadow-[0_6px_18px_rgba(234,88,12,0.045)] hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_16px_30px_rgba(234,88,12,0.09)]"
                       : "border-border/80 bg-card shadow-[0_2px_8px_rgba(15,23,42,0.04)] hover:-translate-y-1 hover:border-qc-blue/15 hover:shadow-[0_16px_30px_rgba(24,41,140,0.08)]"
                   }`}
                 >
-                  <div
-                    className={`pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl transition-transform duration-500 group-hover:scale-125 ${
-                      displayPending > 0
-                        ? "bg-qc-orange/[0.10]"
-                        : "bg-qc-blue/[0.05]"
-                    }`}
-                  />
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]">
+                    <div
+                      className={`absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl transition-transform duration-500 group-hover:scale-125 ${
+                        displayPendingForCard > 0
+                          ? "bg-qc-orange/[0.10]"
+                          : "bg-qc-blue/[0.05]"
+                      }`}
+                    />
+                  </div>
 
-                  <div className="relative z-10">
+                  <div className="relative z-10 w-full flex flex-col items-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      {displayPending >
-                        0 && (
+                      {displayPendingForCard > 0 && (
                         <span className="h-1.5 w-1.5 rounded-full bg-qc-orange shadow-[0_0_8px_rgba(234,88,12,0.35)] motion-safe:animate-pulse" />
                       )}
 
@@ -536,25 +678,89 @@ export function DashboardShell({
 
                     <div
                       className={`mt-1.5 text-4xl font-extrabold leading-none tracking-tight transition-transform duration-300 group-hover:scale-[1.03] ${
-                        displayPending > 0
+                        displayPendingForCard > 0
                           ? "text-qc-orange"
                           : "text-qc-blue"
                       }`}
                     >
-                      {displayPending}
+                      {displayPendingForCard}
                     </div>
 
                     <p
-                      className={`mt-2.5 text-[11px] font-semibold ${
-                        displayPending > 0
+                      className={`mt-2 text-[11px] font-semibold ${
+                        displayPendingForCard > 0
                           ? "text-qc-orange"
                           : "text-qc-blue"
                       }`}
                     >
-                      {displayPending > 0
-                        ? "Awaiting sign-off"
-                        : "Queue clear"}
+                      {pendingSubtitle}
                     </p>
+                  </div>
+
+                  {/* Hover Breakdown Popover */}
+                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0 translate-y-1">
+                    <div className="rounded-2xl border border-border bg-card/95 p-3.5 text-left text-foreground shadow-[0_20px_50px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+                      <div className="mb-2.5 flex items-center justify-between border-b border-border/80 pb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Pending by Modality
+                        </span>
+                        <span className="text-[11px] font-extrabold text-qc-orange">
+                          {displayPending} Pending
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {MODALITIES_LIST.map((m) => {
+                          const count = activePendingByModality[m.code] ?? 0;
+                          const pct = displayPending > 0 ? Math.round((count / displayPending) * 100) : 0;
+                          const isSelected = selectedModality === m.code;
+                          return (
+                            <button
+                              key={m.code}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedModality(isSelected ? "ALL" : m.code);
+                              }}
+                              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-muted ${
+                                isSelected ? "bg-orange-500/15 ring-1 ring-qc-orange font-bold text-qc-orange" : "bg-muted/40"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`h-2.5 w-2.5 rounded-full ${m.color}`} />
+                                <span className="font-medium text-foreground">{m.label}</span>
+                              </div>
+                              <div className="flex items-center gap-2.5">
+                                <span
+                                  className={`font-extrabold ${
+                                    count > 0 ? "text-qc-orange" : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {count}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground w-7 text-right">
+                                  {count > 0 ? `${pct}%` : "—"}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-2.5 flex items-center justify-between border-t border-border/80 pt-2 text-[10px] text-muted-foreground">
+                        <span>Click row to filter</span>
+                        {selectedModality !== "ALL" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedModality("ALL");
+                            }}
+                            className="text-qc-orange hover:underline font-bold"
+                          >
+                            Reset to All
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -595,17 +801,11 @@ export function DashboardShell({
 
                     <div className="mt-2 flex items-baseline justify-center gap-1.5">
                       <span className="text-[52px] font-extrabold leading-none tracking-tight text-qc-navy">
-                        {recentAvgHours >=
-                        1
-                          ? recentAvgHours
-                          : recentAvgMinutes}
+                        {recentAvgHours}
                       </span>
 
                       <span className="text-sm font-bold text-muted-foreground">
-                        {recentAvgHours >=
-                        1
-                          ? "hrs"
-                          : "mins"}
+                        hrs
                       </span>
                     </div>
 
@@ -623,10 +823,7 @@ export function DashboardShell({
                       </span>
 
                       <span className="text-sm font-extrabold text-qc-navy">
-                        {priorAvgHours >=
-                        1
-                          ? `${priorAvgHours}h`
-                          : `${priorAvgMinutes}m`}
+                        {priorAvgHours}h
                       </span>
                     </div>
 

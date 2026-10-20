@@ -30,6 +30,7 @@ import {
   TRIAGE_CONFIG,
   URGENCY_CONFIG,
 } from "@/lib/enums";
+import { notifyDatabaseChanged } from "@/lib/broadcast";
 
 interface SimulatorHubProps {
   initialQueue: any[];
@@ -106,6 +107,7 @@ export function SimulatorHub({
         const result = await simulateScenarioAction(scenario);
 
         showToast(`Ingested ${result.identifier}`);
+        notifyDatabaseChanged();
       } catch (error) {
         console.error("Simulation error:", error);
         showToast("Failed to simulate scan.");
@@ -122,6 +124,7 @@ export function SimulatorHub({
           showToast(
             `Signed off ${result.identifier} · TAT ${result.tatMinutes} mins`,
           );
+          notifyDatabaseChanged();
         } else {
           showToast("No backlog study is available to sign off.");
         }
@@ -291,6 +294,7 @@ export function SimulatorHub({
 
               setCustomId("");
               showToast("Scan logged successfully.");
+              notifyDatabaseChanged();
             }}
             className="space-y-4 p-6"
           >
@@ -617,7 +621,10 @@ export function SimulatorHub({
                   </td>
 
                   <td className="px-5 py-4 text-right">
-                    <form action={signOffReportAction}>
+                    <form action={async (formData: FormData) => {
+                      await signOffReportAction(formData);
+                      notifyDatabaseChanged();
+                    }}>
                       <input
                         type="hidden"
                         name="examId"

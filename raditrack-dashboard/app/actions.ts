@@ -151,6 +151,32 @@ export async function getDashboardData() {
         )
       : 100;
 
+  const volumeByModality: Record<string, number> = {
+    XRAY: 0,
+    US: 0,
+    CT: 0,
+    MRI: 0,
+    MAMMO: 0,
+  };
+  allExams.forEach((e) => {
+    if (volumeByModality[e.modalityCode] !== undefined) {
+      volumeByModality[e.modalityCode]++;
+    }
+  });
+
+  const pendingByModality: Record<string, number> = {
+    XRAY: 0,
+    US: 0,
+    CT: 0,
+    MRI: 0,
+    MAMMO: 0,
+  };
+  pendingReadingExams.forEach((e) => {
+    if (pendingByModality[e.modalityCode] !== undefined) {
+      pendingByModality[e.modalityCode]++;
+    }
+  });
+
   return {
     totalVolume: allExams.length,
     finalizedCount: allReports.length,
@@ -158,6 +184,8 @@ export async function getDashboardData() {
     avgTatMinutes: avgTat,
     medianTatMinutes: medianTat,
     pctOnTime,
+    volumeByModality,
+    pendingByModality,
     pendingReadingQueue: pendingReadingExams.map((e) => {
       const dwellMinutes = Number(
         (
@@ -165,6 +193,7 @@ export async function getDashboardData() {
           (1000 * 60)
         ).toFixed(1),
       );
+      const dwellHours = Number((dwellMinutes / 60).toFixed(1));
       const targetRule = e.modality.slaConfigs.find(
         (s) =>
           s.triageLevel === e.triageLevel && s.urgencyLevel === e.urgencyLevel,
@@ -181,6 +210,7 @@ export async function getDashboardData() {
         triageLevel: e.triageLevel,
         urgencyLevel: e.urgencyLevel,
         dwellMinutes,
+        dwellHours,
         targetTat: targetRule?.targetTatMinutes ?? null,
         isBreached,
         isCarryOver,
@@ -609,6 +639,15 @@ export async function exportExaminationsCSVAction(): Promise<string> {
 // 7. QUERY & ACTION: Multi-Year & 12-Month Historical TAT Trend (Annual Review)
 // Aggregates monthly averages and YoY comparisons across any calendar year or rolling 12M
 // ============================================================================
+export interface MonthModalityTrend {
+  avgTatHours: number;
+  avgTatMinutes: number;
+  totalFinalized: number;
+  priorYearAvgTatHours: number;
+  priorYearAvgTatMinutes: number;
+  priorYearTotalFinalized: number;
+}
+
 export interface MonthTrendData {
   monthIndex: number;
   monthLabel: string;
@@ -619,6 +658,19 @@ export interface MonthTrendData {
   priorYearAvgTatHours?: number;
   priorYearAvgTatMinutes?: number;
   priorYearTotalFinalized?: number;
+  byModality?: Record<string, MonthModalityTrend>;
+  [key: string]: any;
+}
+
+export interface ModalityAnnualSummary {
+  modalityCode: string;
+  annualTotalFinalized: number;
+  annualAvgTatHours: number;
+  annualAvgTatMinutes: number;
+  priorAnnualTotalFinalized: number;
+  priorAnnualAvgTatHours: number;
+  priorAnnualAvgTatMinutes: number;
+  pctChangeTat: number;
 }
 
 export interface TwelveMonthTrendResult {
@@ -644,6 +696,7 @@ export interface TwelveMonthTrendResult {
     monthLabel: string;
     volume: number;
   } | null;
+  byModalityAnnual?: Record<string, ModalityAnnualSummary>;
 }
 
 export async function getTwelveMonthTatTrend(
@@ -727,15 +780,52 @@ export async function getTwelveMonthTatTrend(
     select: {
       tatExamToSignMinutes: true,
       examination: {
-        select: { studyDate: true },
+        select: { studyDate: true, modalityCode: true },
       },
     },
   });
+
+  const modalityCodes = [
+    ModalityCode.XRAY,
+    ModalityCode.US,
+    ModalityCode.CT,
+    ModalityCode.MRI,
+    ModalityCode.MAMMO,
+  ];
 
   const allCurrentTats: number[] = [];
   const allPriorTats: number[] = [];
   let annualTotalFinalized = 0;
   let priorAnnualTotalFinalized = 0;
+
+  const modalityCurrentTats: Record<string, number[]> = {
+    [ModalityCode.XRAY]: [],
+    [ModalityCode.US]: [],
+    [ModalityCode.CT]: [],
+    [ModalityCode.MRI]: [],
+    [ModalityCode.MAMMO]: [],
+  };
+  const modalityPriorTats: Record<string, number[]> = {
+    [ModalityCode.XRAY]: [],
+    [ModalityCode.US]: [],
+    [ModalityCode.CT]: [],
+    [ModalityCode.MRI]: [],
+    [ModalityCode.MAMMO]: [],
+  };
+  const modalityCurrentCounts: Record<string, number> = {
+    [ModalityCode.XRAY]: 0,
+    [ModalityCode.US]: 0,
+    [ModalityCode.CT]: 0,
+    [ModalityCode.MRI]: 0,
+    [ModalityCode.MAMMO]: 0,
+  };
+  const modalityPriorCounts: Record<string, number> = {
+    [ModalityCode.XRAY]: 0,
+    [ModalityCode.US]: 0,
+    [ModalityCode.CT]: 0,
+    [ModalityCode.MRI]: 0,
+    [ModalityCode.MAMMO]: 0,
+  };
 
   const monthsData: MonthTrendData[] = monthsConfig.map((cfg) => {
     const curReports = reports.filter((r) => {
@@ -766,6 +856,47 @@ export async function getTwelveMonthTatTrend(
     allPriorTats.push(...priTatList);
     priorAnnualTotalFinalized += priReports.length;
 
+    const byModality: Record<string, MonthModalityTrend> = {};
+    const flatModalityProps: Record<string, number> = {};
+
+    for (const mCode of modalityCodes) {
+      const curModReports = curReports.filter((r) => r.examination.modalityCode === mCode);
+      const curModTats = curModReports.map((r) => r.tatExamToSignMinutes!).filter((v) => v > 0);
+      const curModAvgMin =
+        curModTats.length > 0
+          ? Number((curModTats.reduce((a, b) => a + b, 0) / curModTats.length).toFixed(1))
+          : 0;
+      const curModAvgHours = Number((curModAvgMin / 60).toFixed(1));
+
+      modalityCurrentTats[mCode].push(...curModTats);
+      modalityCurrentCounts[mCode] += curModReports.length;
+
+      const priModReports = priReports.filter((r) => r.examination.modalityCode === mCode);
+      const priModTats = priModReports.map((r) => r.tatExamToSignMinutes!).filter((v) => v > 0);
+      const priModAvgMin =
+        priModTats.length > 0
+          ? Number((priModTats.reduce((a, b) => a + b, 0) / priModTats.length).toFixed(1))
+          : 0;
+      const priModAvgHours = Number((priModAvgMin / 60).toFixed(1));
+
+      modalityPriorTats[mCode].push(...priModTats);
+      modalityPriorCounts[mCode] += priModReports.length;
+
+      byModality[mCode] = {
+        avgTatHours: curModAvgHours,
+        avgTatMinutes: curModAvgMin,
+        totalFinalized: curModReports.length,
+        priorYearAvgTatHours: priModAvgHours,
+        priorYearAvgTatMinutes: priModAvgMin,
+        priorYearTotalFinalized: priModReports.length,
+      };
+
+      flatModalityProps[`${mCode}_avgTatHours`] = curModAvgHours;
+      flatModalityProps[`${mCode}_totalFinalized`] = curModReports.length;
+      flatModalityProps[`prior_${mCode}_avgTatHours`] = priModAvgHours;
+      flatModalityProps[`prior_${mCode}_totalFinalized`] = priModReports.length;
+    }
+
     return {
       monthIndex: cfg.monthIndex,
       monthLabel: cfg.monthLabel,
@@ -776,6 +907,8 @@ export async function getTwelveMonthTatTrend(
       priorYearAvgTatHours: priAvgHours,
       priorYearAvgTatMinutes: priAvgMinutes,
       priorYearTotalFinalized: priReports.length,
+      byModality,
+      ...flatModalityProps,
     };
   });
 
@@ -806,6 +939,32 @@ export async function getTwelveMonthTatTrend(
         100
       ).toFixed(1)
     );
+  }
+
+  const byModalityAnnual: Record<string, ModalityAnnualSummary> = {};
+  for (const mCode of modalityCodes) {
+    const curTats = modalityCurrentTats[mCode];
+    const priTats = modalityPriorTats[mCode];
+    const curAvgMin =
+      curTats.length > 0 ? Number((curTats.reduce((a, b) => a + b, 0) / curTats.length).toFixed(1)) : 0;
+    const curAvgHours = Number((curAvgMin / 60).toFixed(1));
+    const priAvgMin =
+      priTats.length > 0 ? Number((priTats.reduce((a, b) => a + b, 0) / priTats.length).toFixed(1)) : 0;
+    const priAvgHours = Number((priAvgMin / 60).toFixed(1));
+    let pctChange = 0;
+    if (priAvgMin > 0 && curAvgMin > 0) {
+      pctChange = Number((((curAvgMin - priAvgMin) / priAvgMin) * 100).toFixed(1));
+    }
+    byModalityAnnual[mCode] = {
+      modalityCode: mCode,
+      annualTotalFinalized: modalityCurrentCounts[mCode],
+      annualAvgTatHours: curAvgHours,
+      annualAvgTatMinutes: curAvgMin,
+      priorAnnualTotalFinalized: modalityPriorCounts[mCode],
+      priorAnnualAvgTatHours: priAvgHours,
+      priorAnnualAvgTatMinutes: priAvgMin,
+      pctChangeTat: pctChange,
+    };
   }
 
   const activeMonths = monthsData.filter((m) => m.avgTatMinutes > 0);
@@ -862,6 +1021,7 @@ export async function getTwelveMonthTatTrend(
           volume: peakVolumeMonth.totalFinalized,
         }
       : null,
+    byModalityAnnual,
   };
 }
 
@@ -879,7 +1039,15 @@ export interface ModalityTatStats {
   volume: number;
 }
 
-export type ModalityTemporalPeriod = "ALL" | "7D" | "MONTH" | "YEAR";
+export type ModalityTemporalPeriod =
+  | "ALL"
+  | "7D"
+  | "ROLLING_7D"
+  | "WEEK"
+  | "PAST_WEEK"
+  | "LAST_WEEK"
+  | "MONTH"
+  | "YEAR";
 
 export interface ModalityTatOverviewItem {
   modality: string;
@@ -887,6 +1055,9 @@ export interface ModalityTatOverviewItem {
   all: ModalityTatStats;
   emergency: ModalityTatStats;
   routine: ModalityTatStats;
+  opd: ModalityTatStats;
+  er: ModalityTatStats;
+  inpatient: ModalityTatStats;
 }
 
 export interface MultiPeriodModalityTatOverview {
@@ -894,6 +1065,10 @@ export interface MultiPeriodModalityTatOverview {
   periods: {
     ALL: ModalityTatOverviewItem[];
     "7D": ModalityTatOverviewItem[];
+    ROLLING_7D?: ModalityTatOverviewItem[];
+    WEEK?: ModalityTatOverviewItem[];
+    PAST_WEEK?: ModalityTatOverviewItem[];
+    LAST_WEEK?: ModalityTatOverviewItem[];
     MONTH: ModalityTatOverviewItem[];
     YEAR: ModalityTatOverviewItem[];
   };
@@ -916,8 +1091,16 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
 
   const now = new Date();
   const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = now.getDay();
+  const diffToMonday = now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+  const startOfThisWeek = new Date(now.getFullYear(), now.getMonth(), diffToMonday, 0, 0, 0, 0);
+  const startOfPastWeek = new Date(now.getFullYear(), now.getMonth(), diffToMonday - 7, 0, 0, 0, 0);
+  const endOfPastWeek = new Date(startOfPastWeek);
+  endOfPastWeek.setDate(startOfPastWeek.getDate() + 6);
+  endOfPastWeek.setHours(23, 59, 59, 999);
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
@@ -932,17 +1115,23 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
           ? new Date(e.report.reportSignedAt)
           : null;
         if (!examDate) return false;
-        if (period === "7D") return examDate >= sevenDaysAgo && examDate <= now;
+        if (period === "7D" || period === "ROLLING_7D") return examDate >= sevenDaysAgo && examDate <= now;
+        if (period === "WEEK") return examDate >= startOfThisWeek && examDate <= now;
+        if (period === "PAST_WEEK" || period === "LAST_WEEK") return examDate >= startOfPastWeek && examDate <= endOfPastWeek;
         if (period === "MONTH") return examDate >= startOfMonth && examDate <= now;
         if (period === "YEAR") return examDate >= startOfYear && examDate <= now;
         return true;
       });
 
-      const calcStats = (exams: typeof m.examinations, isStat: boolean | null): ModalityTatStats => {
+      const calcStats = (
+        exams: typeof m.examinations,
+        filterType: "all" | "isStat" | "isRoutine" | "OPD" | "ER" | "IN"
+      ): ModalityTatStats => {
         const filtered = exams.filter((e) => {
-          if (isStat === true) return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
-          if (isStat === false) return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
-          return true;
+          if (filterType === "all") return true;
+          if (filterType === "isStat") return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
+          if (filterType === "isRoutine") return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+          return e.triageLevel === filterType;
         });
 
         const tatList = filtered
@@ -954,19 +1143,25 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
             ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
             : 0;
 
-        // Select matching target from SLA rules
-        const sla = m.slaConfigs.find((s) => {
-          if (isStat === true) return s.urgencyLevel === UrgencyLevel.STAT || s.triageLevel === TriageLevel.ER;
-          if (isStat === false) return s.urgencyLevel === UrgencyLevel.ROUTINE;
-          return true;
-        });
+        let sla: any;
+        if (filterType === "isStat" || filterType === "ER") {
+          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER || s.urgencyLevel === UrgencyLevel.STAT);
+        } else if (filterType === "OPD") {
+          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
+        } else if (filterType === "IN") {
+          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
+        } else {
+          sla =
+            m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD && s.urgencyLevel === UrgencyLevel.ROUTINE) ||
+            m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) ||
+            m.slaConfigs[0];
+        }
 
-        // Default fallback targets if specific rule not matched
         const defaultTarget =
           m.modalityCode === ModalityCode.CT
-            ? (isStat ? 60 : 1440)
+            ? (filterType === "isStat" || filterType === "ER" ? 60 : 1440)
             : m.modalityCode === ModalityCode.XRAY
-            ? (isStat ? 30 : 480)
+            ? (filterType === "isStat" || filterType === "ER" ? 30 : 480)
             : 120;
 
         return {
@@ -979,34 +1174,73 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
       return {
         modality: m.modalityCode,
         name: m.modalityName,
-        all: calcStats(periodExams, null),
-        emergency: calcStats(periodExams, true),
-        routine: calcStats(periodExams, false),
+        all: calcStats(periodExams, "all"),
+        emergency: calcStats(periodExams, "isStat"),
+        routine: calcStats(periodExams, "isRoutine"),
+        opd: calcStats(periodExams, "OPD"),
+        er: calcStats(periodExams, "ER"),
+        inpatient: calcStats(periodExams, "IN"),
       };
     });
   };
+
+  const rolling7Data = buildPeriodData("7D");
+  const weekData = buildPeriodData("WEEK");
+  const pastWeekData = buildPeriodData("PAST_WEEK");
 
   return {
     currentPeriod: "ALL",
     periods: {
       ALL: buildPeriodData("ALL"),
-      "7D": buildPeriodData("7D"),
+      "7D": rolling7Data,
+      ROLLING_7D: rolling7Data,
+      WEEK: weekData,
+      PAST_WEEK: pastWeekData,
+      LAST_WEEK: pastWeekData,
       MONTH: buildPeriodData("MONTH"),
       YEAR: buildPeriodData("YEAR"),
     },
   };
 }
 
-// 8B. ACTION: Fetch Modality TAT Overview for Custom Date Range
-export async function fetchModalityTatCustomRangeAction(
-  startDateStr: string,
-  endDateStr: string
-): Promise<ModalityTatOverviewItem[]> {
-  const partsStart = startDateStr.split("-").map(Number);
-  const start = new Date(partsStart[0], partsStart[1] - 1, partsStart[2], 0, 0, 0, 0);
+// Action: Fetch Modality TAT Overview for Specific Period or Custom Range
+export async function fetchModalityTatDataAction(options: {
+  period: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<ModalityTatOverviewItem[]> {
+  const now = new Date();
+  let start: Date | undefined;
+  let end: Date = now;
 
-  const partsEnd = endDateStr.split("-").map(Number);
-  const end = new Date(partsEnd[0], partsEnd[1] - 1, partsEnd[2], 23, 59, 59, 999);
+  if (options.period === "7D" || options.period === "ROLLING_7D") {
+    start = new Date(now);
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+  } else if (options.period === "WEEK") {
+    const day = now.getDay();
+    const diffToMon = now.getDate() - (day === 0 ? 6 : day - 1);
+    start = new Date(now.getFullYear(), now.getMonth(), diffToMon, 0, 0, 0, 0);
+    end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  } else if (options.period === "PAST_WEEK" || options.period === "LAST_WEEK") {
+    const day = now.getDay();
+    const diffToMon = now.getDate() - (day === 0 ? 6 : day - 1) - 7;
+    start = new Date(now.getFullYear(), now.getMonth(), diffToMon, 0, 0, 0, 0);
+    end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  } else if (options.period === "MONTH") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  } else if (options.period === "YEAR") {
+    start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+  } else if (options.period === "CUSTOM" && options.startDate && options.endDate) {
+    const sParts = options.startDate.split("-").map(Number);
+    const eParts = options.endDate.split("-").map(Number);
+    start = new Date(sParts[0], sParts[1] - 1, sParts[2], 0, 0, 0, 0);
+    end = new Date(eParts[0], eParts[1] - 1, eParts[2], 23, 59, 59, 999);
+  }
 
   const modalities = await prisma.modality.findMany({
     include: {
@@ -1015,6 +1249,7 @@ export async function fetchModalityTatCustomRangeAction(
         where: {
           report: { reportSignedAt: { not: null } },
           statusCode: { not: "CANCELLED" },
+          studyDate: start ? { gte: start, lte: end } : undefined,
         },
         include: { report: true },
       },
@@ -1023,21 +1258,14 @@ export async function fetchModalityTatCustomRangeAction(
   });
 
   return modalities.map((m) => {
-    const periodExams = m.examinations.filter((e) => {
-      const examDate = e.studyDate
-        ? new Date(e.studyDate)
-        : e.report?.reportSignedAt
-        ? new Date(e.report.reportSignedAt)
-        : null;
-      if (!examDate) return false;
-      return examDate >= start && examDate <= end;
-    });
-
-    const calcStats = (exams: typeof m.examinations, isStat: boolean | null): ModalityTatStats => {
-      const filtered = exams.filter((e) => {
-        if (isStat === true) return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
-        if (isStat === false) return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
-        return true;
+    const calcStats = (
+      filterType: "all" | "isStat" | "isRoutine" | "OPD" | "ER" | "IN"
+    ): ModalityTatStats => {
+      const filtered = m.examinations.filter((e) => {
+        if (filterType === "all") return true;
+        if (filterType === "isStat") return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
+        if (filterType === "isRoutine") return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+        return e.triageLevel === filterType;
       });
 
       const tatList = filtered
@@ -1049,17 +1277,25 @@ export async function fetchModalityTatCustomRangeAction(
           ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
           : 0;
 
-      const sla = m.slaConfigs.find((s) => {
-        if (isStat === true) return s.urgencyLevel === UrgencyLevel.STAT || s.triageLevel === TriageLevel.ER;
-        if (isStat === false) return s.urgencyLevel === UrgencyLevel.ROUTINE;
-        return true;
-      });
+      let sla: any;
+      if (filterType === "isStat" || filterType === "ER") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER || s.urgencyLevel === UrgencyLevel.STAT);
+      } else if (filterType === "OPD") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
+      } else if (filterType === "IN") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
+      } else {
+        sla =
+          m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD && s.urgencyLevel === UrgencyLevel.ROUTINE) ||
+          m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) ||
+          m.slaConfigs[0];
+      }
 
       const defaultTarget =
         m.modalityCode === ModalityCode.CT
-          ? (isStat ? 60 : 1440)
+          ? (filterType === "isStat" || filterType === "ER" ? 60 : 1440)
           : m.modalityCode === ModalityCode.XRAY
-          ? (isStat ? 30 : 480)
+          ? (filterType === "isStat" || filterType === "ER" ? 30 : 480)
           : 120;
 
       return {
@@ -1072,10 +1308,25 @@ export async function fetchModalityTatCustomRangeAction(
     return {
       modality: m.modalityCode,
       name: m.modalityName,
-      all: calcStats(periodExams, null),
-      emergency: calcStats(periodExams, true),
-      routine: calcStats(periodExams, false),
+      all: calcStats("all"),
+      emergency: calcStats("isStat"),
+      routine: calcStats("isRoutine"),
+      opd: calcStats("OPD"),
+      er: calcStats("ER"),
+      inpatient: calcStats("IN"),
     };
+  });
+}
+
+// 8B. ACTION: Fetch Modality TAT Overview for Custom Date Range
+export async function fetchModalityTatCustomRangeAction(
+  startDateStr: string,
+  endDateStr: string
+): Promise<ModalityTatOverviewItem[]> {
+  return fetchModalityTatDataAction({
+    period: "CUSTOM",
+    startDate: startDateStr,
+    endDate: endDateStr,
   });
 }
 
@@ -1173,7 +1424,10 @@ export interface ExaminationFilterOptions {
   startDate?: string;
   endDate?: string;
   modalityCode?: string;
+  modalityCodes?: string[];
   triageLevel?: string;
+  triageLevels?: string[];
+  patientCategories?: string[];
   urgencyLevel?: string;
   searchTerm?: string;
 }
@@ -1189,6 +1443,7 @@ export interface FilteredExaminationItem {
   examCompletedAtFormatted: string | null;
   reportSignedAtFormatted: string | null;
   dwellMinutes: number | null;
+  dwellHours: number | null;
   tatMinutes: number | null;
   tatHours: number | null;
   targetTatMinutes: number | null;
@@ -1268,11 +1523,38 @@ export async function fetchFilteredExaminationsAction(
     whereClause.report = { reportSignedAt: { not: null } };
   }
 
-  if (options.modalityCode && options.modalityCode !== "ALL") {
-    whereClause.modalityCode = options.modalityCode;
+  // Modality filter: supports multiple codes or "ALL"
+  if (options.modalityCodes !== undefined) {
+    if (options.modalityCodes.includes("ALL")) {
+      // All modalities selected -> no filter restriction
+    } else if (options.modalityCodes.length === 0) {
+      whereClause.modalityCode = { in: [] };
+    } else {
+      const expandedCodes = [...options.modalityCodes];
+      if (expandedCodes.includes("XRAY") && !expandedCodes.includes("XR")) {
+        expandedCodes.push("XR");
+      }
+      whereClause.modalityCode = { in: expandedCodes };
+    }
+  } else if (options.modalityCode && options.modalityCode !== "ALL") {
+    if (options.modalityCode === "XRAY") {
+      whereClause.modalityCode = { in: ["XRAY", "XR"] };
+    } else {
+      whereClause.modalityCode = options.modalityCode;
+    }
   }
 
-  if (options.triageLevel && options.triageLevel !== "ALL") {
+  // Patient Category / Triage Level filter (OPD, ER, IN): supports multiple or "ALL"
+  const catList = options.triageLevels ?? options.patientCategories;
+  if (catList !== undefined) {
+    if (catList.includes("ALL")) {
+      // All patient categories selected -> no filter restriction
+    } else if (catList.length === 0) {
+      whereClause.triageLevel = { in: [] };
+    } else {
+      whereClause.triageLevel = { in: catList };
+    }
+  } else if (options.triageLevel && options.triageLevel !== "ALL") {
     whereClause.triageLevel = options.triageLevel;
   }
 
@@ -1306,6 +1588,7 @@ export async function fetchFilteredExaminationsAction(
     const targetTat = targetRule?.targetTatMinutes ?? null;
 
     let dwellMinutes: number | null = null;
+    let dwellHours: number | null = null;
     let tatMinutes: number | null = null;
     let tatHours: number | null = null;
     let isBreached = false;
@@ -1327,6 +1610,7 @@ export async function fetchFilteredExaminationsAction(
         dwellMinutes = Number(
           ((now.getTime() - new Date(e.examCompletedAt).getTime()) / (1000 * 60)).toFixed(1)
         );
+        dwellHours = Number((dwellMinutes / 60).toFixed(1));
         if (targetTat && dwellMinutes > targetTat) {
           isBreached = true;
           totalBreached++;
@@ -1359,6 +1643,7 @@ export async function fetchFilteredExaminationsAction(
           })
         : null,
       dwellMinutes,
+      dwellHours,
       tatMinutes,
       tatHours,
       targetTatMinutes: targetTat,
@@ -1619,6 +1904,10 @@ export async function updateSlaTargetAction(formData: FormData) {
     return { success: false, message: "Invalid modality or target TAT duration." };
   }
 
+  if (targetTatMinutes > 10080) {
+    return { success: false, message: "SLA target benchmark cannot exceed 7 days (10,080 minutes)." };
+  }
+
   await prisma.slaConfiguration.upsert({
     where: {
       modalityCode_triageLevel_urgencyLevel: {
@@ -1771,6 +2060,7 @@ export async function toggleRadiologistStatusAction(radiologistId: string, isAct
 export type KpiPreset =
   | "ALL"
   | "TODAY"
+  | "ROLLING_7D"
   | "WEEK"
   | "LAST_WEEK"
   | "MONTH"
@@ -1806,6 +2096,8 @@ export interface FilteredKpiResult {
   tatDeltaPercent: number | null;
   volumeDeltaPercent: number | null;
   modalityOverview: ModalityTatOverviewItem[];
+  volumeByModality: Record<string, number>;
+  pendingByModality: Record<string, number>;
 }
 
 export async function fetchFilteredExecutiveKpiAction(
@@ -1834,6 +2126,15 @@ export async function fetchFilteredExecutiveKpiAction(
     priorEnd.setDate(priorEnd.getDate() - 1);
     presetLabel = "Today";
     priorPeriodLabel = "Yesterday";
+  } else if (preset === "ROLLING_7D") {
+    end = todayEnd;
+    start = new Date(todayStart);
+    start.setDate(start.getDate() - 6);
+    priorEnd = new Date(start.getTime() - 1);
+    priorStart = new Date(start);
+    priorStart.setDate(priorStart.getDate() - 7);
+    presetLabel = "Rolling 7 Days";
+    priorPeriodLabel = "Prior 7 Days";
   } else if (preset === "WEEK") {
     const day = now.getDay();
     const diffToMon = now.getDate() - (day === 0 ? 6 : day - 1);
@@ -1966,7 +2267,7 @@ export async function fetchFilteredExecutiveKpiAction(
         },
         report: { is: null },
       },
-      select: { examId: true, studyDate: true },
+      select: { examId: true, studyDate: true, modalityCode: true },
     }),
     prisma.modality.findMany({
       include: {
@@ -1991,6 +2292,35 @@ export async function fetchFilteredExecutiveKpiAction(
   const pendingReadingCount = isAllTime
     ? allActivePendingExams.length
     : currentExams.filter((e) => !e.report || !e.report.reportSignedAt).length;
+
+  const volumeByModality: Record<string, number> = {
+    XRAY: 0,
+    US: 0,
+    CT: 0,
+    MRI: 0,
+    MAMMO: 0,
+  };
+  currentExams.forEach((e) => {
+    if (volumeByModality[e.modalityCode] !== undefined) {
+      volumeByModality[e.modalityCode]++;
+    }
+  });
+
+  const pendingByModality: Record<string, number> = {
+    XRAY: 0,
+    US: 0,
+    CT: 0,
+    MRI: 0,
+    MAMMO: 0,
+  };
+  const activePendingExams = isAllTime
+    ? allActivePendingExams
+    : currentExams.filter((e) => !e.report || !e.report.reportSignedAt);
+  activePendingExams.forEach((e) => {
+    if (pendingByModality[e.modalityCode] !== undefined) {
+      pendingByModality[e.modalityCode]++;
+    }
+  });
 
   const tatValues = finalizedExams
     .map((e) => e.report?.tatExamToSignMinutes || 0)
@@ -2039,11 +2369,14 @@ export async function fetchFilteredExecutiveKpiAction(
 
   // Modality TAT Breakdown for this period
   const modalityOverview: ModalityTatOverviewItem[] = modalities.map((m) => {
-    const calcStats = (exams: typeof m.examinations, isStat: boolean | null): ModalityTatStats => {
-      const filtered = exams.filter((e) => {
-        if (isStat === true) return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
-        if (isStat === false) return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
-        return true;
+    const calcStats = (
+      filterType: "all" | "isStat" | "isRoutine" | "OPD" | "ER" | "IN"
+    ): ModalityTatStats => {
+      const filtered = m.examinations.filter((e) => {
+        if (filterType === "all") return true;
+        if (filterType === "isStat") return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
+        if (filterType === "isRoutine") return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+        return e.triageLevel === filterType;
       });
 
       const tatList = filtered
@@ -2055,17 +2388,22 @@ export async function fetchFilteredExecutiveKpiAction(
           ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
           : 0;
 
-      const sla = m.slaConfigs.find((s) => {
-        if (isStat === true) return s.urgencyLevel === UrgencyLevel.STAT || s.triageLevel === TriageLevel.ER;
-        if (isStat === false) return s.urgencyLevel === UrgencyLevel.ROUTINE;
-        return true;
-      });
+      let sla: any;
+      if (filterType === "isStat" || filterType === "ER") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER || s.urgencyLevel === UrgencyLevel.STAT);
+      } else if (filterType === "OPD") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
+      } else if (filterType === "IN") {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
+      } else {
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) || m.slaConfigs[0];
+      }
 
       const defaultTarget =
         m.modalityCode === ModalityCode.CT
-          ? (isStat ? 60 : 1440)
+          ? (filterType === "isStat" || filterType === "ER" ? 60 : 1440)
           : m.modalityCode === ModalityCode.XRAY
-          ? (isStat ? 30 : 480)
+          ? (filterType === "isStat" || filterType === "ER" ? 30 : 480)
           : 120;
 
       return {
@@ -2078,9 +2416,12 @@ export async function fetchFilteredExecutiveKpiAction(
     return {
       modality: m.modalityCode,
       name: m.modalityName,
-      all: calcStats(m.examinations, null),
-      emergency: calcStats(m.examinations, true),
-      routine: calcStats(m.examinations, false),
+      all: calcStats("all"),
+      emergency: calcStats("isStat"),
+      routine: calcStats("isRoutine"),
+      opd: calcStats("OPD"),
+      er: calcStats("ER"),
+      inpatient: calcStats("IN"),
     };
   });
 
@@ -2105,6 +2446,8 @@ export async function fetchFilteredExecutiveKpiAction(
     tatDeltaPercent,
     volumeDeltaPercent,
     modalityOverview,
+    volumeByModality,
+    pendingByModality,
   };
 }
 

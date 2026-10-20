@@ -11,6 +11,7 @@ import {
   TRIAGE_CONFIG,
   URGENCY_CONFIG,
 } from "@/lib/enums";
+import { notifyDatabaseChanged } from "@/lib/broadcast";
 
 export function QuickIngestionModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -106,6 +107,7 @@ export function QuickIngestionModal() {
               action={async (formData: FormData) => {
                 await createExaminationAction(formData);
                 setIsOpen(false);
+                notifyDatabaseChanged();
               }}
               className="mt-6 space-y-5"
             >

@@ -36,7 +36,9 @@ import {
 import {
   fetchYearlyTrendAction,
   TwelveMonthTrendResult,
+  MonthTrendData,
 } from "@/app/actions";
+import { ModalityCode } from "@/lib/enums";
 
 interface Props {
   data: TwelveMonthTrendResult;
@@ -52,6 +54,22 @@ const QC_PURPLE = "#7652B8";
 const QC_MUTED = "#64748B";
 const QC_GRID = "#E2E8F0";
 
+interface ModalityConfig {
+  code: ModalityCode;
+  label: string;
+  color: string;
+  lightColor: string;
+  dotClass: string;
+}
+
+const MODALITIES: ModalityConfig[] = [
+  { code: ModalityCode.XRAY, label: "X-ray", color: "#2563EB", lightColor: "#93C5FD", dotClass: "bg-blue-500" },
+  { code: ModalityCode.US, label: "Ultrasound", color: "#059669", lightColor: "#6EE7B7", dotClass: "bg-emerald-500" },
+  { code: ModalityCode.CT, label: "CT-Scan", color: "#D97706", lightColor: "#FCD34D", dotClass: "bg-amber-500" },
+  { code: ModalityCode.MRI, label: "MRI", color: "#7C3AED", lightColor: "#C4B5FD", dotClass: "bg-purple-500" },
+  { code: ModalityCode.MAMMO, label: "Mammogram", color: "#DB2777", lightColor: "#F9A8D4", dotClass: "bg-pink-500" },
+];
+
 export function TwelveMonthTrendChart({
   data: initialData,
 }: Props) {
@@ -59,6 +77,10 @@ export function TwelveMonthTrendChart({
     useState<TwelveMonthTrendResult>(
       initialData,
     );
+
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
 
   const [selectedPeriod, setSelectedPeriod] =
     useState<string>(
@@ -68,6 +90,9 @@ export function TwelveMonthTrendChart({
 
   const [comparePriorYear, setComparePriorYear] =
     useState(true);
+
+  const [selectedModality, setSelectedModality] =
+    useState<"ALL" | "MULTI" | ModalityCode>("ALL");
 
   const [isSettingsOpen, setIsSettingsOpen] =
     useState(false);
@@ -472,13 +497,9 @@ export function TwelveMonthTrendChart({
 
   const formatAnnualTat = (
     hours: number,
-    minutes: number,
+    _minutes?: number,
   ) => {
-    if (hours >= 1) {
-      return `${hours}h`;
-    }
-
-    return `${minutes}m`;
+    return `${hours}h`;
   };
 
   /* =========================================================
@@ -491,19 +512,45 @@ export function TwelveMonthTrendChart({
       : `Calendar year ${selectedPeriod}`;
 
   /* =========================================================
-     YoY state
+     Modality-specific metrics & YoY state
   ========================================================= */
 
+  const isModalitySpecific =
+    selectedModality !== "ALL" && selectedModality !== "MULTI";
+
+  const activeModalityConfig = isModalitySpecific
+    ? MODALITIES.find((m) => m.code === selectedModality)
+    : null;
+
+  const activeModalitySummary = isModalitySpecific
+    ? data.byModalityAnnual?.[selectedModality]
+    : null;
+
+  const displayAnnualAvgHours = isModalitySpecific
+    ? (activeModalitySummary?.annualAvgTatHours ?? 0)
+    : data.annualAvgTatHours;
+
+  const displayAnnualAvgMinutes = isModalitySpecific
+    ? (activeModalitySummary?.annualAvgTatMinutes ?? 0)
+    : data.annualAvgTatMinutes;
+
+  const displayAnnualFinalized = isModalitySpecific
+    ? (activeModalitySummary?.annualTotalFinalized ?? 0)
+    : data.annualTotalFinalized;
+
+  const displayPctChange = isModalitySpecific
+    ? (activeModalitySummary?.pctChangeTat ?? 0)
+    : data.pctChangeTat;
+
+  const displayPriorFinalized = isModalitySpecific
+    ? (activeModalitySummary?.priorAnnualTotalFinalized ?? 0)
+    : data.priorAnnualTotalFinalized;
+
   const hasPriorComparison =
-    comparePriorYear &&
-    data.priorAnnualTotalFinalized >
-      0;
+    comparePriorYear && displayPriorFinalized > 0;
 
-  const isFaster =
-    data.pctChangeTat < 0;
-
-  const isSlower =
-    data.pctChangeTat > 0;
+  const isFaster = displayPctChange < 0;
+  const isSlower = displayPctChange > 0;
 
   /* =========================================================
      Custom tooltip
@@ -522,126 +569,203 @@ export function TwelveMonthTrendChart({
       return null;
     }
 
-    const currentItem = payload.find(
-      (item: any) =>
-        item.dataKey ===
-        "avgTatHours",
-    );
-
-    const priorItem = payload.find(
-      (item: any) =>
-        item.dataKey ===
-        "priorYearAvgTatHours",
-    );
-
-    const point =
-      currentItem?.payload ||
-      priorItem?.payload;
-
+    const point = payload[0]?.payload as MonthTrendData;
     if (!point) {
       return null;
     }
 
-    const currentValue =
-      Number(currentItem?.value ?? 0);
+    if (selectedModality === "ALL") {
+      const currentTat = point.avgTatHours;
+      const priorTat = point.priorYearAvgTatHours ?? 0;
+      let yoy: number | null = null;
+      if (comparePriorYear && priorTat > 0 && currentTat > 0) {
+        yoy = Number((((currentTat - priorTat) / priorTat) * 100).toFixed(1));
+      }
 
-    const priorValue =
-      Number(priorItem?.value ?? 0);
+      return (
+        <div className="min-w-[240px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]">
+          <div className="flex items-center justify-between border-b border-border pb-2">
+            <p className="font-extrabold text-qc-navy">{point.fullMonth || label}</p>
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              {point.totalFinalized} finalized
+            </span>
+          </div>
 
-    let yoyChange:
-      | number
-      | null = null;
-
-    if (
-      comparePriorYear &&
-      priorValue > 0 &&
-      currentValue > 0
-    ) {
-      yoyChange = Number(
-        (
-          ((currentValue -
-            priorValue) /
-            priorValue) *
-          100
-        ).toFixed(1),
-      );
-    }
-
-    return (
-      <div className="min-w-[205px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]">
-        <p className="font-extrabold text-qc-navy">
-          {point.fullMonth ||
-            label}
-        </p>
-
-        <div className="mt-2.5 space-y-2 border-t border-border pt-2.5">
-
-          {currentItem && (
+          <div className="mt-2.5 space-y-2">
             <div className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5 text-qc-blue">
+              <span className="flex items-center gap-1.5 font-bold text-qc-blue">
                 <span className="h-2 w-2 rounded-full bg-qc-blue" />
-                {data.selectedPeriodLabel}
+                Overall Avg TAT
               </span>
-
-              <strong className="font-mono text-qc-navy">
-                {currentValue}h
-              </strong>
+              <strong className="font-mono text-qc-navy">{currentTat}h</strong>
             </div>
-          )}
 
-          {comparePriorYear &&
-            priorItem &&
-            priorValue > 0 && (
+            {comparePriorYear && priorTat > 0 && (
               <div className="flex items-center justify-between gap-4">
-                <span
-                  className="flex items-center gap-1.5"
-                  style={{
-                    color: QC_PURPLE,
-                  }}
-                >
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      backgroundColor:
-                        QC_PURPLE,
-                    }}
-                  />
-
+                <span className="flex items-center gap-1.5 font-semibold" style={{ color: QC_PURPLE }}>
+                  <span className="h-0 w-3 border-t-2 border-dashed" style={{ borderColor: QC_PURPLE }} />
                   {data.priorPeriodLabel}
                 </span>
-
-                <strong className="font-mono text-qc-navy">
-                  {priorValue}h
-                </strong>
+                <strong className="font-mono text-qc-navy">{priorTat}h</strong>
               </div>
             )}
 
-          {yoyChange !== null && (
-            <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
-              <span className="text-muted-foreground">
-                YoY
-              </span>
+            {yoy !== null && (
+              <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-1.5 text-[11px]">
+                <span className="text-muted-foreground">YoY Change</span>
+                <span className={`font-extrabold ${yoy < 0 ? "text-qc-blue" : yoy > 0 ? "text-qc-red" : "text-muted-foreground"}`}>
+                  {yoy < 0 ? `${Math.abs(yoy)}% faster` : yoy > 0 ? `+${yoy}% longer` : "No change"}
+                </span>
+              </div>
+            )}
 
-              <span
-                className={`font-extrabold ${
-                  yoyChange < 0
-                    ? "text-qc-blue"
-                    : yoyChange > 0
-                      ? "text-qc-red"
-                      : "text-muted-foreground"
-                }`}
-              >
-                {yoyChange < 0
-                  ? `${Math.abs(
-                      yoyChange,
-                    )}% faster`
-                  : yoyChange > 0
-                    ? `+${yoyChange}%`
-                    : "No change"}
+            {point.byModality && (
+              <div className="mt-2.5 border-t border-border pt-2">
+                <p className="mb-1.5 text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  Modality Contribution
+                </p>
+                <div className="space-y-1">
+                  {MODALITIES.map((m) => {
+                    const stats = point.byModality?.[m.code];
+                    if (!stats) return null;
+                    return (
+                      <div key={m.code} className="flex items-center justify-between text-[11px]">
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
+                          <span className="text-muted-foreground">{m.label}</span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-qc-navy">
+                            {stats.totalFinalized > 0 ? `${stats.avgTatHours}h` : "—"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            ({stats.totalFinalized})
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedModality === "MULTI") {
+      return (
+        <div className="min-w-[260px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]">
+          <div className="flex items-center justify-between border-b border-border pb-2">
+            <p className="font-extrabold text-qc-navy">{point.fullMonth || label}</p>
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              {point.totalFinalized} finalized
+            </span>
+          </div>
+
+          <div className="mt-2.5 space-y-1.5">
+            <div className="flex items-center justify-between border-b border-border/70 pb-1.5 text-[11px]">
+              <span className="flex items-center gap-1.5 font-extrabold text-qc-navy">
+                <span className="h-2 w-2 rounded-full bg-qc-navy" />
+                Overall Hospital Avg
+              </span>
+              <strong className="font-mono text-qc-navy">{point.avgTatHours}h</strong>
+            </div>
+
+            {MODALITIES.map((m) => {
+              const curHours = point[`${m.code}_avgTatHours`] ?? 0;
+              const priHours = point[`prior_${m.code}_avgTatHours`] ?? 0;
+              const vol = point[`${m.code}_totalFinalized`] ?? 0;
+              return (
+                <div key={m.code} className="flex items-center justify-between text-[11px]">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
+                    <span className="font-medium text-qc-navy">{m.label}</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-qc-navy">
+                      {vol > 0 ? `${curHours}h` : "—"}
+                    </span>
+                    {comparePriorYear && priHours > 0 && (
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        (pri: {priHours}h)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    const activeMod = MODALITIES.find((m) => m.code === selectedModality);
+    const modLabel = activeMod?.label ?? selectedModality;
+    const modColor = activeMod?.color ?? QC_BLUE;
+    const curTat = point[`${selectedModality}_avgTatHours`] ?? 0;
+    const priTat = point[`prior_${selectedModality}_avgTatHours`] ?? 0;
+    const modVol = point[`${selectedModality}_totalFinalized`] ?? 0;
+    const overallTat = point.avgTatHours;
+
+    let yoy: number | null = null;
+    if (comparePriorYear && priTat > 0 && curTat > 0) {
+      yoy = Number((((curTat - priTat) / priTat) * 100).toFixed(1));
+    }
+
+    const diffFromOverall = curTat > 0 && overallTat > 0 ? Number((curTat - overallTat).toFixed(1)) : null;
+
+    return (
+      <div className="min-w-[230px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]">
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <p className="font-extrabold text-qc-navy">{point.fullMonth || label}</p>
+          <span className="text-[10px] font-semibold text-muted-foreground">
+            {modVol} {modLabel} finalized
+          </span>
+        </div>
+
+        <div className="mt-2.5 space-y-2">
+          <div className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-1.5 font-bold" style={{ color: modColor }}>
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: modColor }} />
+              {modLabel} TAT
+            </span>
+            <strong className="font-mono text-qc-navy">{modVol > 0 ? `${curTat}h` : "—"}</strong>
+          </div>
+
+          {comparePriorYear && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-1.5 font-semibold" style={{ color: modColor }}>
+                <span className="h-0 w-3 border-t-2 border-dashed" style={{ borderColor: modColor }} />
+                {modLabel} ({data.priorPeriodLabel})
+              </span>
+              <strong className="font-mono text-qc-navy">{priTat > 0 ? `${priTat}h` : "—"}</strong>
+            </div>
+          )}
+
+          {yoy !== null && (
+            <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-1.5 text-[11px]">
+              <span className="text-muted-foreground">YoY Change</span>
+              <span className={`font-extrabold ${yoy < 0 ? "text-qc-blue" : yoy > 0 ? "text-qc-red" : "text-muted-foreground"}`}>
+                {yoy < 0 ? `${Math.abs(yoy)}% faster` : yoy > 0 ? `+${yoy}% longer` : "No change"}
               </span>
             </div>
           )}
 
+          <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-1.5 text-[11px]">
+            <span className="text-muted-foreground">Hospital Overall TAT</span>
+            <span className="font-mono font-bold text-qc-navy">{overallTat}h</span>
+          </div>
+
+          {diffFromOverall !== null && (
+            <div className="text-[10px] text-muted-foreground">
+              {diffFromOverall === 0
+                ? "Equal to hospital average"
+                : diffFromOverall > 0
+                  ? `+${diffFromOverall}h higher than hospital average`
+                  : `${Math.abs(diffFromOverall)}h lower than hospital average`}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -918,19 +1042,19 @@ export function TwelveMonthTrendChart({
         </div>
 
         {/* Summary + options */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
 
           <div className="hidden items-center gap-3 rounded-xl bg-background px-3 py-2 sm:flex">
 
             <div>
               <span className="text-[9px] font-extrabold uppercase tracking-wide text-muted-foreground">
-                Avg TAT
+                {isModalitySpecific && activeModalityConfig ? `${activeModalityConfig.label} Avg` : "Avg TAT"}
               </span>
 
               <span className="ml-1.5 text-xs font-extrabold text-qc-navy">
                 {formatAnnualTat(
-                  data.annualAvgTatHours,
-                  data.annualAvgTatMinutes,
+                  displayAnnualAvgHours,
+                  displayAnnualAvgMinutes,
                 )}
               </span>
             </div>
@@ -956,15 +1080,10 @@ export function TwelveMonthTrendChart({
                           : "text-muted-foreground"
                     }`}
                   >
-                    {data.pctChangeTat ===
-                    0
+                    {displayPctChange === 0
                       ? "No change"
-                      : `${Math.abs(
-                          data.pctChangeTat,
-                        )}% ${
-                          isFaster
-                            ? "faster"
-                            : "longer"
+                      : `${Math.abs(displayPctChange)}% ${
+                          isFaster ? "faster" : "longer"
                         }`}
                   </span>
 
@@ -973,6 +1092,36 @@ export function TwelveMonthTrendChart({
             )}
 
           </div>
+
+          {/* Quick toggle for prior 12-month comparison */}
+          <button
+            type="button"
+            onClick={() => setComparePriorYear((prev) => !prev)}
+            className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
+              comparePriorYear
+                ? "border-qc-purple/30 bg-qc-purple/10 text-qc-purple shadow-sm"
+                : "border-white/80 bg-white/75 text-muted-foreground hover:bg-white hover:text-qc-navy"
+            }`}
+            title="Toggle dashed line comparison with prior 12-month period"
+            aria-pressed={comparePriorYear}
+          >
+            <span
+              className="h-0 w-4 border-t-2 border-dashed"
+              style={{
+                borderColor: comparePriorYear ? QC_PURPLE : "#94A3B8",
+              }}
+            />
+            <span>
+              {selectedPeriod === "rolling" ? "Compare Prior 12m" : "Compare Prior Year"}
+            </span>
+            <span
+              className={`flex h-4 w-4 items-center justify-center rounded text-[10px] font-bold ${
+                comparePriorYear ? "bg-qc-purple text-white" : "border border-border/80 text-transparent"
+              }`}
+            >
+              ✓
+            </span>
+          </button>
 
           <button
             ref={settingsButtonRef}
@@ -1025,6 +1174,80 @@ export function TwelveMonthTrendChart({
         )}
 
       {/* =====================================================
+          MODALITY FILTER BAR
+      ===================================================== */}
+
+      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-3.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            Modality:
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setSelectedModality("ALL")}
+            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all ${
+              selectedModality === "ALL"
+                ? "bg-qc-navy text-white shadow-sm ring-1 ring-qc-navy"
+                : "border border-border/80 bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full ${selectedModality === "ALL" ? "bg-qc-yellow" : "bg-qc-blue"}`} />
+            Overall Avg
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedModality("MULTI")}
+            className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all ${
+              selectedModality === "MULTI"
+                ? "bg-qc-navy text-white shadow-sm ring-1 ring-qc-navy"
+                : "border border-border/80 bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+            }`}
+          >
+            <Layers className="h-3 w-3 text-qc-yellow" />
+            All Modalities
+          </button>
+
+          {MODALITIES.map((m) => {
+            const isSelected = selectedModality === m.code;
+            return (
+              <button
+                key={m.code}
+                type="button"
+                onClick={() => setSelectedModality(m.code)}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all ${
+                  isSelected
+                    ? "text-white shadow-sm ring-1 ring-black/10"
+                    : "border border-border/80 bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+                }`}
+                style={{
+                  backgroundColor: isSelected ? m.color : undefined,
+                  borderColor: isSelected ? m.color : undefined,
+                }}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{
+                    backgroundColor: isSelected ? "#FFFFFF" : m.color,
+                  }}
+                />
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {isModalitySpecific && activeModalityConfig && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              Showing: <strong className="text-qc-navy">{activeModalityConfig.label}</strong> vs Overall Hospital Avg
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* =====================================================
           Small-screen summary
       ===================================================== */}
 
@@ -1032,13 +1255,13 @@ export function TwelveMonthTrendChart({
 
         <div>
           <span className="text-[9px] font-extrabold uppercase tracking-wide text-muted-foreground">
-            Avg TAT
+            {isModalitySpecific && activeModalityConfig ? `${activeModalityConfig.label} Avg` : "Avg TAT"}
           </span>
 
           <span className="ml-1.5 text-xs font-extrabold text-qc-navy">
             {formatAnnualTat(
-              data.annualAvgTatHours,
-              data.annualAvgTatMinutes,
+              displayAnnualAvgHours,
+              displayAnnualAvgMinutes,
             )}
           </span>
         </div>
@@ -1053,15 +1276,10 @@ export function TwelveMonthTrendChart({
                   : "text-muted-foreground"
             }`}
           >
-            {data.pctChangeTat ===
-            0
+            {displayPctChange === 0
               ? "No change"
-              : `${Math.abs(
-                  data.pctChangeTat,
-                )}% ${
-                  isFaster
-                    ? "faster"
-                    : "longer"
+              : `${Math.abs(displayPctChange)}% ${
+                  isFaster ? "faster" : "longer"
                 }`}
           </span>
         )}
@@ -1074,7 +1292,7 @@ export function TwelveMonthTrendChart({
 
       <div className="pt-4">
 
-        <div className="h-[275px] w-full sm:h-[300px]">
+        <div className="h-[285px] w-full sm:h-[320px]">
 
           <ResponsiveContainer
             width="100%"
@@ -1110,6 +1328,28 @@ export function TwelveMonthTrendChart({
                     stopOpacity={0}
                   />
                 </linearGradient>
+
+                {MODALITIES.map((m) => (
+                  <linearGradient
+                    key={`grad-${m.code}`}
+                    id={`grad-${m.code}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor={m.color}
+                      stopOpacity={0.18}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={m.color}
+                      stopOpacity={0}
+                    />
+                  </linearGradient>
+                ))}
               </defs>
 
               <CartesianGrid
@@ -1145,47 +1385,166 @@ export function TwelveMonthTrendChart({
                 }
               />
 
-              {/* Current period */}
-              <Area
-                type="monotone"
-                dataKey="avgTatHours"
-                stroke={QC_BLUE}
-                strokeWidth={2.5}
-                fill="url(#raditrackHistoricalGradient)"
-                fillOpacity={1}
-                name={
-                  data.selectedPeriodLabel
-                }
-                dot={{
-                  r: 2.5,
-                  fill: QC_BLUE,
-                  strokeWidth: 0,
-                }}
-                activeDot={{
-                  r: 4,
-                }}
-              />
+              {/* =====================================================
+                  1. OVERALL VIEW (selectedModality === "ALL")
+              ===================================================== */}
+              {selectedModality === "ALL" && (
+                <>
+                  {/* Current period (straight/solid line) */}
+                  <Area
+                    type="monotone"
+                    dataKey="avgTatHours"
+                    stroke={QC_BLUE}
+                    strokeWidth={2.5}
+                    fill="url(#raditrackHistoricalGradient)"
+                    fillOpacity={1}
+                    name={data.selectedPeriodLabel}
+                    dot={{
+                      r: 2.5,
+                      fill: QC_BLUE,
+                      strokeWidth: 0,
+                    }}
+                    activeDot={{
+                      r: 4,
+                    }}
+                  />
 
-              {/* Prior period */}
-              {comparePriorYear && (
-                <Line
-                  type="monotone"
-                  dataKey="priorYearAvgTatHours"
-                  stroke={QC_PURPLE}
-                  strokeWidth={1.8}
-                  strokeDasharray="5 5"
-                  dot={{
-                    r: 2.5,
-                    fill: QC_PURPLE,
-                    strokeWidth: 0,
-                  }}
-                  activeDot={{
-                    r: 4,
-                  }}
-                  name={
-                    data.priorPeriodLabel
-                  }
-                />
+                  {/* Prior period (dashed line) */}
+                  {comparePriorYear && (
+                    <Line
+                      type="monotone"
+                      dataKey="priorYearAvgTatHours"
+                      stroke={QC_PURPLE}
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={{
+                        r: 2.5,
+                        fill: QC_PURPLE,
+                        strokeWidth: 0,
+                      }}
+                      activeDot={{
+                        r: 4,
+                      }}
+                      name={data.priorPeriodLabel}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* =====================================================
+                  2. MULTI-MODALITY VIEW (selectedModality === "MULTI")
+              ===================================================== */}
+              {selectedModality === "MULTI" && (
+                <>
+                  {/* Overall benchmark line */}
+                  <Line
+                    type="monotone"
+                    dataKey="avgTatHours"
+                    stroke={QC_NAVY}
+                    strokeWidth={2}
+                    strokeDasharray="4 2"
+                    name="Overall Avg"
+                    dot={{
+                      r: 2,
+                      fill: QC_NAVY,
+                    }}
+                  />
+
+                  {/* Modality straight/solid lines */}
+                  {MODALITIES.map((m) => (
+                    <Line
+                      key={`line-${m.code}`}
+                      type="monotone"
+                      dataKey={`${m.code}_avgTatHours`}
+                      stroke={m.color}
+                      strokeWidth={2.5}
+                      dot={{
+                        r: 2.5,
+                        fill: m.color,
+                        strokeWidth: 0,
+                      }}
+                      activeDot={{
+                        r: 4,
+                      }}
+                      name={m.label}
+                    />
+                  ))}
+
+                  {/* Prior modality dashed lines */}
+                  {comparePriorYear &&
+                    MODALITIES.map((m) => (
+                      <Line
+                        key={`pri-line-${m.code}`}
+                        type="monotone"
+                        dataKey={`prior_${m.code}_avgTatHours`}
+                        stroke={m.color}
+                        strokeWidth={1.8}
+                        strokeDasharray="5 5"
+                        dot={false}
+                        activeDot={{
+                          r: 3.5,
+                        }}
+                        name={`${m.label} (Prior)`}
+                      />
+                    ))}
+                </>
+              )}
+
+              {/* =====================================================
+                  3. SPECIFIC MODALITY VIEW
+              ===================================================== */}
+              {isModalitySpecific && activeModalityConfig && (
+                <>
+                  {/* Overall hospital benchmark reference line */}
+                  <Line
+                    type="monotone"
+                    dataKey="avgTatHours"
+                    stroke="#94A3B8"
+                    strokeWidth={1.8}
+                    strokeDasharray="3 3"
+                    name="Hospital Average"
+                    dot={false}
+                  />
+
+                  {/* Selected modality straight/solid line with gradient fill */}
+                  <Area
+                    type="monotone"
+                    dataKey={`${selectedModality}_avgTatHours`}
+                    stroke={activeModalityConfig.color}
+                    strokeWidth={3}
+                    fill={`url(#grad-${selectedModality})`}
+                    fillOpacity={1}
+                    dot={{
+                      r: 3.5,
+                      fill: activeModalityConfig.color,
+                      stroke: "#FFFFFF",
+                      strokeWidth: 1.5,
+                    }}
+                    activeDot={{
+                      r: 5,
+                    }}
+                    name={`${activeModalityConfig.label} (Current)`}
+                  />
+
+                  {/* Selected modality prior period dashed line */}
+                  {comparePriorYear && (
+                    <Line
+                      type="monotone"
+                      dataKey={`prior_${selectedModality}_avgTatHours`}
+                      stroke={activeModalityConfig.color}
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={{
+                        r: 2.5,
+                        fill: activeModalityConfig.color,
+                      }}
+                      activeDot={{
+                        r: 4,
+                      }}
+                      name={`${activeModalityConfig.label} (Prior)`}
+                    />
+                  )}
+                </>
               )}
 
             </AreaChart>
@@ -1196,43 +1555,92 @@ export function TwelveMonthTrendChart({
       </div>
 
       {/* =====================================================
-          Minimal legend
+          Dynamic legend
       ===================================================== */}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-[10px]">
 
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
 
-          <span className="flex items-center gap-1.5 font-semibold text-qc-navy">
-            <span className="h-2.5 w-2.5 rounded-full bg-qc-blue" />
+          {selectedModality === "ALL" && (
+            <>
+              <span className="flex items-center gap-1.5 font-semibold text-qc-navy">
+                <span className="h-2.5 w-2.5 rounded-full bg-qc-blue" />
+                {data.selectedPeriodLabel} (Solid Straight Line)
+              </span>
 
-            {data.selectedPeriodLabel}
-          </span>
+              {comparePriorYear && (
+                <span
+                  className="flex items-center gap-1.5 font-semibold"
+                  style={{
+                    color: QC_PURPLE,
+                  }}
+                >
+                  <span
+                    className="h-0 w-5 border-t-2 border-dashed"
+                    style={{
+                      borderColor: QC_PURPLE,
+                    }}
+                  />
+                  {data.priorPeriodLabel} (Dashed Line)
+                </span>
+              )}
+            </>
+          )}
 
-          {comparePriorYear && (
-            <span
-              className="flex items-center gap-1.5 font-semibold"
-              style={{
-                color: QC_PURPLE,
-              }}
-            >
-              <span
-                className="h-0 w-5 border-t-2 border-dashed"
-                style={{
-                  borderColor:
-                    QC_PURPLE,
-                }}
-              />
+          {selectedModality === "MULTI" && (
+            <>
+              <span className="flex items-center gap-1.5 font-bold text-qc-navy">
+                <span className="h-0 w-4 border-t-2 border-dashed border-qc-navy" />
+                Hospital Overall Avg
+              </span>
 
-              {data.priorPeriodLabel}
-            </span>
+              {MODALITIES.map((m) => (
+                <span key={m.code} className="flex items-center gap-1.5 font-semibold text-qc-navy">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: m.color }} />
+                  {m.label} (Solid)
+                </span>
+              ))}
+
+              {comparePriorYear && (
+                <span className="font-semibold text-muted-foreground italic">
+                  * Dashed lines: {data.priorPeriodLabel}
+                </span>
+              )}
+            </>
+          )}
+
+          {isModalitySpecific && activeModalityConfig && (
+            <>
+              <span className="flex items-center gap-1.5 font-semibold text-qc-navy">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: activeModalityConfig.color }} />
+                {activeModalityConfig.label} ({data.selectedPeriodLabel} — Solid Straight Line)
+              </span>
+
+              {comparePriorYear && (
+                <span
+                  className="flex items-center gap-1.5 font-semibold"
+                  style={{ color: activeModalityConfig.color }}
+                >
+                  <span
+                    className="h-0 w-5 border-t-2 border-dashed"
+                    style={{ borderColor: activeModalityConfig.color }}
+                  />
+                  {activeModalityConfig.label} ({data.priorPeriodLabel} — Dashed Line)
+                </span>
+              )}
+
+              <span className="flex items-center gap-1.5 font-semibold text-muted-foreground">
+                <span className="h-0 w-4 border-t-2 border-dotted border-slate-400" />
+                Hospital Overall Average Benchmark
+              </span>
+            </>
           )}
 
         </div>
 
         <span className="font-semibold text-muted-foreground">
-          {data.annualTotalFinalized}{" "}
-          finalized
+          {displayAnnualFinalized} finalized exams
         </span>
 
       </div>
