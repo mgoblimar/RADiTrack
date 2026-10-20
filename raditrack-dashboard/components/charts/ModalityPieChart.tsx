@@ -7,9 +7,16 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+import {
+  CheckCircle2,
+  Wrench
+} from "lucide-react";
+
 interface ModalityItem {
   modalityCode: string;
   modalityName: string;
+  departmentRoom?: string;
+  isActive?: boolean;
   today: {
     total: number;
   };
@@ -23,6 +30,25 @@ const COLORS = [
   "#050E40",
 ];
 
+const renderCustomizedLabel = ({ cx, cy, midAngle, outerRadius, percent, value}: any) => {if (value === 0) return null;
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius * 0.65;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle *RADIAN);
+
+  return (
+    <text 
+    x = {x}
+    y = {y}
+    fill="ffffff"
+    textAnchor="middle"
+    dominantBaseline="central"
+    className="text-sm font-blck drop-shadow-[0_1px,2px_rgba(0,0,0,0.8)">
+      {value}
+    </text>
+  );
+};
+
 export default function ModalityPieChart({
   modalities,
 }: {
@@ -33,8 +59,10 @@ export default function ModalityPieChart({
       name:
         modality.modalityCode ||
         modality.modalityName,
-      label: modality.modalityName,
+      fullName: modality.modalityName,
       value: modality.today.total,
+      room: modality.departmentRoom,
+      isActive: modality.isActive !== false,
     }),
   );
 
@@ -44,6 +72,9 @@ export default function ModalityPieChart({
         sum + item.value,
       0,
     );
+
+  const maintenanceRooms = chartData.filter((item) => item.isActive === false);
+  const allRoomsWorking = maintenanceRooms.length === 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -66,10 +97,12 @@ export default function ModalityPieChart({
                 data={chartData}
                 cx="50%"
                 cy="50%"
-                innerRadius="53%"
-                outerRadius="78%"
+                innerRadius="0"
+                outerRadius="80%"
                 paddingAngle={2}
                 dataKey="value"
+                label={renderCustomizedLabel}
+                labelLine={false}
                 stroke="#FFFFFF"
                 strokeWidth={5}
                 isAnimationActive={false}
@@ -96,7 +129,7 @@ export default function ModalityPieChart({
               DONUT CENTER
           ================================================= */}
 
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+          {/*<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
 
             <span className="text-[44px] font-extrabold leading-none tracking-tight text-qc-navy">
               {totalExams.toLocaleString()}
@@ -106,15 +139,36 @@ export default function ModalityPieChart({
               Today
             </span>
 
-          </div>
+          </div>*/}
 
         </div>
       </div>
 
+      {/* Modality Room Operational Status */}
+      <div className="mt-4 border-t border-slate-800/80 pt-4">
+        {allRoomsWorking ? (
+          <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-2.5 text-xs font-semibold text-emerald-400">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+            <span>All examination rooms are working</span>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3.5 py-2.5 text-xs font-semibold text-amber-400">
+            <Wrench className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+            <div>
+              <span className="font-bold">Maintenance Alert:</span>{" "}
+              {maintenanceRooms.map((r) => `(${r.room})`).join(", ")}{" "}
+              {maintenanceRooms.length === 1 ? "is" : "are"} currently under maintenance.
+            </div>
+          </div>
+        )}
+      </div>
+
+
+
       {/* =====================================================
           MODALITY BREAKDOWN
           Two-column fixed public-display layout
-      ===================================================== */}
+      ===================================================== 
 
       <div className="min-h-0 flex-1 overflow-hidden pt-1">
 
@@ -147,7 +201,7 @@ export default function ModalityPieChart({
                       MODALITY LABEL
                   ================================================= */}
 
-                  <div className="flex min-w-0 items-center gap-2">
+                  {/*<div className="flex min-w-0 items-center gap-2">
 
                     <span
                       className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -161,13 +215,13 @@ export default function ModalityPieChart({
                       {item.name}
                     </span>
 
-                  </div>
+                  </div>*/}
 
                   {/* =================================================
                       VALUE + %
                   ================================================= */}
 
-                  <div className="ml-2 flex shrink-0 items-center gap-2.5">
+                  {/*<div className="ml-2 flex shrink-0 items-center gap-2.5">
 
                     <span
                       className="text-[14px] font-extrabold leading-none"
@@ -182,7 +236,7 @@ export default function ModalityPieChart({
                       {percentage}%
                     </span>
 
-                  </div>
+                  </div>*
 
                 </div>
               );
@@ -190,7 +244,7 @@ export default function ModalityPieChart({
           )}
 
         </div>
-      </div>
+      </div>*/}
 
     </div>
   );
