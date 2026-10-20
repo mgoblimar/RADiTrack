@@ -195,9 +195,16 @@ export async function getDashboardData() {
 // 4. QUERY: Public Patient Activity Display Data (/patient)
 // Aligned with Proposal Page 5: Today vs Yesterday volume by Modality and Triage
 // ============================================================================
+// Define the shape explicitly for TypeScript
+type ModalityConfigSelect = {
+  modalityCode: string;
+  departmentRoom?: string | null;
+  isActive?: boolean | null;
+};
+
 export async function getPublicActivityData() {
   const now = new Date();
-  
+
   // Define Today bounds
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
@@ -210,7 +217,23 @@ export async function getPublicActivityData() {
   const yesterdayEnd = new Date(todayStart);
   yesterdayEnd.setMilliseconds(-1);
 
-  // Fetch all exams from yesterday onwards
+  // 1. Fetch room configurations directly from the Modality model
+  const rawConfigs = await prisma.modality.findMany({
+    select: {
+      modalityCode: true,
+      departmentRoom: true,
+      isActive: true,
+    },
+  });
+
+  const configMap = new Map<string, ModalityConfigSelect>(
+    (rawConfigs as unknown as ModalityConfigSelect[]).map((c) => [
+      c.modalityCode,
+      c,
+    ])
+  );
+
+  // 2. Fetch recent exams (only selects valid Examination columns)
   const recentExams = await prisma.examination.findMany({
     where: {
       studyDate: { gte: yesterdayStart, lte: todayEnd },
@@ -235,14 +258,15 @@ export async function getPublicActivityData() {
   let yesterdayGrandTotal = 0;
 
   const modalityData = modalities.map((m) => {
-    // Filter exams for this modality
     const examsForMod = recentExams.filter((e) => e.modalityCode === m.code);
 
     const todayExams = examsForMod.filter(
       (e) => new Date(e.studyDate) >= todayStart
     );
     const yesterdayExams = examsForMod.filter(
-      (e) => new Date(e.studyDate) >= yesterdayStart && new Date(e.studyDate) <= yesterdayEnd
+      (e) =>
+        new Date(e.studyDate) >= yesterdayStart &&
+        new Date(e.studyDate) <= yesterdayEnd
     );
 
     const countByTriage = (list: typeof examsForMod) => ({
@@ -258,9 +282,14 @@ export async function getPublicActivityData() {
     todayGrandTotal += todayCounts.total;
     yesterdayGrandTotal += yesterdayCounts.total;
 
+    // Look up live configuration from Modality model configMap
+    const roomConfig = configMap.get(m.code);
+
     return {
       modalityCode: m.code,
       modalityName: m.name,
+      departmentRoom: roomConfig?.departmentRoom || `${m.code} Suite`,
+      isActive: roomConfig?.isActive ?? true,
       today: todayCounts,
       yesterday: yesterdayCounts,
     };
@@ -283,7 +312,6 @@ export async function getPublicActivityData() {
     modalities: modalityData,
   };
 }
-
 // ============================================================================
 // 5. QUERY: 7-Day Retrospective Staff & Management Analytics (Proposal Page 6)
 // Day-by-Day performance table with OPD/IN/ER split, Finalized, Pending, and Avg TAT
