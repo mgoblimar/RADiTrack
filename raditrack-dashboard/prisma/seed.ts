@@ -110,36 +110,26 @@ async function main() {
   // 3. MASTER SLA CONFIGURATIONS
   // ==========================================================================
   const slas = [
-    {
-      modalityCode: ModalityCode.CT,
-      triageLevel: TriageLevel.ER,
-      urgencyLevel: UrgencyLevel.STAT,
-      targetTatMinutes: 60, // 1 hour
-    },
-    {
-      modalityCode: ModalityCode.CT,
-      triageLevel: TriageLevel.OPD,
-      urgencyLevel: UrgencyLevel.ROUTINE,
-      targetTatMinutes: 1440, // 24 hours
-    },
-    {
-      modalityCode: ModalityCode.XRAY,
-      triageLevel: TriageLevel.ER,
-      urgencyLevel: UrgencyLevel.STAT,
-      targetTatMinutes: 30, // 30 mins
-    },
-    {
-      modalityCode: ModalityCode.XRAY,
-      triageLevel: TriageLevel.OPD,
-      urgencyLevel: UrgencyLevel.ROUTINE,
-      targetTatMinutes: 480, // 8 hours
-    },
-    {
-      modalityCode: ModalityCode.MRI,
-      triageLevel: TriageLevel.IN,
-      urgencyLevel: UrgencyLevel.ROUTINE,
-      targetTatMinutes: 2880, // 48 hours (2 days)
-    },
+    // CT (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
+    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    // XRAY (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
+    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    // US (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
+    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    // MRI (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
+    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    // MAMMO (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
+    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
   ];
 
   for (const sla of slas) {

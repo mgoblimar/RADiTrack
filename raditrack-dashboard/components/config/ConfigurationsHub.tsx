@@ -796,7 +796,7 @@ export function ConfigurationsHub({
                               ? formatDuration(
                                   statSla.targetTatMinutes,
                                 )
-                              : "60 mins (Default)"}
+                              : "2 days (48 hrs)"}
                           </span>
 
                           <button
@@ -811,7 +811,7 @@ export function ConfigurationsHub({
                                 urgencyLevel: "STAT",
                                 currentTargetMinutes:
                                   statSla?.targetTatMinutes ||
-                                  60,
+                                  2880,
                               })
                             }
                             className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
@@ -842,7 +842,7 @@ export function ConfigurationsHub({
                               ? formatDuration(
                                   opdSla.targetTatMinutes,
                                 )
-                              : "24 hrs (Default)"}
+                              : "3 days (72 hrs)"}
                           </span>
 
                           <button
@@ -857,7 +857,7 @@ export function ConfigurationsHub({
                                 urgencyLevel: "ROUTINE",
                                 currentTargetMinutes:
                                   opdSla?.targetTatMinutes ||
-                                  1440,
+                                  4320,
                               })
                             }
                             className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
@@ -888,7 +888,7 @@ export function ConfigurationsHub({
                               ? formatDuration(
                                   inSla.targetTatMinutes,
                                 )
-                              : "24 hrs (Default)"}
+                              : "2 days (48 hrs)"}
                           </span>
 
                           <button
@@ -903,7 +903,7 @@ export function ConfigurationsHub({
                                 urgencyLevel: "ROUTINE",
                                 currentTargetMinutes:
                                   inSla?.targetTatMinutes ||
-                                  1440,
+                                  2880,
                               })
                             }
                             className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"

@@ -1158,11 +1158,9 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
         }
 
         const defaultTarget =
-          m.modalityCode === ModalityCode.CT
-            ? (filterType === "isStat" || filterType === "ER" ? 60 : 1440)
-            : m.modalityCode === ModalityCode.XRAY
-            ? (filterType === "isStat" || filterType === "ER" ? 30 : 480)
-            : 120;
+          filterType === "isStat" || filterType === "ER" || filterType === "IN"
+            ? 2880
+            : 4320;
 
         return {
           avgTat,
@@ -1292,11 +1290,9 @@ export async function fetchModalityTatDataAction(options: {
       }
 
       const defaultTarget =
-        m.modalityCode === ModalityCode.CT
-          ? (filterType === "isStat" || filterType === "ER" ? 60 : 1440)
-          : m.modalityCode === ModalityCode.XRAY
-          ? (filterType === "isStat" || filterType === "ER" ? 30 : 480)
-          : 120;
+          filterType === "isStat" || filterType === "ER" || filterType === "IN"
+            ? 2880
+            : 4320;
 
       return {
         avgTat,
@@ -1939,25 +1935,26 @@ export async function updateSlaTargetAction(formData: FormData) {
 // 19. ACTION: Reset All SLA Benchmarks to Hospital Standards
 export async function resetDefaultSlasAction() {
   const standardSlas = [
-    // CT Standards
-    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 60 },
-    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
-    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
-    // XRAY Standards
-    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 30 },
-    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 480 },
-    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 720 },
-    // US Standards
-    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 45 },
-    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 720 },
-    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
-    // MRI Standards
-    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 120 },
-    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    // CT Standards (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
+    { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    // XRAY Standards (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
+    { modalityCode: ModalityCode.XRAY, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    // US Standards (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
+    { modalityCode: ModalityCode.US, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
+    // MRI Standards (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
     { modalityCode: ModalityCode.MRI, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
-    // MAMMO Standards
-    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
-    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 1440 },
+    // MAMMO Standards (IN/ER: 2 days, OPD: 3 days)
+    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
+    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.OPD, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 4320 },
+    { modalityCode: ModalityCode.MAMMO, triageLevel: TriageLevel.IN, urgencyLevel: UrgencyLevel.ROUTINE, targetTatMinutes: 2880 },
   ];
 
   for (const s of standardSlas) {
@@ -2400,11 +2397,9 @@ export async function fetchFilteredExecutiveKpiAction(
       }
 
       const defaultTarget =
-        m.modalityCode === ModalityCode.CT
-          ? (filterType === "isStat" || filterType === "ER" ? 60 : 1440)
-          : m.modalityCode === ModalityCode.XRAY
-          ? (filterType === "isStat" || filterType === "ER" ? 30 : 480)
-          : 120;
+          filterType === "isStat" || filterType === "ER" || filterType === "IN"
+            ? 2880
+            : 4320;
 
       return {
         avgTat,
