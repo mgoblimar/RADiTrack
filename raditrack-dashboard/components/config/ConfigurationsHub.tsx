@@ -1137,9 +1137,6 @@ export function ConfigurationsHub({
                     Subspecialty
                   </th>
 
-                  <th className="px-5 py-3.5">
-                    PRC license
-                  </th>
 
                   <th className="px-5 py-3.5">
                     Finalized scans
@@ -1179,11 +1176,6 @@ export function ConfigurationsHub({
                       )}
                     </td>
 
-                    <td className="px-5 py-4">
-                      <span className="font-mono text-xs font-semibold text-slate-500">
-                        {r.licenseNumber || "—"}
-                      </span>
-                    </td>
 
                     <td className="px-5 py-4">
                       <span className="text-sm font-semibold text-slate-500">
@@ -1642,18 +1634,6 @@ export function ConfigurationsHub({
                 />
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-bold text-qc-navy">
-                  PRC medical license number
-                </label>
-
-                <input
-                  type="text"
-                  name="licenseNumber"
-                  placeholder="e.g. PRC-0134812"
-                  className={inputBase + " font-mono"}
-                />
-              </div>
 
               <div className="flex flex-col-reverse gap-2 border-t border-slate-200/80 pt-5 sm:flex-row sm:justify-end">
                 <button
