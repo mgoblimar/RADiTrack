@@ -1,5 +1,4 @@
-import { PrismaClient } from "../generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import prisma from "../lib/prisma";
 import "dotenv/config";
 import {
   ModalityCode,
@@ -10,9 +9,7 @@ import {
   ReportStatusCode,
 } from "../lib/enums";
 
-const connectionString = `${process.env.DATABASE_URL || "file:./radiology.db"}`;
-const adapter = new PrismaBetterSqlite3({ url: connectionString });
-const prisma = new PrismaClient({ adapter });
+
 
 async function main() {
   console.log("🌱 Starting Comprehensive RADiTrack Realistic Seeding...");

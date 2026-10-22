@@ -4,7 +4,7 @@
 > **Institution:** University of the Philippines Manila  
 > **Team:** Group O(n) point  
 > **Privacy Specification:** **100% De-identified & Exam-Centric (Strict Zero-PII Policy)**  
-> **Stack:** Next.js 16 (App Router) • React 19 • Prisma 7 ORM • SQLite (`radiology.db`) • Tailwind CSS v4 • shadcn/ui • Recharts v3 • TypeScript  
+> **Stack:** Next.js 16 (App Router) • React 19 • Prisma 7 ORM • Supabase (PostgreSQL) • Tailwind CSS v4 • shadcn/ui • Recharts v3 • TypeScript  
 
 ---
 
@@ -15,6 +15,7 @@ Ensure your development environment has:
 * **Node.js:** `v20.x` or `v22.x` (`node -v`)
 * **npm:** `v10.x` or higher (`npm -v`)
 * **Git**
+* **Supabase Project Credentials** (or team `.env`)
 
 ---
 
@@ -38,31 +39,37 @@ copy .env.example .env
 # Mac / Linux:
 cp .env.example .env
 ```
-*(Ensure `DATABASE_URL="file:./radiology.db"` is set inside).*
+Ensure your Supabase connection strings are configured:
+```env
+# Supabase Transaction Pooler (Port 6543) - used by Next.js app at runtime
+DATABASE_URL="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+# Supabase Direct Connection (Port 5432) - used for Prisma schema push
+DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres"
+```
 
 #### Step 3: Install Dependencies
 ```bash
 npm install
 ```
 
-#### Step 4: Run Prisma 7 Database Migration
-Creates `radiology.db` with all 6 tables, relations, and indexes:
-```bash
-npx prisma migrate dev --name init
-```
-
-#### Step 5: Generate Prisma 7 Client Types
+#### Step 4: Generate Prisma 7 Client Types
+Compiles PostgreSQL client bindings into `./generated/prisma`:
 ```bash
 npx prisma generate
 ```
 
-#### Step 6: Seed Master Lookup Data
-Pre-populates modalities, statuses, and SLA target benchmarks:
+#### Step 5: Sync Schema & Seed Data (First-time setup only)
+> *Note: If connecting to the shared team Supabase instance where tables and data already exist, you can skip straight to Step 6!*
 ```bash
+# Push schema to Supabase:
+npx prisma db push
+
+# (Optional) Seed baseline data:
 npx prisma db seed
 ```
 
-#### Step 7: Launch the Next.js Server
+#### Step 6: Launch the Next.js Server
 ```bash
 npm run dev
 ```
@@ -96,8 +103,9 @@ RADiTrack/
 ├── raditrack-dashboard/           # 💻 Next.js 16 Web Application & Database
 │   ├── app/                       # App Router (pages & server actions)
 │   ├── components/                # shadcn/ui & Recharts visualizations
+│   ├── generated/prisma/          # Compiled Prisma 7 PostgreSQL Client
+│   ├── lib/                       # Prisma client, enums, broadcast helpers
 │   ├── prisma/                    # Zero-PII Prisma 7 schema & seed script
-│   ├── radiology.db               # SQLite database
 │   └── .env.example               # Environment template
 └── README.md                      # 📖 Project documentation & setup guide
 ```
@@ -108,12 +116,12 @@ RADiTrack/
 
 ```mermaid
 flowchart TD
-    subgraph Storage ["💾 Local Embedded Database (Prisma 7)"]
-        DB[("radiology.db (SQLite)\nZero-PII Exam & Report Records")]
+    subgraph Cloud ["☁️ Cloud Database (Supabase PostgreSQL)"]
+        DB[("Supabase PostgreSQL\nZero-PII Exam & Report Records")]
     end
 
     subgraph Backend ["⚙️ Next.js Server & Analytical Engine"]
-        ADAPTER["@prisma/adapter-better-sqlite3\n(Prisma 7 Driver Adapter)"]
+        ADAPTER["@prisma/adapter-pg (pg.Pool)\n(Prisma 7 Driver Adapter with SSL)"]
         TAT["⏱️ TAT & SLA Calculation Engine\n• TAT = (ReportSigned - ExamCompleted)\n• Auto SLA Breach Detection\n• Dynamic Sitting Time Latency"]
         ACTIONS["Server Actions (app/actions.ts)\n• createExaminationAction()\n• signOffReportAction()\n• getDashboardData()"]
     end
@@ -177,10 +185,12 @@ The database schema is 100% exam-centric and strictly adheres to hospital privac
 | Action | Command |
 | :--- | :--- |
 | **Start Dev Server** | `npm run dev` |
+| **Push Schema to Supabase** | `npx prisma db push` |
+| **Regenerate Prisma Client** | `npx prisma generate` |
 | **Format Prisma Schema** | `npx prisma format` |
 | **Re-seed Database** | `npx prisma db seed` |
-| **Reset Database from Scratch** | `npx prisma migrate reset` *(re-runs migrations & seed)* |
-| **Inspect SQLite Visually** | Install VS Code extension **`SQLite Viewer`**, then click `radiology.db` |
+| **Prisma Visual Studio** | `npx prisma studio` *(inspect tables locally in browser)* |
+| **Supabase Dashboard** | Inspect live tables via **Supabase Studio Table Editor** |
 | **Port Conflict Fallback** | `npm run dev -- -p 3001` |
 
 ---
