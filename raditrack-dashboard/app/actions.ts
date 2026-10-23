@@ -700,7 +700,7 @@ export interface TwelveMonthTrendResult {
 }
 
 export async function getTwelveMonthTatTrend(
-  period: string = "rolling"
+  period: string = "rolling", triageLevel: "ALL" | TriageLevel = "ALL"
 ): Promise<TwelveMonthTrendResult> {
   const now = new Date();
   const isRolling = period === "rolling";
@@ -768,6 +768,15 @@ export async function getTwelveMonthTatTrend(
 
   const minQueryDate = new Date(Math.min(...allDateStarts.map((d) => d.getTime())));
   const maxQueryDate = new Date(Math.max(...allDateEnds.map((d) => d.getTime())));
+
+  const examinationWhere: any = {
+    studyDate: { gte: minQueryDate, lte: maxQueryDate },
+    statusCode: { not: "CANCELLED" },
+  };
+
+  if (triageLevel && triageLevel !== "ALL") {
+    examinationWhere.triageLevel = triageLevel;
+  }
 
   const reports = await prisma.radiologyReport.findMany({
     where: {
@@ -1025,8 +1034,8 @@ export async function getTwelveMonthTatTrend(
   };
 }
 
-export async function fetchYearlyTrendAction(period: string = "rolling") {
-  return await getTwelveMonthTatTrend(period);
+export async function fetchYearlyTrendAction(period: string = "rolling", triageLevel: "ALL" | TriageLevel = "ALL") {
+  return await getTwelveMonthTatTrend(period, triageLevel);
 }
 
 // ============================================================================
@@ -1443,6 +1452,7 @@ export interface FilteredExaminationItem {
   tatMinutes: number | null;
   tatHours: number | null;
   targetTatMinutes: number | null;
+  targetTatHours: number | null;
   isBreached: boolean;
   isCarryOver: boolean;
   isFinalized: boolean;
@@ -1583,6 +1593,10 @@ export async function fetchFilteredExaminationsAction(
     );
     const targetTat = targetRule?.targetTatMinutes ?? null;
 
+    const targetTatHours = targetTat !== null 
+  ? Number((targetTat / 60).toFixed(2)) 
+  : null;
+
     let dwellMinutes: number | null = null;
     let dwellHours: number | null = null;
     let tatMinutes: number | null = null;
@@ -1643,6 +1657,7 @@ export async function fetchFilteredExaminationsAction(
       tatMinutes,
       tatHours,
       targetTatMinutes: targetTat,
+      targetTatHours,
       isBreached,
       isCarryOver,
       isFinalized,

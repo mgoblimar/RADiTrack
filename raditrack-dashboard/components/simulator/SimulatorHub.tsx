@@ -529,8 +529,8 @@ export function SimulatorHub({
               <tr className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-qc-blue">
                 <th className="px-5 py-3.5">Accession</th>
                 <th className="px-5 py-3.5">Modality</th>
-                <th className="px-5 py-3.5">Triage</th>
-                <th className="px-5 py-3.5">Urgency</th>
+                <th className="px-5 py-3.5">Patient Category</th>
+                {/*<th className="px-5 py-3.5">Urgency</th>*/}
                 <th className="px-5 py-3.5">Dwell</th>
                 <th className="px-5 py-3.5">Target</th>
                 <th className="px-5 py-3.5 text-right">
@@ -577,7 +577,7 @@ export function SimulatorHub({
                     </span>
                   </td>
 
-                  <td className="px-5 py-4">
+                  {/*<td className="px-5 py-4">
                     <span
                       className={`inline-flex rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${getUrgencyClass(
                         item.urgencyLevel,
@@ -585,7 +585,7 @@ export function SimulatorHub({
                     >
                       {item.urgencyLevel}
                     </span>
-                  </td>
+                  </td>}*/}
 
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
@@ -599,7 +599,7 @@ export function SimulatorHub({
                               : "text-qc-orange"
                           }`}
                         >
-                          {item.dwellMinutes} mins
+                          {item.dwellHours} hrs
                         </p>
 
                         {item.isBreached && (
