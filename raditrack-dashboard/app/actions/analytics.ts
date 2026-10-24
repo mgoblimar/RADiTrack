@@ -750,8 +750,8 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
       ): ModalityTatStats => {
         const filtered = exams.filter((e) => {
           if (filterType === "all") return true;
-          if (filterType === "isStat") return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
-          if (filterType === "isRoutine") return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+          if (filterType === "isStat") return e.triageLevel === TriageLevel.ER;
+          if (filterType === "isRoutine") return e.triageLevel !== TriageLevel.ER;
           return e.triageLevel === filterType;
         });
 
@@ -766,16 +766,14 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
 
         let sla: any;
         if (filterType === "isStat" || filterType === "ER") {
-          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER || s.urgencyLevel === UrgencyLevel.STAT);
+          sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER);
         } else if (filterType === "OPD") {
           sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
         } else if (filterType === "IN") {
           sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
         } else {
           sla =
-            m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD && s.urgencyLevel === UrgencyLevel.ROUTINE) ||
-            m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) ||
-            m.slaConfigs[0];
+            m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) || m.slaConfigs[0];
         }
 
         const defaultTarget =
@@ -882,8 +880,8 @@ export async function fetchModalityTatDataAction(options: {
     ): ModalityTatStats => {
       const filtered = m.examinations.filter((e) => {
         if (filterType === "all") return true;
-        if (filterType === "isStat") return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
-        if (filterType === "isRoutine") return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+        if (filterType === "isStat") return e.triageLevel === TriageLevel.ER;
+        if (filterType === "isRoutine") return e.triageLevel !== TriageLevel.ER;
         return e.triageLevel === filterType;
       });
 
@@ -898,16 +896,14 @@ export async function fetchModalityTatDataAction(options: {
 
       let sla: any;
       if (filterType === "isStat" || filterType === "ER") {
-        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER || s.urgencyLevel === UrgencyLevel.STAT);
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER);
       } else if (filterType === "OPD") {
         sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
       } else if (filterType === "IN") {
         sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
       } else {
         sla =
-          m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD && s.urgencyLevel === UrgencyLevel.ROUTINE) ||
-          m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) ||
-          m.slaConfigs[0];
+          m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) || m.slaConfigs[0];
       }
 
       const defaultTarget =

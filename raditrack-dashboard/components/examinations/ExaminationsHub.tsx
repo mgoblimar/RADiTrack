@@ -1247,11 +1247,7 @@ export function ExaminationsHub({
                 </th>
 
                 <th className="px-5 py-3.5">
-                  Triage
-                </th>
-
-                <th className="px-5 py-3.5">
-                  Priority
+                  Patient Category
                 </th>
 
                 <th className="px-5 py-3.5">
@@ -1371,16 +1367,7 @@ export function ExaminationsHub({
                     </span>
                   </td>
 
-                  {/* Urgency */}
-                  <td className="px-5 py-4">
-                    <span
-                      className={`inline-flex rounded-xl border px-2.5 py-1 text-[10px] font-extrabold ${getUrgencyBadgeClass(
-                        item.urgencyLevel,
-                      )}`}
-                    >
-                      {item.urgencyLevel}
-                    </span>
-                  </td>
+                  
 
                   {/* Study date */}
                   <td className="px-5 py-4">

@@ -17,7 +17,6 @@ export async function createExaminationAction(formData: FormData) {
   const examinationIdentifier = formData.get("examinationIdentifier") as string;
   const modalityCode = (formData.get("modalityCode") as string) || ModalityCode.CT;
   const triageLevel = (formData.get("triageLevel") as string) || TriageLevel.OPD;
-  const urgencyLevel = (formData.get("urgencyLevel") as string) || UrgencyLevel.ROUTINE;
   const statusCode =
     (formData.get("statusCode") as string) || ExaminationStatusCode.EXAM_COMPLETED;
 
@@ -29,7 +28,6 @@ export async function createExaminationAction(formData: FormData) {
       modalityCode,
       statusCode,
       triageLevel,
-      urgencyLevel,
       studyDate: now,
       examCompletedAt: now,
     },
@@ -60,9 +58,7 @@ export async function signOffReportAction(formData: FormData) {
 
   // Match SLA Target Rule
   const targetRule = exam.modality.slaConfigs.find(
-    (s) =>
-      s.triageLevel === exam.triageLevel &&
-      s.urgencyLevel === exam.urgencyLevel,
+    (s) => s.triageLevel === exam.triageLevel,
   );
   const isSlaBreached = targetRule
     ? tatMinutes > targetRule.targetTatMinutes
@@ -122,7 +118,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
   ];
   const rows = exams.map((e) => {
     const targetRule = e.modality.slaConfigs.find(
-      (s) => s.triageLevel === e.triageLevel && s.urgencyLevel === e.urgencyLevel
+      (s) => s.triageLevel === e.triageLevel
     );
     const tatMinutes = e.report?.tatExamToSignMinutes ?? "";
     const tatHours = tatMinutes !== "" ? (Number(tatMinutes) / 60).toFixed(2) : "";
@@ -131,7 +127,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
       e.examinationIdentifier,
       e.modalityCode,
       e.triageLevel,
-      e.urgencyLevel,
+      e.triageLevel === "ER" ? "STAT" : "ROUTINE",
       e.studyDate.toISOString().split("T")[0],
       e.examCompletedAt ? e.examCompletedAt.toISOString() : "",
       e.report?.reportSignedAt ? e.report.reportSignedAt.toISOString() : "",
@@ -158,10 +154,9 @@ export async function updateExaminationAction(formData: FormData) {
   const examinationIdentifier = (formData.get("examinationIdentifier") as string)?.trim();
   const modalityCode = formData.get("modalityCode") as string;
   const triageLevel = formData.get("triageLevel") as string;
-  const urgencyLevel = formData.get("urgencyLevel") as string;
   const notes = (formData.get("notes") as string)?.trim() || null;
 
-  if (!examId || !examinationIdentifier || !modalityCode || !triageLevel || !urgencyLevel) {
+  if (!examId || !examinationIdentifier || !modalityCode || !triageLevel) {
     throw new Error("Missing required examination update fields.");
   }
 
@@ -185,7 +180,6 @@ export async function updateExaminationAction(formData: FormData) {
       examinationIdentifier,
       modalityCode,
       triageLevel,
-      urgencyLevel,
       notes,
     },
   });
@@ -399,7 +393,7 @@ export async function fetchFilteredExaminationsAction(
   const items: FilteredExaminationItem[] = exams.map((e) => {
     const isFinalized = Boolean(e.report && e.report.reportSignedAt);
     const targetRule = e.modality.slaConfigs.find(
-      (s) => s.triageLevel === e.triageLevel && s.urgencyLevel === e.urgencyLevel
+      (s) => s.triageLevel === e.triageLevel
     );
     const targetTat = targetRule?.targetTatMinutes ?? null;
 
@@ -443,7 +437,7 @@ export async function fetchFilteredExaminationsAction(
       identifier: e.examinationIdentifier,
       modalityCode: e.modalityCode,
       triageLevel: e.triageLevel,
-      urgencyLevel: e.urgencyLevel,
+      urgencyLevel: e.triageLevel === "ER" ? "STAT" : "ROUTINE",
       studyDateFormatted: new Date(e.studyDate).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",

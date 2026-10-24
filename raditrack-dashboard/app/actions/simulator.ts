@@ -23,24 +23,20 @@ export async function simulateScenarioAction(
 
   let modalityCode: ModalityCode = ModalityCode.CT;
   let triageLevel: TriageLevel = TriageLevel.ER;
-  let urgencyLevel: UrgencyLevel = UrgencyLevel.STAT;
-  let notes = "Simulated ER Trauma Scan";
+    let notes = "Simulated ER Trauma Scan";
 
   if (scenario === "stat_xray") {
     modalityCode = ModalityCode.XRAY;
     triageLevel = TriageLevel.ER;
-    urgencyLevel = UrgencyLevel.STAT;
-    notes = "Simulated Acute Chest X-Ray";
+        notes = "Simulated Acute Chest X-Ray";
   } else if (scenario === "opd_us") {
     modalityCode = ModalityCode.US;
     triageLevel = TriageLevel.OPD;
-    urgencyLevel = UrgencyLevel.ROUTINE;
-    notes = "Simulated Outpatient Abdominal Ultrasound";
+        notes = "Simulated Outpatient Abdominal Ultrasound";
   } else if (scenario === "in_mri") {
     modalityCode = ModalityCode.MRI;
     triageLevel = TriageLevel.IN;
-    urgencyLevel = UrgencyLevel.ROUTINE;
-    notes = "Simulated Inpatient Brain MRI Scan";
+        notes = "Simulated Inpatient Brain MRI Scan";
   }
 
   await prisma.examination.create({
@@ -49,7 +45,6 @@ export async function simulateScenarioAction(
       modalityCode,
       statusCode: ExaminationStatusCode.EXAM_COMPLETED,
       triageLevel,
-      urgencyLevel,
       studyDate: now,
       examCompletedAt: now,
       notes,
@@ -85,7 +80,7 @@ export async function autoSignOldestBacklogAction() {
   );
 
   const targetRule = oldest.modality.slaConfigs.find(
-    (s) => s.triageLevel === oldest.triageLevel && s.urgencyLevel === oldest.urgencyLevel
+    (s) => s.triageLevel === oldest.triageLevel
   );
   const isBreached = targetRule ? tatMinutes > targetRule.targetTatMinutes : false;
 

@@ -105,8 +105,7 @@ export async function getDashboardData() {
       );
       const dwellHours = Number((dwellMinutes / 60).toFixed(1));
       const targetRule = e.modality.slaConfigs.find(
-        (s) =>
-          s.triageLevel === e.triageLevel && s.urgencyLevel === e.urgencyLevel,
+        (s) => s.triageLevel === e.triageLevel,
       );
       const isBreached = targetRule
         ? dwellMinutes > targetRule.targetTatMinutes
@@ -118,7 +117,7 @@ export async function getDashboardData() {
         identifier: e.examinationIdentifier,
         modalityCode: e.modalityCode,
         triageLevel: e.triageLevel,
-        urgencyLevel: e.urgencyLevel,
+        urgencyLevel: e.triageLevel === "ER" ? "STAT" : "ROUTINE",
         dwellMinutes,
         dwellHours,
         targetTat: targetRule?.targetTatMinutes ?? null,
@@ -131,7 +130,6 @@ export async function getDashboardData() {
       examId: e.examId,
       modalityCode: e.modalityCode,
       triageLevel: e.triageLevel,
-      urgencyLevel: e.urgencyLevel,
       studyDate: e.studyDate.toISOString(),
       statusCode: e.statusCode,
       tatMinutes: e.report?.tatExamToSignMinutes ?? null,
@@ -493,8 +491,8 @@ export async function fetchFilteredExecutiveKpiAction(
     ): ModalityTatStats => {
       const filtered = m.examinations.filter((e) => {
         if (filterType === "all") return true;
-        if (filterType === "isStat") return e.urgencyLevel === UrgencyLevel.STAT || e.triageLevel === TriageLevel.ER;
-        if (filterType === "isRoutine") return e.urgencyLevel === UrgencyLevel.ROUTINE && e.triageLevel !== TriageLevel.ER;
+        if (filterType === "isStat") return e.triageLevel === TriageLevel.ER;
+        if (filterType === "isRoutine") return e.triageLevel !== TriageLevel.ER;
         return e.triageLevel === filterType;
       });
 
@@ -509,7 +507,7 @@ export async function fetchFilteredExecutiveKpiAction(
 
       let sla: any;
       if (filterType === "isStat" || filterType === "ER") {
-        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER || s.urgencyLevel === UrgencyLevel.STAT);
+        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER);
       } else if (filterType === "OPD") {
         sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
       } else if (filterType === "IN") {
