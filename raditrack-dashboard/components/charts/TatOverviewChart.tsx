@@ -601,6 +601,47 @@ export function TatOverviewChart({
   };
 
   /* =========================================================
+     Custom Modality X-Axis Tick (Shows friendly modality name)
+  ========================================================= */
+
+  const renderModalityTick = (props: any) => {
+    const { x, y, payload } = props;
+    if (!payload || payload.value === undefined || payload.value === null) return null;
+
+    const raw = String(payload.value);
+    const code = raw.toUpperCase();
+
+    // Map modality code to clean friendly display name
+    const labels: Record<string, string> = {
+      CT: "CT-Scan",
+      XRAY: "X-ray",
+      XR: "X-ray",
+      US: "Ultrasound",
+      MRI: "MRI",
+      MAMMO: "Mammogram",
+    };
+
+    const label = labels[code] || raw;
+
+    return (
+      <g transform={`translate(${x}, ${y + 12})`}>
+        <text
+          x={0}
+          y={0}
+          textAnchor="middle"
+          dominantBaseline="hanging"
+          fill="#050E40"
+          fontSize={12}
+          fontWeight={800}
+          className="select-none tracking-tight"
+        >
+          {label}
+        </text>
+      </g>
+    );
+  };
+
+  /* =========================================================
      Filter popover
   ========================================================= */
 
@@ -862,7 +903,7 @@ export function TatOverviewChart({
         createPortal(filterPopover, document.body)}
 
       {/* Chart */}
-      <div className="px-4 py-5 sm:px-5 sm:py-6">
+      <div className="px-4 pt-5 pb-3 sm:px-5 sm:pt-6 sm:pb-4">
         {displayData.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background">
             <p className="text-sm font-extrabold text-qc-navy">
@@ -873,15 +914,15 @@ export function TatOverviewChart({
             </p>
           </div>
         ) : (
-          <div className="h-[270px] w-full sm:h-[300px]">
+          <div className="h-[310px] w-full sm:h-[340px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={displayData}
                 margin={{
                   top: 24,
-                  right: 12,
+                  right: 16,
                   left: -10,
-                  bottom: 0,
+                  bottom: 45,
                 }}
               >
                 <CartesianGrid
@@ -890,16 +931,15 @@ export function TatOverviewChart({
                   vertical={false}
                 />
 
-                {/* Primary X-Axis for Target SLA bar */}
+                {/* Primary X-Axis for Target SLA bar with friendly name */}
                 <XAxis
                   xAxisId="targetAxis"
                   dataKey="modality"
-                  stroke={QC_MUTED}
-                  fontSize={11}
-                  fontWeight={700}
+                  tick={renderModalityTick}
+                  interval={0}
                   tickLine={false}
                   axisLine={false}
-                  dy={7}
+                  height={45}
                 />
 
                 {/* Secondary hidden X-Axis for Actual TAT bar (centers bar on same tick) */}
