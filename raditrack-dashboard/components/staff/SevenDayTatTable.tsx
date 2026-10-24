@@ -364,7 +364,7 @@ export function SevenDayTatTable({
   const formatTurnaroundTime = (
     _minutes: number,
     hours: number,
-  ) => `${hours}h`;
+  ) => `${hours} hrs`;
 
   /* =========================================================
      Render comparison table
@@ -459,9 +459,7 @@ export function SevenDayTatTable({
                   <span className="block text-[10px] font-extrabold text-qc-navy">
                     Patient Category
                   </span>
-                  <span className="mt-0.5 block text-[8px] font-semibold normal-case tracking-normal text-muted-foreground">
-                    Examinations by category
-                  </span>
+                  
                 </th>
 
                 <th
@@ -681,7 +679,7 @@ export function SevenDayTatTable({
                     }`}
                   >
                     {weightedTat > 0
-                      ? `${weightedTatHours}h`
+                      ? `${weightedTatHours} hrs`
                       : "—"}
                   </span>
                 </td>

@@ -791,7 +791,7 @@ export function DashboardShell({
                     <p className="mt-2.5 text-[11px] text-muted-foreground">
                       Median{" "}
                       <span className="font-extrabold text-qc-navy">
-                        {displayMedianHours}h
+                        {displayMedianHours} hrs
                       </span>
                     </p>
 
@@ -1042,7 +1042,7 @@ export function DashboardShell({
                       </span>
 
                       <span className="text-sm font-extrabold text-qc-navy">
-                        {priorAvgHours}h
+                        {priorAvgHours} hrs
                       </span>
                     </div>
 

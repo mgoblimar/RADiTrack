@@ -99,7 +99,7 @@ export function TrendHeaderNav({
               {isModalitySpecific && activeModalityLabel ? `${activeModalityLabel} Avg` : "Avg TAT"}
             </span>
             <span className="ml-1.5 text-xs font-extrabold text-qc-navy">
-              {displayAnnualAvgHours}h
+              {displayAnnualAvgHours} hrs
             </span>
           </div>
 
@@ -148,7 +148,7 @@ export function TrendHeaderNav({
             style={{ borderColor: comparePriorYear ? QC_PURPLE : "#94A3B8" }}
           />
           <span>
-            {selectedPeriod === "rolling" ? "Compare Prior 12m" : "Compare Prior Year"}
+            {selectedPeriod === "rolling" ? "Compare Prior 12 Months" : "Compare Prior Year"}
           </span>
           <span
             className="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"

@@ -263,7 +263,7 @@ export function TatOverviewChart({ data }: TatOverviewChartProps) {
                   tickLine={false}
                   axisLine={false}
                   width={42}
-                  tickFormatter={(value) => `${value}h`}
+                  tickFormatter={(value) => `${value} hrs`}
                 />
 
                 <Tooltip

@@ -58,7 +58,7 @@ export function TatChartTooltip({
               Target SLA
             </span>
             <strong className="text-qc-navy">
-              {point.target}h
+              {point.target} hrs
             </strong>
           </div>
         )}
@@ -85,7 +85,7 @@ export function TatChartTooltip({
                   : "text-qc-navy"
             }
           >
-            {point.avgTat}h
+            {point.avgTat} hrs
           </strong>
         </div>
 
