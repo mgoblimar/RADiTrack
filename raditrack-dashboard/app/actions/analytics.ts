@@ -396,15 +396,12 @@ export async function getTwelveMonthTatTrend(
   const reports = await prisma.radiologyReport.findMany({
     where: {
       reportSignedAt: { not: null },
-      examination: {
-        studyDate: { gte: minQueryDate, lte: maxQueryDate },
-        statusCode: { not: "CANCELLED" },
-      },
+      examination: examinationWhere,
     },
     select: {
       tatExamToSignMinutes: true,
       examination: {
-        select: { studyDate: true, modalityCode: true },
+        select: { studyDate: true, modalityCode: true, triageLevel: true },
       },
     },
   });

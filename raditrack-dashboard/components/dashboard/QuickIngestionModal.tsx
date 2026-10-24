@@ -174,7 +174,7 @@ export function QuickIngestionModal() {
                     htmlFor="quick-ingestion-triage"
                     className="block text-sm font-bold text-qc-navy"
                   >
-                    Triage level
+                    Patient category
                   </label>
 
                   <select
