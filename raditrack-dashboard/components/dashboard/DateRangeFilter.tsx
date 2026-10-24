@@ -34,12 +34,15 @@ export interface DateRangeFilterProps {
   ) => void;
   isPending?: boolean;
   selectedModality?: "ALL" | ModalityCode;
-  onModalityChange?: (modality: "ALL" | ModalityCode) => void;
+  onModalityChange?: (
+    modality: "ALL" | ModalityCode,
+  ) => void;
   selectedTriage?: "ALL" | TriageLevel;
-  onTriageChange?: (triage: "ALL" | TriageLevel) => void;
+  onTriageChange?: (
+    triage: "ALL" | TriageLevel,
+  ) => void;
 
   // Kept for compatibility with DashboardShell.
-  // Intentionally not displayed in this component.
   telemetrySummary?: {
     presetLabel: string;
     dateRangeFormatted: string;
@@ -50,46 +53,25 @@ export interface DateRangeFilterProps {
   };
 }
 
+type PopoverPosition = {
+  top: number;
+  left: number;
+  width: number;
+};
+
 const PRESETS: {
   id: KpiPreset;
   label: string;
 }[] = [
-  {
-    id: "ALL",
-    label: "All Time",
-  },
-  {
-    id: "TODAY",
-    label: "Today",
-  },
-  {
-    id: "ROLLING_7D",
-    label: "Rolling 7 Days",
-  },
-  {
-    id: "WEEK",
-    label: "This Week",
-  },
-  {
-    id: "LAST_WEEK",
-    label: "Last Week",
-  },
-  {
-    id: "MONTH",
-    label: "This Month",
-  },
-  {
-    id: "LAST_MONTH",
-    label: "Last Month",
-  },
-  {
-    id: "YEAR",
-    label: "This Year",
-  },
-  {
-    id: "CUSTOM",
-    label: "Custom",
-  },
+  { id: "ALL", label: "All Time" },
+  { id: "TODAY", label: "Today" },
+  { id: "ROLLING_7D", label: "Rolling 7 Days" },
+  { id: "WEEK", label: "This Week" },
+  { id: "LAST_WEEK", label: "Last Week" },
+  { id: "MONTH", label: "This Month" },
+  { id: "LAST_MONTH", label: "Last Month" },
+  { id: "YEAR", label: "This Year" },
+  { id: "CUSTOM", label: "Custom" },
 ];
 
 const MODALITY_OPTIONS: {
@@ -98,23 +80,97 @@ const MODALITY_OPTIONS: {
   dotColor?: string;
 }[] = [
   { id: "ALL", label: "All Modalities" },
-  { id: ModalityCode.XRAY, label: "X-ray", dotColor: "bg-blue-500" },
-  { id: ModalityCode.US, label: "Ultrasound", dotColor: "bg-emerald-500" },
-  { id: ModalityCode.CT, label: "CT-Scan", dotColor: "bg-amber-500" },
-  { id: ModalityCode.MRI, label: "MRI", dotColor: "bg-purple-500" },
-  { id: ModalityCode.MAMMO, label: "Mammogram", dotColor: "bg-pink-500" },
+  {
+    id: ModalityCode.XRAY,
+    label: "X-ray",
+    dotColor: "bg-blue-500",
+  },
+  {
+    id: ModalityCode.US,
+    label: "Ultrasound",
+    dotColor: "bg-emerald-500",
+  },
+  {
+    id: ModalityCode.CT,
+    label: "CT-Scan",
+    dotColor: "bg-amber-500",
+  },
+  {
+    id: ModalityCode.MRI,
+    label: "MRI",
+    dotColor: "bg-purple-500",
+  },
+  {
+    id: ModalityCode.MAMMO,
+    label: "Mammogram",
+    dotColor: "bg-pink-500",
+  },
 ];
 
-const TRIAGE_OPTIONS: {
+const PATIENT_CATEGORY_OPTIONS: {
   id: "ALL" | TriageLevel;
   label: string;
   dotColor?: string;
 }[] = [
-  { id: "ALL", label: "All Categories" },
-  { id: TriageLevel.ER, label: "Emergency (ER)", dotColor: "bg-rose-500" },
-  { id: TriageLevel.OPD, label: "Outpatient (OPD)", dotColor: "bg-sky-500" },
-  { id: TriageLevel.IN, label: "Inpatient (IN)", dotColor: "bg-amber-500" },
+  {
+    id: "ALL",
+    label: "All Patient Categories",
+  },
+  {
+    id: TriageLevel.ER,
+    label: "Emergency (ER)",
+    dotColor: "bg-rose-500",
+  },
+  {
+    id: TriageLevel.OPD,
+    label: "Outpatient (OPD)",
+    dotColor: "bg-sky-500",
+  },
+  {
+    id: TriageLevel.IN,
+    label: "Inpatient (IN)",
+    dotColor: "bg-amber-500",
+  },
 ];
+
+function getPosition(
+  button: HTMLButtonElement | null,
+  requestedWidth: number,
+): PopoverPosition | null {
+  if (!button) return null;
+
+  const rect = button.getBoundingClientRect();
+  const viewportPadding = 12;
+  const width = Math.min(
+    requestedWidth,
+    window.innerWidth - viewportPadding * 2,
+  );
+
+  const left = Math.max(
+    viewportPadding,
+    Math.min(
+      rect.left,
+      window.innerWidth - width - viewportPadding,
+    ),
+  );
+
+  return {
+    top: rect.bottom + 8,
+    left,
+    width,
+  };
+}
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(
+    2,
+    "0",
+  );
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
 
 export function DateRangeFilter({
   currentPreset,
@@ -129,241 +185,184 @@ export function DateRangeFilter({
   onTriageChange,
 }: DateRangeFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isModalityOpen, setIsModalityOpen] = useState(false);
+  const [isModalityOpen, setIsModalityOpen] =
+    useState(false);
+  const [isCategoryOpen, setIsCategoryOpen] =
+    useState(false);
+
   const [localStart, setLocalStart] =
     useState(startDate);
-  const [localEnd, setLocalEnd] =
-    useState(endDate);
+  const [localEnd, setLocalEnd] = useState(endDate);
 
-  const buttonRef =
+  const dateButtonRef =
     useRef<HTMLButtonElement>(null);
-
-  const popoverRef =
+  const datePopoverRef =
     useRef<HTMLDivElement>(null);
 
   const modalityButtonRef =
     useRef<HTMLButtonElement>(null);
-
   const modalityPopoverRef =
     useRef<HTMLDivElement>(null);
 
-  const [popoverPosition, setPopoverPosition] =
-    useState({
+  const categoryButtonRef =
+    useRef<HTMLButtonElement>(null);
+  const categoryPopoverRef =
+    useRef<HTMLDivElement>(null);
+
+  const [datePopoverPosition, setDatePopoverPosition] =
+    useState<PopoverPosition>({
       top: 0,
       left: 0,
       width: 500,
     });
 
-  const [isTriageOpen, setIsTriageOpen] = useState(false);
-  const triageButtonRef = useRef<HTMLButtonElement>(null);
-  const triagePopoverRef = useRef<HTMLDivElement>(null);
-  const [triagePopoverPosition, setTriagePopoverPosition] = useState({
-    top: 0,
-    left: 0,
-    width: 220,
-  });
   const [modalityPopoverPosition, setModalityPopoverPosition] =
-    useState({
+    useState<PopoverPosition>({
       top: 0,
       left: 0,
-      width: 220,
+      width: 230,
     });
 
-  // =========================================================
-  // Keep local date values synchronized
-  // =========================================================
+  const [categoryPopoverPosition, setCategoryPopoverPosition] =
+    useState<PopoverPosition>({
+      top: 0,
+      left: 0,
+      width: 230,
+    });
+
+  /* =========================================================
+     Synchronize custom date inputs with parent state
+  ========================================================= */
 
   useEffect(() => {
     setLocalStart(startDate);
     setLocalEnd(endDate);
   }, [startDate, endDate]);
 
-  // =========================================================
-  // Position the dropdown
-  // =========================================================
-
-  const updatePopoverPosition = () => {
-    if (!buttonRef.current) {
-      return;
-    }
-
-    const rect =
-      buttonRef.current.getBoundingClientRect();
-
-    const viewportPadding = 12;
-
-    const availableWidth =
-      window.innerWidth -
-      viewportPadding * 2;
-
-    const width = Math.min(
-      500,
-      availableWidth,
-    );
-
-    let left = rect.left;
-
-    if (
-      left + width >
-      window.innerWidth - viewportPadding
-    ) {
-      left =
-        window.innerWidth -
-        width -
-        viewportPadding;
-    }
-
-    left = Math.max(
-      viewportPadding,
-      left,
-    );
-
-    const top = rect.bottom + 8;
-
-    setPopoverPosition({
-      top,
-      left,
-      width,
-    });
-  };
-
-  const updateTriagePopoverPosition = () => {
-    if (!triageButtonRef.current) return;
-    const rect = triageButtonRef.current.getBoundingClientRect();
-    const viewportPadding = 12;
-    const width = 230;
-    let left = rect.left;
-    if (left + width > window.innerWidth - viewportPadding) {
-      left = window.innerWidth - width - viewportPadding;
-    }
-    left = Math.max(viewportPadding, left);
-    const top = rect.bottom + 8;
-    setTriagePopoverPosition({ top, left, width });
-  };
-
-  const updateModalityPopoverPosition = () => {
-    if (!modalityButtonRef.current) {
-      return;
-    }
-
-    const rect =
-      modalityButtonRef.current.getBoundingClientRect();
-
-    const viewportPadding = 12;
-    const width = 230;
-
-    let left = rect.left;
-
-    if (left + width > window.innerWidth - viewportPadding) {
-      left = window.innerWidth - width - viewportPadding;
-    }
-
-    left = Math.max(viewportPadding, left);
-    const top = rect.bottom + 8;
-
-    setModalityPopoverPosition({
-      top,
-      left,
-      width,
-    });
-  };
+  /* =========================================================
+     Keep the date popover positioned correctly
+  ========================================================= */
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    if (!isOpen) return;
 
-    updatePopoverPosition();
+    const updatePosition = () => {
+      const position = getPosition(
+        dateButtonRef.current,
+        500,
+      );
 
-    const handleResize = () => {
-      updatePopoverPosition();
+      if (position) {
+        setDatePopoverPosition(position);
+      }
     };
 
-    const handleScroll = () => {
-      updatePopoverPosition();
-    };
+    updatePosition();
 
-    window.addEventListener(
-      "resize",
-      handleResize,
-    );
-
-    window.addEventListener(
-      "scroll",
-      handleScroll,
-      true,
-    );
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
 
     return () => {
       window.removeEventListener(
         "resize",
-        handleResize,
+        updatePosition,
       );
-
       window.removeEventListener(
         "scroll",
-        handleScroll,
+        updatePosition,
         true,
       );
     };
   }, [isOpen]);
 
+  /* =========================================================
+     Keep the modality popover positioned correctly
+  ========================================================= */
+
   useEffect(() => {
-    if (!isModalityOpen) {
-      return;
-    }
+    if (!isModalityOpen) return;
 
-    updateModalityPopoverPosition();
+    const updatePosition = () => {
+      const position = getPosition(
+        modalityButtonRef.current,
+        230,
+      );
 
-    const handleResize = () => {
-      updateModalityPopoverPosition();
+      if (position) {
+        setModalityPopoverPosition(position);
+      }
     };
 
-    const handleScroll = () => {
-      updateModalityPopoverPosition();
-    };
+    updatePosition();
 
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
 
     return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener(
+        "resize",
+        updatePosition,
+      );
+      window.removeEventListener(
+        "scroll",
+        updatePosition,
+        true,
+      );
     };
   }, [isModalityOpen]);
 
+  /* =========================================================
+     Keep the Patient Category popover positioned correctly
+  ========================================================= */
+
   useEffect(() => {
-    if (!isTriageOpen) return;
-    updateTriagePopoverPosition();
-    const handleResize = () => updateTriagePopoverPosition();
-    const handleScroll = () => updateTriagePopoverPosition();
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleScroll, true);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("scroll", handleScroll, true);
+    if (!isCategoryOpen) return;
+
+    const updatePosition = () => {
+      const position = getPosition(
+        categoryButtonRef.current,
+        230,
+      );
+
+      if (position) {
+        setCategoryPopoverPosition(position);
+      }
     };
-  }, [isTriageOpen]);
 
-  // =========================================================
-  // Close when clicking outside / Escape
-  // =========================================================
+    updatePosition();
+
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener(
+        "resize",
+        updatePosition,
+      );
+      window.removeEventListener(
+        "scroll",
+        updatePosition,
+        true,
+      );
+    };
+  }, [isCategoryOpen]);
+
+  /* =========================================================
+     Close popovers on outside click or Escape
+  ========================================================= */
 
   useEffect(() => {
-    if (!isOpen && !isModalityOpen && !isTriageOpen) {
+    if (!isOpen && !isModalityOpen && !isCategoryOpen) {
       return;
     }
 
-    const handleClickOutside = (
-      event: MouseEvent,
-    ) => {
-      const target =
-        event.target as Node;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
 
       if (
         isOpen &&
-        !buttonRef.current?.contains(target) &&
-        !popoverRef.current?.contains(target)
+        !dateButtonRef.current?.contains(target) &&
+        !datePopoverRef.current?.contains(target)
       ) {
         setIsOpen(false);
       }
@@ -377,21 +376,19 @@ export function DateRangeFilter({
       }
 
       if (
-        isTriageOpen &&
-        !triageButtonRef.current?.contains(target) &&
-        !triagePopoverRef.current?.contains(target)
+        isCategoryOpen &&
+        !categoryButtonRef.current?.contains(target) &&
+        !categoryPopoverRef.current?.contains(target)
       ) {
-        setIsTriageOpen(false);
+        setIsCategoryOpen(false);
       }
     };
 
-    const handleKeyDown = (
-      event: KeyboardEvent,
-    ) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsOpen(false);
         setIsModalityOpen(false);
-        setIsTriageOpen(false);
+        setIsCategoryOpen(false);
       }
     };
 
@@ -399,95 +396,87 @@ export function DateRangeFilter({
       "mousedown",
       handleClickOutside,
     );
-
-    document.addEventListener(
-      "keydown",
-      handleKeyDown,
-    );
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.removeEventListener(
         "mousedown",
         handleClickOutside,
       );
-
       document.removeEventListener(
         "keydown",
         handleKeyDown,
       );
     };
-  }, [isOpen, isModalityOpen, isTriageOpen]);
+  }, [isOpen, isModalityOpen, isCategoryOpen]);
 
-  // =========================================================
-  // Active preset & modality
-  // =========================================================
+  /* =========================================================
+     Active filter labels
+  ========================================================= */
 
   const activePreset =
-    PRESETS.find(
-      (preset) =>
-        preset.id === currentPreset,
-    ) ?? PRESETS[0];
+    PRESETS.find((preset) => preset.id === currentPreset) ??
+    PRESETS[0];
 
   const activeModalityOption =
     MODALITY_OPTIONS.find(
-      (opt) => opt.id === selectedModality,
+      (option) => option.id === selectedModality,
     ) ?? MODALITY_OPTIONS[0];
 
-  const activeTriageOption =
-    TRIAGE_OPTIONS.find(
-      (opt) => opt.id === selectedTriage,
-    ) ?? TRIAGE_OPTIONS[0];
+  const activeCategoryOption =
+    PATIENT_CATEGORY_OPTIONS.find(
+      (option) => option.id === selectedTriage,
+    ) ?? PATIENT_CATEGORY_OPTIONS[0];
 
-  const isCustom =
-    currentPreset === "CUSTOM";
+  const isCustom = currentPreset === "CUSTOM";
 
-  // =========================================================
-  // Open / close dropdowns
-  // =========================================================
+  /* =========================================================
+     Dropdown controls
+  ========================================================= */
 
-  const toggleDropdown = () => {
-    if (isPending) {
-      return;
-    }
+  const toggleDateDropdown = () => {
+    if (isPending) return;
 
     setIsModalityOpen(false);
-    setIsTriageOpen(false);
+    setIsCategoryOpen(false);
     setIsOpen((previous) => !previous);
   };
 
   const toggleModalityDropdown = () => {
-    if (isPending) {
-      return;
-    }
+    if (isPending) return;
 
     setIsOpen(false);
-    setIsTriageOpen(false);
+    setIsCategoryOpen(false);
     setIsModalityOpen((previous) => !previous);
   };
 
-  const toggleTriageDropdown = () => {
+  const toggleCategoryDropdown = () => {
     if (isPending) return;
+
     setIsOpen(false);
     setIsModalityOpen(false);
-    setIsTriageOpen((prev) => !prev);
+    setIsCategoryOpen((previous) => !previous);
   };
 
-  // =========================================================
-  // Preset selection
-  // =========================================================
+  /* =========================================================
+     Date preset selection
+  ========================================================= */
 
-  const handleSelectPreset = (
-    preset: KpiPreset,
-  ) => {
-    if (isPending) {
-      return;
-    }
+  const handleSelectPreset = (preset: KpiPreset) => {
+    if (isPending) return;
 
     if (preset === "CUSTOM") {
       onPresetChange("CUSTOM");
 
       requestAnimationFrame(() => {
-        updatePopoverPosition();
+        const position = getPosition(
+          dateButtonRef.current,
+          500,
+        );
+
+        if (position) {
+          setDatePopoverPosition(position);
+        }
       });
 
       return;
@@ -497,124 +486,88 @@ export function DateRangeFilter({
     setIsOpen(false);
   };
 
-  // =========================================================
-  // Custom date range
-  // =========================================================
+  /* =========================================================
+     Apply custom date range
+  ========================================================= */
 
   const handleApplyCustom = (
     event: FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
 
-    if (!localStart || !localEnd) {
+    if (
+      !localStart ||
+      !localEnd ||
+      localStart > localEnd
+    ) {
       return;
     }
 
-    if (localStart > localEnd) {
-      return;
-    }
-
-    onCustomRangeApply(
-      localStart,
-      localEnd,
-    );
-
+    onCustomRangeApply(localStart, localEnd);
     setIsOpen(false);
   };
 
-  // =========================================================
-  // Quick custom ranges
-  // =========================================================
+  /* =========================================================
+     Quick custom date ranges
+  ========================================================= */
 
-  const handleQuickPastDays = (
-    days: number,
-  ) => {
+  const handleQuickPastDays = (days: number) => {
     const end = new Date();
     const start = new Date();
 
-    start.setDate(
-      end.getDate() - days + 1,
-    );
+    start.setDate(end.getDate() - days + 1);
 
-    const formatIso = (
-      date: Date,
-    ) => {
-      const year =
-        date.getFullYear();
-
-      const month = String(
-        date.getMonth() + 1,
-      ).padStart(2, "0");
-
-      const day = String(
-        date.getDate(),
-      ).padStart(2, "0");
-
-      return `${year}-${month}-${day}`;
-    };
-
-    const nextStart =
-      formatIso(start);
-
-    const nextEnd =
-      formatIso(end);
+    const nextStart = formatLocalDate(start);
+    const nextEnd = formatLocalDate(end);
 
     setLocalStart(nextStart);
     setLocalEnd(nextEnd);
 
-    onCustomRangeApply(
-      nextStart,
-      nextEnd,
-    );
-
+    onCustomRangeApply(nextStart, nextEnd);
     setIsOpen(false);
   };
 
-  // =========================================================
-  // Reset
-  // =========================================================
+  /* =========================================================
+     Reset filters
+  ========================================================= */
 
   const handleReset = () => {
-    if (isPending) {
-      return;
-    }
+    if (isPending) return;
 
     onPresetChange("ALL");
     setIsOpen(false);
   };
 
   const handleResetAll = () => {
-    if (isPending) {
-      return;
-    }
+    if (isPending) return;
 
     onPresetChange("ALL");
     onModalityChange?.("ALL");
     onTriageChange?.("ALL");
+
     setIsOpen(false);
     setIsModalityOpen(false);
-    setIsTriageOpen(false);
+    setIsCategoryOpen(false);
   };
 
-  // =========================================================
-  // Popover
-  // =========================================================
+  /* =========================================================
+     Date range popover
+  ========================================================= */
 
-  const popover = isOpen ? (
+  const datePopover = isOpen ? (
     <div
-      ref={popoverRef}
+      ref={datePopoverRef}
       role="dialog"
       aria-label="Time window"
       style={{
         position: "fixed",
-        top: popoverPosition.top,
-        left: popoverPosition.left,
-        width: popoverPosition.width,
+        top: datePopoverPosition.top,
+        left: datePopoverPosition.left,
+        width: datePopoverPosition.width,
         zIndex: 9999,
       }}
       className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_50px_rgba(5,14,64,0.14)]"
     >
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-qc-blue/10 text-qc-blue">
@@ -628,9 +581,7 @@ export function DateRangeFilter({
 
         <button
           type="button"
-          onClick={() =>
-            setIsOpen(false)
-          }
+          onClick={() => setIsOpen(false)}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
           aria-label="Close time window"
         >
@@ -638,22 +589,19 @@ export function DateRangeFilter({
         </button>
       </div>
 
-      {/* Presets */}
+      {/* Date presets */}
       <div className="p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {PRESETS.map((preset) => {
             const isActive =
-              currentPreset ===
-              preset.id;
+              currentPreset === preset.id;
 
             return (
               <button
                 key={preset.id}
                 type="button"
                 onClick={() =>
-                  handleSelectPreset(
-                    preset.id,
-                  )
+                  handleSelectPreset(preset.id)
                 }
                 disabled={isPending}
                 className={`flex min-h-10 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition-all ${
@@ -662,9 +610,7 @@ export function DateRangeFilter({
                     : "border-border bg-background text-qc-navy hover:border-qc-blue/15 hover:bg-qc-blue/5"
                 } disabled:cursor-not-allowed disabled:opacity-60`}
               >
-                <span>
-                  {preset.label}
-                </span>
+                <span>{preset.label}</span>
 
                 {isActive && (
                   <Check className="h-3.5 w-3.5 shrink-0" />
@@ -675,7 +621,7 @@ export function DateRangeFilter({
         </div>
       </div>
 
-      {/* Custom range */}
+      {/* Custom range inputs */}
       {isCustom && (
         <div className="border-t border-border bg-background/60 px-4 py-4">
           <div className="mb-3 text-xs font-extrabold text-qc-navy">
@@ -683,12 +629,9 @@ export function DateRangeFilter({
           </div>
 
           <form
-            onSubmit={
-              handleApplyCustom
-            }
+            onSubmit={handleApplyCustom}
             className="space-y-4"
           >
-            {/* Date inputs */}
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors focus-within:border-qc-blue/25">
                 <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
@@ -699,14 +642,9 @@ export function DateRangeFilter({
                   type="date"
                   value={localStart}
                   onChange={(event) =>
-                    setLocalStart(
-                      event.target.value,
-                    )
+                    setLocalStart(event.target.value)
                   }
-                  max={
-                    localEnd ||
-                    undefined
-                  }
+                  max={localEnd || undefined}
                   required
                   className="min-w-0 w-full bg-transparent text-xs font-bold text-qc-navy outline-none"
                 />
@@ -721,21 +659,15 @@ export function DateRangeFilter({
                   type="date"
                   value={localEnd}
                   onChange={(event) =>
-                    setLocalEnd(
-                      event.target.value,
-                    )
+                    setLocalEnd(event.target.value)
                   }
-                  min={
-                    localStart ||
-                    undefined
-                  }
+                  min={localStart || undefined}
                   required
                   className="min-w-0 w-full bg-transparent text-xs font-bold text-qc-navy outline-none"
                 />
               </label>
             </div>
 
-            {/* Quick ranges + apply */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="mr-1 text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
@@ -743,30 +675,16 @@ export function DateRangeFilter({
                 </span>
 
                 {[
-                  {
-                    days: 7,
-                    label: "7D",
-                  },
-                  {
-                    days: 14,
-                    label: "14D",
-                  },
-                  {
-                    days: 30,
-                    label: "30D",
-                  },
-                  {
-                    days: 90,
-                    label: "90D",
-                  },
+                  { days: 7, label: "7D" },
+                  { days: 14, label: "14D" },
+                  { days: 30, label: "30D" },
+                  { days: 90, label: "90D" },
                 ].map((range) => (
                   <button
                     key={range.days}
                     type="button"
                     onClick={() =>
-                      handleQuickPastDays(
-                        range.days,
-                      )
+                      handleQuickPastDays(range.days)
                     }
                     className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-extrabold text-qc-navy transition-colors hover:border-qc-blue/15 hover:bg-qc-blue/5 hover:text-qc-blue"
                   >
@@ -781,8 +699,7 @@ export function DateRangeFilter({
                   isPending ||
                   !localStart ||
                   !localEnd ||
-                  localStart >
-                    localEnd
+                  localStart > localEnd
                 }
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-qc-yellow px-4 py-2.5 text-xs font-extrabold text-qc-navy shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] disabled:pointer-events-none disabled:opacity-50"
               >
@@ -791,7 +708,6 @@ export function DateRangeFilter({
                 ) : (
                   <Calendar className="h-3.5 w-3.5" />
                 )}
-
                 Apply
               </button>
             </div>
@@ -801,9 +717,9 @@ export function DateRangeFilter({
     </div>
   ) : null;
 
-  // =========================================================
-  // Popover: Modality Filter
-  // =========================================================
+  /* =========================================================
+     Modality filter popover
+  ========================================================= */
 
   const modalityPopover = isModalityOpen ? (
     <div
@@ -817,37 +733,45 @@ export function DateRangeFilter({
         width: `${modalityPopoverPosition.width}px`,
         zIndex: 9999,
       }}
-      className="overflow-hidden rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-[0_20px_50px_rgba(5,14,64,0.18)] backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-100"
+      className="animate-in fade-in-0 zoom-in-95 duration-100 overflow-hidden rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-[0_20px_50px_rgba(5,14,64,0.18)] backdrop-blur-xl"
     >
-      <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground border-b border-border/60 mb-1">
+      <div className="mb-1 border-b border-border/60 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
         Select Modality
       </div>
+
       <div className="space-y-0.5">
-        {MODALITY_OPTIONS.map((opt) => {
-          const isSelected = selectedModality === opt.id;
+        {MODALITY_OPTIONS.map((option) => {
+          const isSelected =
+            selectedModality === option.id;
+
           return (
             <button
-              key={opt.id}
+              key={option.id}
               type="button"
               onClick={() => {
-                onModalityChange?.(opt.id);
+                onModalityChange?.(option.id);
                 setIsModalityOpen(false);
               }}
               className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all ${
                 isSelected
                   ? "border border-qc-blue/15 bg-qc-blue/10 text-qc-blue"
-                  : "border border-transparent hover:border-qc-blue/15 hover:bg-qc-blue/5 text-qc-navy"
+                  : "border border-transparent text-qc-navy hover:border-qc-blue/15 hover:bg-qc-blue/5"
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {opt.dotColor ? (
-                  <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${opt.dotColor}`} />
-                ) : (
-                  <span className="h-2.5 w-2.5 rounded-full shrink-0 bg-slate-300" />
-                )}
-                <span className="truncate">{opt.label}</span>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span
+                  className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                    option.dotColor ?? "bg-slate-300"
+                  }`}
+                />
+                <span className="truncate">
+                  {option.label}
+                </span>
               </div>
-              {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-qc-blue" />}
+
+              {isSelected && (
+                <Check className="h-3.5 w-3.5 shrink-0 text-qc-blue" />
+              )}
             </button>
           );
         })}
@@ -855,49 +779,62 @@ export function DateRangeFilter({
     </div>
   ) : null;
 
-  const triagePopover = isTriageOpen ? (
+  /* =========================================================
+     Patient Category filter popover
+  ========================================================= */
+
+  const categoryPopover = isCategoryOpen ? (
     <div
-      ref={triagePopoverRef}
+      ref={categoryPopoverRef}
       role="dialog"
       aria-label="Filter by Patient Category"
       style={{
         position: "fixed",
-        top: `${triagePopoverPosition.top}px`,
-        left: `${triagePopoverPosition.left}px`,
-        width: `${triagePopoverPosition.width}px`,
+        top: `${categoryPopoverPosition.top}px`,
+        left: `${categoryPopoverPosition.left}px`,
+        width: `${categoryPopoverPosition.width}px`,
         zIndex: 9999,
       }}
-      className="overflow-hidden rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-[0_20px_50px_rgba(5,14,64,0.18)] backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-100"
+      className="animate-in fade-in-0 zoom-in-95 duration-100 overflow-hidden rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-[0_20px_50px_rgba(5,14,64,0.18)] backdrop-blur-xl"
     >
-      <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground border-b border-border/60 mb-1">
+      <div className="mb-1 border-b border-border/60 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
         Select Patient Category
       </div>
+
       <div className="space-y-0.5">
-        {TRIAGE_OPTIONS.map((opt) => {
-          const isSelected = selectedTriage === opt.id;
+        {PATIENT_CATEGORY_OPTIONS.map((option) => {
+          const isSelected =
+            selectedTriage === option.id;
+
           return (
             <button
-              key={opt.id}
+              key={option.id}
               type="button"
               onClick={() => {
-                onTriageChange?.(opt.id);
-                setIsTriageOpen(false);
+                onTriageChange?.(option.id);
+                setIsCategoryOpen(false);
               }}
               className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all ${
                 isSelected
                   ? "border border-qc-blue/15 bg-qc-blue/10 text-qc-blue"
-                  : "border border-transparent hover:border-qc-blue/15 hover:bg-qc-blue/5 text-qc-navy"
+                  : "border border-transparent text-qc-navy hover:border-qc-blue/15 hover:bg-qc-blue/5"
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {opt.dotColor ? (
-                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${opt.dotColor}`} />
-                ) : (
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-current opacity-40" />
-                )}
-                <span className="truncate">{opt.label}</span>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span
+                  className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                    option.dotColor ??
+                    "border border-current opacity-40"
+                  }`}
+                />
+                <span className="truncate">
+                  {option.label}
+                </span>
               </div>
-              {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-qc-blue" />}
+
+              {isSelected && (
+                <Check className="h-3.5 w-3.5 shrink-0 text-qc-blue" />
+              )}
             </button>
           );
         })}
@@ -905,28 +842,35 @@ export function DateRangeFilter({
     </div>
   ) : null;
 
+  /* =========================================================
+     Main filter bar
+  ========================================================= */
+
+  const hasActiveFilters =
+    currentPreset !== "ALL" ||
+    (selectedModality !== undefined &&
+      selectedModality !== "ALL") ||
+    (selectedTriage !== undefined &&
+      selectedTriage !== "ALL");
+
   return (
     <div className="relative">
-      {/* =====================================================
-          FILTER BAR: MERGED DATE & MODALITY CONTROLS
-      ===================================================== */}
-
-      <div className="flex min-h-[64px] items-center px-3 py-3 sm:px-4">
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Merged Filter Pill */}
-          <div className="inline-flex items-center rounded-2xl border border-border bg-background p-1 shadow-sm transition-all focus-within:border-qc-blue/30">
-            {/* Date time filter button */}
+      <div className="flex min-h-[64px] items-center px-1 py-3 sm:px-2">
+        <div className="flex w-full flex-wrap items-center gap-2.5">
+          {/* Combined date and filter controls */}
+          <div className="inline-flex max-w-full flex-wrap items-center rounded-2xl border border-border bg-background p-1 shadow-sm transition-all focus-within:border-qc-blue/30 sm:flex-nowrap">
+            {/* Date range */}
             <button
-              ref={buttonRef}
+              ref={dateButtonRef}
               type="button"
-              onClick={toggleDropdown}
+              onClick={toggleDateDropdown}
               disabled={isPending}
               className={`group inline-flex min-w-0 items-center gap-2 rounded-xl px-3.5 py-2 text-left transition-all duration-150 ${
                 isOpen
                   ? "border border-qc-navy bg-qc-navy text-white shadow-sm"
                   : isCustom
-                    ? "bg-qc-blue/10 text-qc-blue font-extrabold"
-                    : "text-qc-navy hover:bg-qc-blue/5 font-extrabold"
+                    ? "bg-qc-blue/10 font-extrabold text-qc-blue"
+                    : "font-extrabold text-qc-navy hover:bg-qc-blue/5"
               }`}
               aria-expanded={isOpen}
               aria-haspopup="dialog"
@@ -955,9 +899,7 @@ export function DateRangeFilter({
               {isPending ? (
                 <Loader2
                   className={`h-4 w-4 shrink-0 animate-spin ${
-                    isOpen
-                      ? "text-qc-yellow"
-                      : "text-qc-blue"
+                    isOpen ? "text-qc-yellow" : "text-qc-blue"
                   }`}
                 />
               ) : (
@@ -971,12 +913,12 @@ export function DateRangeFilter({
               )}
             </button>
 
-            {/* Divider */}
+            {/* Modality divider */}
             {onModalityChange && (
-              <div className="mx-1 h-5 w-px bg-border/80" />
+              <div className="mx-1 hidden h-5 w-px bg-border/80 sm:block" />
             )}
 
-            {/* Modality Filter merged right beside */}
+            {/* Modality filter */}
             {onModalityChange && (
               <button
                 ref={modalityButtonRef}
@@ -987,8 +929,8 @@ export function DateRangeFilter({
                   isModalityOpen
                     ? "border border-qc-navy bg-qc-navy text-white shadow-sm"
                     : selectedModality !== "ALL"
-                      ? "bg-qc-blue/10 text-qc-blue font-extrabold"
-                      : "text-qc-navy hover:bg-qc-blue/5 font-extrabold"
+                      ? "bg-qc-blue/10 font-extrabold text-qc-blue"
+                      : "font-extrabold text-qc-navy hover:bg-qc-blue/5"
                 }`}
                 aria-expanded={isModalityOpen}
                 aria-haspopup="dialog"
@@ -1006,7 +948,9 @@ export function DateRangeFilter({
 
                 <span
                   className={`truncate text-sm ${
-                    isModalityOpen ? "text-white" : "text-qc-navy"
+                    isModalityOpen
+                      ? "text-white"
+                      : "text-qc-navy"
                   }`}
                 >
                   {activeModalityOption.label}
@@ -1022,32 +966,33 @@ export function DateRangeFilter({
               </button>
             )}
 
-            {/* Divider */}
+            {/* Patient Category divider */}
             {onTriageChange && (
-              <div className="mx-1 h-5 w-px bg-border/80" />
+              <div className="mx-1 hidden h-5 w-px bg-border/80 sm:block" />
             )}
 
-            {/* Patient Category Filter merged right beside */}
+            {/* Patient Category filter */}
             {onTriageChange && (
               <button
-                ref={triageButtonRef}
+                ref={categoryButtonRef}
                 type="button"
-                onClick={toggleTriageDropdown}
+                onClick={toggleCategoryDropdown}
                 disabled={isPending}
                 className={`group inline-flex min-w-0 items-center gap-2 rounded-xl px-3.5 py-2 text-left transition-all duration-150 ${
-                  isTriageOpen
+                  isCategoryOpen
                     ? "border border-qc-navy bg-qc-navy text-white shadow-sm"
                     : selectedTriage !== "ALL"
-                      ? "bg-qc-blue/10 text-qc-blue font-extrabold"
-                      : "text-qc-navy hover:bg-qc-blue/5 font-extrabold"
+                      ? "bg-qc-blue/10 font-extrabold text-qc-blue"
+                      : "font-extrabold text-qc-navy hover:bg-qc-blue/5"
                 }`}
-                aria-expanded={isTriageOpen}
+                aria-expanded={isCategoryOpen}
                 aria-haspopup="dialog"
-                aria-label="Filter dashboard by patient category"
+                aria-label="Filter dashboard by Patient Category"
+                title="Filter by Patient Category"
               >
                 <Users
                   className={`h-4 w-4 shrink-0 ${
-                    isTriageOpen
+                    isCategoryOpen
                       ? "text-qc-yellow"
                       : selectedTriage !== "ALL"
                         ? "text-qc-blue"
@@ -1057,15 +1002,17 @@ export function DateRangeFilter({
 
                 <span
                   className={`truncate text-sm ${
-                    isTriageOpen ? "text-white" : "text-qc-navy"
+                    isCategoryOpen
+                      ? "text-white"
+                      : "text-qc-navy"
                   }`}
                 >
-                  {activeTriageOption.label}
+                  {activeCategoryOption.label}
                 </span>
 
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 transition-transform duration-150 ${
-                    isTriageOpen
+                    isCategoryOpen
                       ? "rotate-180 text-white"
                       : "text-muted-foreground group-hover:text-qc-blue"
                   }`}
@@ -1074,15 +1021,15 @@ export function DateRangeFilter({
             )}
           </div>
 
-          {/* Reset Filters button */}
-          {(currentPreset !== "ALL" || (selectedModality && selectedModality !== "ALL") || (selectedTriage && selectedTriage !== "ALL")) && (
+          {/* Reset filters */}
+          {hasActiveFilters && (
             <button
               type="button"
               onClick={handleResetAll}
               disabled={isPending}
               title="Reset all filters to default"
               aria-label="Reset all filters"
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-bold text-muted-foreground shadow-sm transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue disabled:opacity-50"
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-bold text-muted-foreground shadow-sm transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue disabled:opacity-50"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>Reset</span>
@@ -1091,18 +1038,18 @@ export function DateRangeFilter({
         </div>
       </div>
 
-      {/* Render outside the dashboard layout so it cannot be clipped */}
+      {/* Render popovers outside the dashboard layout to avoid clipping */}
       {typeof document !== "undefined" &&
         isOpen &&
-        createPortal(popover, document.body)}
+        createPortal(datePopover, document.body)}
 
       {typeof document !== "undefined" &&
         isModalityOpen &&
         createPortal(modalityPopover, document.body)}
 
       {typeof document !== "undefined" &&
-        isTriageOpen &&
-        createPortal(triagePopover, document.body)}
+        isCategoryOpen &&
+        createPortal(categoryPopover, document.body)}
     </div>
   );
 }

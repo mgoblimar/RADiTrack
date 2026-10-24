@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useEffect,
   useMemo,
@@ -20,10 +22,17 @@ import {
   type KpiPreset,
   type FilteredKpiResult,
 } from "@/app/actions";
-import { ModalityCode, MODALITY_CONFIG, TriageLevel, TRIAGE_CONFIG } from "@/lib/enums";
+
+import {
+  ModalityCode,
+  MODALITY_CONFIG,
+  TriageLevel,
+  TRIAGE_CONFIG,
+} from "@/lib/enums";
 
 import {
   BarChart3,
+  CalendarDays,
 } from "lucide-react";
 
 const MODALITIES_LIST = [
@@ -68,9 +77,7 @@ export function DashboardShell({
       );
 
       if (saved !== null) {
-        setIsSidebarCollapsed(
-          saved === "true",
-        );
+        setIsSidebarCollapsed(saved === "true");
       }
     } catch {
       // Ignore localStorage errors.
@@ -112,14 +119,8 @@ export function DashboardShell({
     const now = new Date();
 
     const y = now.getFullYear();
-
-    const m = String(
-      now.getMonth() + 1,
-    ).padStart(2, "0");
-
-    const d = String(
-      now.getDate(),
-    ).padStart(2, "0");
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
 
     return `${y}-${m}-${d}`;
   }, []);
@@ -127,19 +128,11 @@ export function DashboardShell({
   const defaultStartIso = useMemo(() => {
     const now = new Date();
 
-    now.setDate(
-      now.getDate() - 14,
-    );
+    now.setDate(now.getDate() - 14);
 
     const y = now.getFullYear();
-
-    const m = String(
-      now.getMonth() + 1,
-    ).padStart(2, "0");
-
-    const d = String(
-      now.getDate(),
-    ).padStart(2, "0");
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
 
     return `${y}-${m}-${d}`;
   }, []);
@@ -175,7 +168,10 @@ export function DashboardShell({
      Custom date range
   ========================================================= */
 
-  const handleCustomRangeApply = (startDate: string, endDate: string) => {
+  const handleCustomRangeApply = (
+    startDate: string,
+    endDate: string,
+  ) => {
     setCustomStart(startDate);
     setCustomEnd(endDate);
     setFilterPreset("CUSTOM");
@@ -191,19 +187,30 @@ export function DashboardShell({
     ) {
       startKpiTransition(async () => {
         try {
-          const result = await fetchFilteredExecutiveKpiAction({
-            preset: filterPreset,
-            startDate: filterPreset === "CUSTOM" ? customStart : undefined,
-            endDate: filterPreset === "CUSTOM" ? customEnd : undefined,
-            modalityCode: selectedModality,
-            triageLevel: selectedTriage,
-          });
+          const result =
+            await fetchFilteredExecutiveKpiAction({
+              preset: filterPreset,
+              startDate:
+                filterPreset === "CUSTOM"
+                  ? customStart
+                  : undefined,
+              endDate:
+                filterPreset === "CUSTOM"
+                  ? customEnd
+                  : undefined,
+              modalityCode: selectedModality,
+              triageLevel: selectedTriage,
+            });
+
           if (!isCancelled) {
             setKpiData(result);
           }
         } catch (error) {
           if (!isCancelled) {
-            console.error("Failed to re-sync filtered KPIs:", error);
+            console.error(
+              "Failed to re-sync filtered KPIs:",
+              error,
+            );
           }
         }
       });
@@ -214,7 +221,14 @@ export function DashboardShell({
     return () => {
       isCancelled = true;
     };
-  }, [data, filterPreset, customStart, customEnd, selectedModality, selectedTriage]);
+  }, [
+    data,
+    filterPreset,
+    customStart,
+    customEnd,
+    selectedModality,
+    selectedTriage,
+  ]);
 
   /* =========================================================
      Instant Reactive & Server-Synced KPI Metrics
@@ -231,24 +245,84 @@ export function DashboardShell({
       return null;
     }
 
-    // Instant local calculation from allExamsSummary for 0ms UI reactivity
+    // Instant local calculation from allExamsSummary.
     const all = data?.allExamsSummary || [];
+
     const scoped = all.filter((e: any) => {
-      if (selectedModality !== "ALL" && e.modalityCode !== selectedModality) return false;
-      if (selectedTriage !== "ALL" && e.triageLevel !== selectedTriage) return false;
+      if (
+        selectedModality !== "ALL" &&
+        e.modalityCode !== selectedModality
+      ) {
+        return false;
+      }
+
+      if (
+        selectedTriage !== "ALL" &&
+        e.triageLevel !== selectedTriage
+      ) {
+        return false;
+      }
+
       return true;
     });
 
-    const finalized = scoped.filter((e: any) => e.isFinalized);
-    const tatValues = finalized.map((e: any) => e.tatMinutes || 0).filter((v: number) => v > 0);
-    const avgMinutes = tatValues.length > 0 ? Number((tatValues.reduce((a: number, b: number) => a + b, 0) / tatValues.length).toFixed(1)) : 0;
-    const avgHours = Number((avgMinutes / 60).toFixed(1));
-    const sortedTat = [...tatValues].sort((a, b) => a - b);
+    const finalized = scoped.filter(
+      (e: any) => e.isFinalized,
+    );
+
+    const tatValues = finalized
+      .map((e: any) => e.tatMinutes || 0)
+      .filter((value: number) => value > 0);
+
+    const avgMinutes =
+      tatValues.length > 0
+        ? Number(
+            (
+              tatValues.reduce(
+                (a: number, b: number) => a + b,
+                0,
+              ) / tatValues.length
+            ).toFixed(1),
+          )
+        : 0;
+
+    const avgHours = Number(
+      (avgMinutes / 60).toFixed(1),
+    );
+
+    const sortedTat = [...tatValues].sort(
+      (a, b) => a - b,
+    );
+
     const mid = Math.floor(sortedTat.length / 2);
-    const medianMinutes = sortedTat.length === 0 ? 0 : sortedTat.length % 2 !== 0 ? sortedTat[mid] : (sortedTat[mid - 1] + sortedTat[mid]) / 2;
-    const breached = finalized.filter((e: any) => e.isSlaBreached).length;
-    const pct = finalized.length > 0 ? Number((((finalized.length - breached) / finalized.length) * 100).toFixed(1)) : 100;
-    const pending = scoped.filter((e: any) => !e.isFinalized && e.statusCode !== "CANCELLED").length;
+
+    const medianMinutes =
+      sortedTat.length === 0
+        ? 0
+        : sortedTat.length % 2 !== 0
+          ? sortedTat[mid]
+          : (sortedTat[mid - 1] + sortedTat[mid]) / 2;
+
+    const breached = finalized.filter(
+      (e: any) => e.isSlaBreached,
+    ).length;
+
+    const pct =
+      finalized.length > 0
+        ? Number(
+            (
+              ((finalized.length - breached) /
+                finalized.length) *
+              100
+            ).toFixed(1),
+          )
+        : 100;
+
+    const pending = scoped.filter(
+      (e: any) =>
+        !e.isFinalized &&
+        e.statusCode !== "CANCELLED",
+    ).length;
 
     return {
       totalVolume: scoped.length,
@@ -264,7 +338,13 @@ export function DashboardShell({
       pendingByModality: null,
       modalityOverview: null,
     };
-  }, [data?.allExamsSummary, filterPreset, selectedModality, selectedTriage, kpiData]);
+  }, [
+    data?.allExamsSummary,
+    filterPreset,
+    selectedModality,
+    selectedTriage,
+    kpiData,
+  ]);
 
   const activeMetrics = kpiData || liveKpiMetrics;
 
@@ -278,16 +358,11 @@ export function DashboardShell({
 
   const displayAvgHours = activeMetrics
     ? activeMetrics.avgTatHours
-    : Number(
-        (
-          data.avgTatMinutes / 60
-        ).toFixed(1),
-      );
+    : Number((data.avgTatMinutes / 60).toFixed(1));
 
-  const displayMedianMinutes =
-    activeMetrics
-      ? activeMetrics.medianTatMinutes
-      : data.medianTatMinutes;
+  const displayMedianMinutes = activeMetrics
+    ? activeMetrics.medianTatMinutes
+    : data.medianTatMinutes;
 
   const displayMedianHours = Number(
     ((displayMedianMinutes ?? 0) / 60).toFixed(1),
@@ -309,80 +384,138 @@ export function DashboardShell({
      Modality breakdown & KPI filtering
   ========================================================= */
 
+  const activeVolumeByModality: Record<string, number> =
+    useMemo(() => {
+      return (
+        kpiData?.volumeByModality ??
+        data?.volumeByModality ?? {
+          XRAY: 0,
+          US: 0,
+          CT: 0,
+          MRI: 0,
+          MAMMO: 0,
+        }
+      );
+    }, [kpiData, data]);
 
-
-  const activeVolumeByModality: Record<string, number> = useMemo(() => {
-    return (
-      kpiData?.volumeByModality ??
-      data?.volumeByModality ?? {
-        XRAY: 0,
-        US: 0,
-        CT: 0,
-        MRI: 0,
-        MAMMO: 0,
-      }
-    );
-  }, [kpiData, data]);
-
-  const activePendingByModality: Record<string, number> = useMemo(() => {
-    return (
-      kpiData?.pendingByModality ??
-      data?.pendingByModality ?? {
-        XRAY: 0,
-        US: 0,
-        CT: 0,
-        MRI: 0,
-        MAMMO: 0,
-      }
-    );
-  }, [kpiData, data]);
+  const activePendingByModality: Record<string, number> =
+    useMemo(() => {
+      return (
+        kpiData?.pendingByModality ??
+        data?.pendingByModality ?? {
+          XRAY: 0,
+          US: 0,
+          CT: 0,
+          MRI: 0,
+          MAMMO: 0,
+        }
+      );
+    }, [kpiData, data]);
 
   const filterScopeSubtitle = useMemo(() => {
     const parts: string[] = [];
+
     if (selectedModality !== "ALL") {
-      parts.push(MODALITY_CONFIG[selectedModality]?.shortName || selectedModality);
+      parts.push(
+        MODALITY_CONFIG[selectedModality]?.shortName ||
+          selectedModality,
+      );
     }
+
     if (selectedTriage !== "ALL") {
-      parts.push(TRIAGE_CONFIG[selectedTriage]?.label || selectedTriage);
+      parts.push(
+        TRIAGE_CONFIG[selectedTriage]?.label ||
+          selectedTriage,
+      );
     }
-    return parts.length > 0 ? parts.join(" · ") : "Across all modalities & categories";
+
+    return parts.length > 0
+      ? parts.join(" · ")
+      : "";
   }, [selectedModality, selectedTriage]);
 
   const displayVolumeForCard = displayVolume;
   const volumeSubtitle = filterScopeSubtitle;
 
   const displayPendingForCard = displayPending;
-  const pendingSubtitle = `${filterScopeSubtitle} · Awaiting sign-off`;
+  const pendingSubtitle =
+    `${filterScopeSubtitle} Awaiting sign-off`;
 
   /* =========================================================
-     Recent analytics
+     Recent analytics and date range
   ========================================================= */
 
-  const recentAnalytics =
-    sevenDayAnalytics?.all;
+  const recentAnalytics = sevenDayAnalytics?.all;
+
+  const recentDateRange = useMemo(() => {
+    const rows = recentAnalytics?.dayRows ?? [];
+
+    if (rows.length === 0) {
+      return "Latest 7-day window";
+    }
+
+    const oldestIso = rows[rows.length - 1]?.isoDate;
+    const newestIso = rows[0]?.isoDate;
+
+    const parseIsoDate = (value?: string) => {
+      if (!value) return null;
+
+      const [year, month, day] = value
+        .split("-")
+        .map(Number);
+
+      if (!year || !month || !day) return null;
+
+      return new Date(year, month - 1, day);
+    };
+
+    const oldestDate = parseIsoDate(oldestIso);
+    const newestDate = parseIsoDate(newestIso);
+
+    if (!oldestDate || !newestDate) {
+      const first =
+        rows[rows.length - 1]?.formattedDate;
+
+      const last = rows[0]?.formattedDate;
+
+      return first && last
+        ? `${first} – ${last}`
+        : "Latest 7-day window";
+    }
+
+    const formatDate = (date: Date) =>
+      new Intl.DateTimeFormat("en-PH", {
+        month: "short",
+        day: "numeric",
+      }).format(date);
+
+    if (
+      oldestDate.getFullYear() ===
+      newestDate.getFullYear()
+    ) {
+      return `${formatDate(oldestDate)} – ${formatDate(newestDate)}, ${newestDate.getFullYear()}`;
+    }
+
+    return `${formatDate(oldestDate)}, ${oldestDate.getFullYear()} – ${formatDate(newestDate)}, ${newestDate.getFullYear()}`;
+  }, [recentAnalytics?.dayRows]);
 
   const recentAvgHours =
-    recentAnalytics
-      ?.currentAvgTatHours ?? 0;
+    recentAnalytics?.currentAvgTatHours ?? 0;
 
   const recentAvgMinutes =
-    recentAnalytics
-      ?.currentAvgTatMinutes ?? 0;
+    recentAnalytics?.currentAvgTatMinutes ?? 0;
 
   const priorAvgHours =
-    recentAnalytics
-      ?.priorAvgTatHours ?? 0;
+    recentAnalytics?.priorAvgTatHours ?? 0;
 
   const priorAvgMinutes =
-    recentAnalytics
-      ?.priorAvgTatMinutes ?? 0;
+    recentAnalytics?.priorAvgTatMinutes ?? 0;
 
   const recentPctChange =
     recentAnalytics?.pctChange ?? 0;
 
   const recentTotalVolume =
-    recentAnalytics
-      ?.currentTotalVolume ?? 0;
+    recentAnalytics?.currentTotalVolume ?? 0;
 
   /* =========================================================
      Shared styles
@@ -396,55 +529,37 @@ export function DashboardShell({
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#F7F9FC] text-foreground">
-      {/* =====================================================
-          GLOBAL QCGH BACKGROUND
-          Stays fixed across every tab and filter state.
-      ===================================================== */}
+      {/* Global QCGH background */}
 
       <div
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
         aria-hidden="true"
       >
-        {/* QCGH photograph */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.34] saturate-[0.82]"
           style={{
-            backgroundImage:
-              "url('/qcgh-background.jpg')",
+            backgroundImage: "url('/qcgh-background.jpg')",
           }}
         />
 
-        {/* Readability wash */}
         <div className="absolute inset-0 bg-white/[0.34]" />
 
-        {/* Vertical fade */}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(247,249,252,0.08)_0%,rgba(247,249,252,0.02)_38%,rgba(247,249,252,0.16)_100%)]" />
 
-        {/* RADiTrack atmosphere */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_4%,rgba(24,41,140,0.045),transparent_28%),radial-gradient(circle_at_92%_7%,rgba(242,203,73,0.055),transparent_26%)]" />
       </div>
 
-      {/* =====================================================
-          SIDEBAR
-      ===================================================== */}
+      {/* Sidebar */}
 
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        pendingCount={
-          data.pendingReadingQueue.length
-        }
-        isCollapsed={
-          isSidebarCollapsed
-        }
-        onToggleCollapse={
-          handleToggleSidebar
-        }
+        pendingCount={data.pendingReadingQueue.length}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
       />
 
-      {/* =====================================================
-          MAIN VIEWPORT
-      ===================================================== */}
+      {/* Main viewport */}
 
       <div
         className={`relative z-10 min-w-0 flex-1 transition-all duration-200 ease-in-out ${
@@ -453,66 +568,98 @@ export function DashboardShell({
             : "lg:pl-[248px]"
         }`}
       >
-        <main className="mx-auto w-full max-w-[1540px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
+        <main className="mx-auto w-full max-w-[1680px] px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-7 2xl:px-10">
+          {/* Shared hospital and department header */}
+
+          <header
+            aria-label="Quezon City General Hospital Department of Radiology"
+            className="mb-6 flex flex-col gap-4 rounded-[24px] border border-[#DDE3F2]/90 bg-white/90 px-4 py-4 shadow-[0_4px_18px_rgba(5,14,64,0.06)] backdrop-blur-sm sm:flex-row sm:items-center sm:px-5 sm:py-4"
+          >
+            <div className="flex shrink-0 items-center gap-3">
+              <div className="flex h-[58px] w-[58px] items-center justify-center rounded-2xl border border-[#E7EAF2] bg-white p-1.5">
+                <Image
+                  src="/qcgh-hospital-logo.png"
+                  alt="Quezon City General Hospital logo"
+                  width={58}
+                  height={58}
+                  priority
+                  className="h-full w-full object-contain"
+                />
+              </div>
+
+              <div className="flex h-[58px] w-[58px] items-center justify-center rounded-2xl border border-[#E7EAF2] bg-white p-1.5">
+                <Image
+                  src="/qcgh-radiology-logo.png"
+                  alt="Quezon City General Hospital Department of Radiology logo"
+                  width={58}
+                  height={58}
+                  priority
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            </div>
+
+            <div className="min-w-0 border-t border-[#E5E9F2] pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+              <p className="text-xs font-bold uppercase tracking-[0.13em] text-qc-blue sm:text-sm">
+                Quezon City General Hospital
+              </p>
+
+              <p className="mt-0.5 text-xl font-extrabold leading-tight tracking-tight text-qc-navy sm:text-2xl">
+                Department of Radiology
+              </p>
+            </div>
+
+            <div className="sm:ml-auto sm:pl-4">
+              
+            </div>
+          </header>
+
           {/* =================================================
-              OVERVIEW
+              DASHBOARD
           ================================================= */}
 
           {activeTab === "overview" && (
             <div className="space-y-4">
-              <header>
-                <h1 className="text-4xl font-extrabold tracking-tight text-qc-navy">
-                  Dashboard
-                </h1>
-              </header>
+              
+
+              {/* Filters */}
 
               <section aria-label="Dashboard date filters">
                 <DateRangeFilter
-                  currentPreset={
-                    filterPreset
-                  }
+                  currentPreset={filterPreset}
                   startDate={customStart}
                   endDate={customEnd}
-                  onPresetChange={
-                    handlePresetChange
-                  }
-                  onCustomRangeApply={
-                    handleCustomRangeApply
-                  }
-                  isPending={
-                    isKpiPending
-                  }
-                  selectedModality={
-                    selectedModality
-                  }
-                  onModalityChange={
-                    setSelectedModality
-                  }
-                  selectedTriage={
-                    selectedTriage
-                  }
-                  onTriageChange={
-                    setSelectedTriage
-                  }
+                  onPresetChange={handlePresetChange}
+                  onCustomRangeApply={handleCustomRangeApply}
+                  isPending={isKpiPending}
+                  selectedModality={selectedModality}
+                  onModalityChange={setSelectedModality}
+                  selectedTriage={selectedTriage}
+                  onTriageChange={setSelectedTriage}
                 />
               </section>
 
-              {/* KPI CARDS */}
+              {/* KPI cards */}
+
               <section
                 aria-label="Key performance indicators"
                 className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
               >
                 {/* Total scans */}
-                <div className="group relative isolate flex min-h-[132px] flex-col items-center justify-center rounded-[24px] border border-qc-navy/20 bg-qc-navy px-5 py-4 text-center shadow-[0_10px_26px_rgba(5,14,64,0.10)] transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/40 hover:shadow-[0_18px_34px_rgba(5,14,64,0.16)] hover:z-30">
+
+                <div className="group relative isolate flex min-h-[132px] flex-col items-center justify-center rounded-[24px] border border-qc-navy/20 bg-qc-navy px-5 py-4 text-center shadow-[0_10px_26px_rgba(5,14,64,0.10)] transition-all duration-300 hover:z-30 hover:-translate-y-1 hover:border-qc-blue/40 hover:shadow-[0_18px_34px_rgba(5,14,64,0.16)]">
                   <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]">
                     <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-qc-blue/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+
                     <div className="absolute -bottom-12 -left-10 h-28 w-28 rounded-full bg-qc-yellow/[0.08] blur-2xl transition-transform duration-500 group-hover:scale-125" />
+
                     <div className="absolute inset-x-8 top-0 h-px bg-white/20" />
                   </div>
 
-                  <div className="relative z-10 w-full flex flex-col items-center">
+                  <div className="relative z-10 flex w-full flex-col items-center">
                     <div className="mb-1.5 flex items-center justify-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_8px_rgba(242,203,73,0.55)] motion-safe:animate-pulse" />
+
                       <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/55">
                         Total scans
                       </p>
@@ -527,48 +674,79 @@ export function DashboardShell({
                     </p>
                   </div>
 
-                  {/* Hover Breakdown Popover */}
-                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0 translate-y-1">
+                  {/* Scan breakdown popover */}
+
+                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
                     <div className="rounded-2xl border border-white/20 bg-[#061148]/95 p-3.5 text-left text-white shadow-[0_20px_50px_rgba(5,14,64,0.40)] backdrop-blur-xl">
                       <div className="mb-2.5 flex items-center justify-between border-b border-white/10 pb-2">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">
                           Scans by Modality
                         </span>
+
                         <span className="text-[11px] font-extrabold text-qc-yellow">
                           {displayVolume} Total
                         </span>
                       </div>
+
                       <div className="space-y-1.5">
                         {MODALITIES_LIST.map((m) => {
-                          const count = activeVolumeByModality[m.code] ?? 0;
-                          const pct = displayVolume > 0 ? Math.round((count / displayVolume) * 100) : 0;
-                          const isSelected = selectedModality === m.code;
+                          const count =
+                            activeVolumeByModality[m.code] ?? 0;
+
+                          const pct =
+                            displayVolume > 0
+                              ? Math.round(
+                                  (count / displayVolume) * 100,
+                                )
+                              : 0;
+
+                          const isSelected =
+                            selectedModality === m.code;
+
                           return (
                             <button
                               key={m.code}
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedModality(isSelected ? "ALL" : m.code);
+
+                                setSelectedModality(
+                                  isSelected ? "ALL" : m.code,
+                                );
                               }}
                               className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-white/15 ${
-                                isSelected ? "bg-white/20 ring-1 ring-qc-yellow font-bold" : "bg-white/5"
+                                isSelected
+                                  ? "bg-white/20 font-bold ring-1 ring-qc-yellow"
+                                  : "bg-white/5"
                               }`}
                             >
                               <div className="flex items-center gap-2">
-                                <span className={`h-2.5 w-2.5 rounded-full ${m.color}`} />
-                                <span className="text-white/95">{m.label}</span>
+                                <span
+                                  className={`h-2.5 w-2.5 rounded-full ${m.color}`}
+                                />
+
+                                <span className="text-white/95">
+                                  {m.label}
+                                </span>
                               </div>
+
                               <div className="flex items-center gap-2.5">
-                                <span className="font-extrabold text-white">{count}</span>
-                                <span className="text-[10px] text-white/50 w-7 text-right">{pct}%</span>
+                                <span className="font-extrabold text-white">
+                                  {count}
+                                </span>
+
+                                <span className="w-7 text-right text-[10px] text-white/50">
+                                  {pct}%
+                                </span>
                               </div>
                             </button>
                           );
                         })}
                       </div>
+
                       <div className="mt-2.5 flex items-center justify-between border-t border-white/10 pt-2 text-[10px] text-white/50">
                         <span>Click row to filter</span>
+
                         {selectedModality !== "ALL" && (
                           <button
                             type="button"
@@ -576,7 +754,7 @@ export function DashboardShell({
                               e.stopPropagation();
                               setSelectedModality("ALL");
                             }}
-                            className="text-qc-yellow hover:underline font-bold"
+                            className="font-bold text-qc-yellow hover:underline"
                           >
                             Reset to All
                           </button>
@@ -586,17 +764,18 @@ export function DashboardShell({
                   </div>
                 </div>
 
-                {/* Average TAT */}
+                {/* Average Turnaround Time */}
+
                 <div
                   className={`${softCard} group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] px-5 py-4 text-center transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/15 hover:shadow-[0_16px_30px_rgba(24,41,140,0.09)]`}
                 >
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-qc-blue/[0.055] blur-2xl opacity-70 transition-all duration-500 group-hover:scale-125 group-hover:opacity-100" />
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-qc-blue/[0.055] opacity-70 blur-2xl transition-all duration-500 group-hover:scale-125 group-hover:opacity-100" />
 
                   <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-qc-blue/10 to-transparent" />
 
                   <div className="relative z-10">
                     <p className={compactLabel}>
-                      Average TAT
+                      Average Turnaround Time
                     </p>
 
                     <div className="mt-1.5 flex items-baseline justify-center gap-1.5 transition-transform duration-300 group-hover:scale-[1.03]">
@@ -615,17 +794,19 @@ export function DashboardShell({
                         {displayMedianHours}h
                       </span>
                     </p>
-                    <p className="mt-1 text-[10px] font-medium text-muted-foreground/80 truncate max-w-[200px]">
+
+                    <p className="mt-1 max-w-[200px] truncate text-[10px] font-medium text-muted-foreground/80">
                       {volumeSubtitle}
                     </p>
                   </div>
                 </div>
 
                 {/* SLA compliance */}
+
                 <div
                   className={`${softCard} group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] border-qc-blue/10 bg-[linear-gradient(145deg,#FFFFFF_0%,#F7F9FF_100%)] px-5 py-4 text-center transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/20 hover:shadow-[0_16px_30px_rgba(24,41,140,0.10)]`}
                 >
-                  <div className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 rounded-full bg-qc-blue/[0.055] blur-2xl transition-transform duration-500 group-hover:scale-125" />
+                  <div className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 rounded-full bg-qc-blue/[0.055] transition-transform duration-500 group-hover:scale-125" />
 
                   <div className="relative z-10">
                     <p className={compactLabel}>
@@ -642,13 +823,15 @@ export function DashboardShell({
                       </span>{" "}
                       finalized
                     </p>
-                    <p className="mt-1 text-[10px] font-medium text-muted-foreground/80 truncate max-w-[200px]">
+
+                    <p className="mt-1 max-w-[200px] truncate text-[10px] font-medium text-muted-foreground/80">
                       {volumeSubtitle}
                     </p>
                   </div>
                 </div>
 
                 {/* Reading backlog */}
+
                 <div
                   className={`group relative isolate flex min-h-[132px] flex-col items-center justify-center rounded-[24px] border px-5 py-4 text-center transition-all duration-300 hover:z-30 ${
                     displayPendingForCard > 0
@@ -666,7 +849,7 @@ export function DashboardShell({
                     />
                   </div>
 
-                  <div className="relative z-10 w-full flex flex-col items-center">
+                  <div className="relative z-10 flex w-full flex-col items-center">
                     <div className="flex items-center justify-center gap-1.5">
                       {displayPendingForCard > 0 && (
                         <span className="h-1.5 w-1.5 rounded-full bg-qc-orange shadow-[0_0_8px_rgba(234,88,12,0.35)] motion-safe:animate-pulse" />
@@ -698,47 +881,74 @@ export function DashboardShell({
                     </p>
                   </div>
 
-                  {/* Hover Breakdown Popover */}
-                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0 translate-y-1">
+                  {/* Pending breakdown popover */}
+
+                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
                     <div className="rounded-2xl border border-border bg-card/95 p-3.5 text-left text-foreground shadow-[0_20px_50px_rgba(15,23,42,0.18)] backdrop-blur-xl">
                       <div className="mb-2.5 flex items-center justify-between border-b border-border/80 pb-2">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                           Pending by Modality
                         </span>
+
                         <span className="text-[11px] font-extrabold text-qc-orange">
                           {displayPending} Pending
                         </span>
                       </div>
+
                       <div className="space-y-1.5">
                         {MODALITIES_LIST.map((m) => {
-                          const count = activePendingByModality[m.code] ?? 0;
-                          const pct = displayPending > 0 ? Math.round((count / displayPending) * 100) : 0;
-                          const isSelected = selectedModality === m.code;
+                          const count =
+                            activePendingByModality[m.code] ?? 0;
+
+                          const pct =
+                            displayPending > 0
+                              ? Math.round(
+                                  (count / displayPending) * 100,
+                                )
+                              : 0;
+
+                          const isSelected =
+                            selectedModality === m.code;
+
                           return (
                             <button
                               key={m.code}
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedModality(isSelected ? "ALL" : m.code);
+
+                                setSelectedModality(
+                                  isSelected ? "ALL" : m.code,
+                                );
                               }}
                               className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-muted ${
-                                isSelected ? "bg-orange-500/15 ring-1 ring-qc-orange font-bold text-qc-orange" : "bg-muted/40"
+                                isSelected
+                                  ? "bg-orange-500/15 font-bold text-qc-orange ring-1 ring-qc-orange"
+                                  : "bg-muted/40"
                               }`}
                             >
                               <div className="flex items-center gap-2">
-                                <span className={`h-2.5 w-2.5 rounded-full ${m.color}`} />
-                                <span className="font-medium text-foreground">{m.label}</span>
+                                <span
+                                  className={`h-2.5 w-2.5 rounded-full ${m.color}`}
+                                />
+
+                                <span className="font-medium text-foreground">
+                                  {m.label}
+                                </span>
                               </div>
+
                               <div className="flex items-center gap-2.5">
                                 <span
                                   className={`font-extrabold ${
-                                    count > 0 ? "text-qc-orange" : "text-muted-foreground"
+                                    count > 0
+                                      ? "text-qc-orange"
+                                      : "text-muted-foreground"
                                   }`}
                                 >
                                   {count}
                                 </span>
-                                <span className="text-[10px] text-muted-foreground w-7 text-right">
+
+                                <span className="w-7 text-right text-[10px] text-muted-foreground">
                                   {count > 0 ? `${pct}%` : "—"}
                                 </span>
                               </div>
@@ -746,8 +956,10 @@ export function DashboardShell({
                           );
                         })}
                       </div>
+
                       <div className="mt-2.5 flex items-center justify-between border-t border-border/80 pt-2 text-[10px] text-muted-foreground">
                         <span>Click row to filter</span>
+
                         {selectedModality !== "ALL" && (
                           <button
                             type="button"
@@ -755,7 +967,7 @@ export function DashboardShell({
                               e.stopPropagation();
                               setSelectedModality("ALL");
                             }}
-                            className="text-qc-orange hover:underline font-bold"
+                            className="font-bold text-qc-orange hover:underline"
                           >
                             Reset to All
                           </button>
@@ -766,13 +978,14 @@ export function DashboardShell({
                 </div>
               </section>
 
-              {/* PRIMARY ANALYTICS */}
+              {/* Primary analytics */}
+
               <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.9fr)_minmax(300px,0.75fr)]">
                 <div className="min-w-0">
-                  <TatOverviewChart
-                    data={modalityTatOverview}
-                  />
+                  <TatOverviewChart data={modalityTatOverview} />
                 </div>
+
+                {/* Recent Pulse */}
 
                 <div
                   className={`${softCard} relative flex min-h-[360px] flex-col overflow-hidden px-6 py-6 sm:px-7 sm:py-7`}
@@ -787,8 +1000,19 @@ export function DashboardShell({
                     </p>
 
                     <h2 className="mt-1 text-xl font-extrabold tracking-tight text-qc-navy">
-                      7-day Turnaround Time
+                      7-Day Turnaround Time
                     </h2>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-white/75 px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground">
+                        <CalendarDays className="h-3.5 w-3.5 text-qc-blue" />
+                        {recentDateRange}
+                      </span>
+
+                      <span className="inline-flex items-center rounded-lg bg-qc-blue/[0.06] px-2.5 py-1.5 text-[11px] font-bold text-qc-blue">
+                        For all Modalities
+                      </span>
+                    </div>
                   </div>
 
                   <div className="relative mt-9 text-center">
@@ -807,9 +1031,7 @@ export function DashboardShell({
                     </div>
 
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {recentTotalVolume}{" "}
-                      exams in the current
-                      window
+                      {recentTotalVolume} exams in the current window
                     </p>
                   </div>
 
@@ -831,22 +1053,16 @@ export function DashboardShell({
                         Change
                       </span>
 
-                      {recentPctChange !==
-                      0 ? (
+                      {recentPctChange !== 0 ? (
                         <span
                           className={`rounded-full px-3 py-1 text-[10px] font-extrabold ${
-                            recentPctChange <
-                            0
+                            recentPctChange < 0
                               ? "bg-qc-blue/10 text-qc-blue"
                               : "bg-red-50 text-qc-red"
                           }`}
                         >
-                          {Math.abs(
-                            recentPctChange,
-                          )}
-                          %{" "}
-                          {recentPctChange <
-                          0
+                          {Math.abs(recentPctChange)}%{" "}
+                          {recentPctChange < 0
                             ? "faster"
                             : "slower"}
                         </span>
@@ -866,7 +1082,8 @@ export function DashboardShell({
                 </div>
               </section>
 
-              {/* 7-DAY PERFORMANCE */}
+              {/* 7-Day Turnaround Time performance */}
+
               <section className="overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(24,41,140,0.05)]">
                 <div className="relative overflow-hidden border-b border-[#E4E8F1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-5 sm:px-6">
                   <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-qc-yellow/10" />
@@ -880,17 +1097,13 @@ export function DashboardShell({
                       </div>
 
                       <h2 className="text-2xl font-extrabold tracking-tight text-qc-navy">
-                        7-DAY PERFORMANCE
+                        7-DAY TURNAROUND TIME PERFORMANCE
                       </h2>
                     </div>
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setActiveTab(
-                          "examinations",
-                        )
-                      }
+                      onClick={() => setActiveTab("examinations")}
                       className="group inline-flex w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[11px] font-extrabold text-qc-blue shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
                     >
                       Open examinations
@@ -903,15 +1116,12 @@ export function DashboardShell({
                 </div>
 
                 <div className="bg-[linear-gradient(180deg,#FCFCFE_0%,#FFFFFF_100%)]">
-                  <SevenDayTatTable
-                    analytics={
-                      sevenDayAnalytics
-                    }
-                  />
+                  <SevenDayTatTable analytics={sevenDayAnalytics} />
                 </div>
               </section>
 
-              {/* 12-MONTH TREND */}
+              {/* 12-Month Turnaround Time trend */}
+
               <section className="overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(24,41,140,0.05)]">
                 <div className="relative overflow-hidden border-b border-[#E4E8F1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-5 sm:px-6">
                   <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-qc-yellow/10" />
@@ -925,18 +1135,14 @@ export function DashboardShell({
                       </div>
 
                       <h2 className="text-2xl font-extrabold tracking-tight text-qc-navy">
-                        12-MONTH TAT TREND
+                        12-MONTH TURNAROUND TIME TREND
                       </h2>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-white p-4 sm:p-6">
-                  <TwelveMonthTrendChart
-                    data={
-                      twelveMonthTrend
-                    }
-                  />
+                  <TwelveMonthTrendChart data={twelveMonthTrend} />
                 </div>
               </section>
             </div>
@@ -946,22 +1152,13 @@ export function DashboardShell({
               EXAMINATIONS
           ===================================================== */}
 
-          {activeTab ===
-            "examinations" && (
+          {activeTab === "examinations" && (
             <div className="space-y-4">
-              <header>
-                <h1 className="text-4xl font-extrabold tracking-tight text-qc-navy">
-                  Examinations
-                </h1>
-              </header>
+              
 
               <ExaminationsHub
-                queue={
-                  data.pendingReadingQueue
-                }
-                finalizedCount={
-                  data.finalizedCount
-                }
+                queue={data.pendingReadingQueue}
+                finalizedCount={data.finalizedCount}
               />
             </div>
           )}
@@ -972,17 +1169,9 @@ export function DashboardShell({
 
           {activeTab === "config" && (
             <div className="space-y-4">
-              <header>
-                <h1 className="text-4xl font-extrabold tracking-tight text-qc-navy">
-                  Configurations
-                </h1>
-              </header>
+              
 
-              <ConfigurationsHub
-                initialData={
-                  configurationsData
-                }
-              />
+              <ConfigurationsHub initialData={configurationsData} />
             </div>
           )}
         </main>
