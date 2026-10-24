@@ -9,7 +9,9 @@ import {
 
 import {
   CheckCircle2,
-  Wrench
+  Wrench,
+  FileQuestion,
+  ActivitySquare
 } from "lucide-react";
 
 interface ModalityItem {
@@ -76,6 +78,8 @@ export default function ModalityPieChart({
   const maintenanceRooms = chartData.filter((item) => item.isActive === false);
   const allRoomsWorking = maintenanceRooms.length === 0;
 
+  const activeSlicesCount = chartData.filter((item) => item.value > 0).length;
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
 
@@ -86,7 +90,17 @@ export default function ModalityPieChart({
       <div className="flex h-[178px] shrink-0 items-center justify-center">
 
         <div className="relative h-full w-full max-w-[285px]">
-
+          {totalExams === 0 ? (
+            /* ZERO EXAMS FALLBACK STATE */
+            <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <FileQuestion className="h-5 w-5" />
+              </div>
+              <p className="mt-2 text-sm font-extrabold text-qc-navy">
+                No Examinations Today
+              </p>
+            </div>
+          ) : (
           <ResponsiveContainer
             width="100%"
             height="100%"
@@ -99,12 +113,12 @@ export default function ModalityPieChart({
                 cy="50%"
                 innerRadius="0"
                 outerRadius="80%"
-                paddingAngle={2}
+                paddingAngle={activeSlicesCount > 1? 1:0}
                 dataKey="value"
                 label={renderCustomizedLabel}
                 labelLine={false}
                 stroke="#FFFFFF"
-                strokeWidth={5}
+                strokeWidth={activeSlicesCount > 1? 1:0}
                 isAnimationActive={false}
               >
                 {chartData.map(
@@ -118,12 +132,14 @@ export default function ModalityPieChart({
                         ]
                       }
                     />
-                  ),
+                  )
                 )}
               </Pie>
 
             </PieChart>
           </ResponsiveContainer>
+          )}
+          
 
           {/* =================================================
               DONUT CENTER
