@@ -9,9 +9,8 @@ import {
 
 import {
   CheckCircle2,
-  Wrench,
   FileQuestion,
-  ActivitySquare
+  Wrench,
 } from "lucide-react";
 
 interface ModalityItem {
@@ -32,20 +31,23 @@ const COLORS = [
   "#050E40",
 ];
 
-const renderCustomizedLabel = ({ cx, cy, midAngle, outerRadius, percent, value}: any) => {if (value === 0) return null;
+const renderCustomizedLabel = ({ cx, cy, midAngle, outerRadius, value }: any) => {
+  if (value === 0) return null;
   const RADIAN = Math.PI / 180;
-  const radius = outerRadius * 0.65;
+  // Adjusted label placement for larger outerRadius
+  const radius = outerRadius * 0.7;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle *RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
   return (
-    <text 
-    x = {x}
-    y = {y}
-    fill="ffffff"
-    textAnchor="middle"
-    dominantBaseline="central"
-    className="text-sm font-blck drop-shadow-[0_1px,2px_rgba(0,0,0,0.8)">
+    <text
+      x={x}
+      y={y}
+      fill="#ffffff"
+      textAnchor="middle"
+      dominantBaseline="central"
+      className="text-base font-black drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"
+    >
       {value}
     </text>
   );
@@ -56,212 +58,92 @@ export default function ModalityPieChart({
 }: {
   modalities: ModalityItem[];
 }) {
-  const chartData = modalities.map(
-    (modality) => ({
-      name:
-        modality.modalityCode ||
-        modality.modalityName,
-      fullName: modality.modalityName,
-      value: modality.today.total,
-      room: modality.departmentRoom,
-      isActive: modality.isActive !== false,
-    }),
-  );
+  const chartData = modalities.map((modality) => ({
+    name: modality.modalityCode || modality.modalityName,
+    fullName: modality.modalityName,
+    value: modality.today.total,
+    room: modality.departmentRoom,
+    isActive: modality.isActive !== false,
+  }));
 
-  const totalExams =
-    chartData.reduce(
-      (sum, item) =>
-        sum + item.value,
-      0,
-    );
+  const totalExams = chartData.reduce((sum, item) => sum + item.value, 0);
+  const activeSlicesCount = chartData.filter((item) => item.value > 0).length;
 
   const maintenanceRooms = chartData.filter((item) => item.isActive === false);
   const allRoomsWorking = maintenanceRooms.length === 0;
 
-  const activeSlicesCount = chartData.filter((item) => item.value > 0).length;
-
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-
+    <div className="flex h-full min-h-0 flex-col justify-between overflow-hidden">
       {/* =====================================================
-          DONUT
+          ENLARGED PIE CHART CANVAS (Fills flex-1 space)
       ===================================================== */}
-
-      <div className="flex h-[178px] shrink-0 items-center justify-center">
-
-        <div className="relative h-full w-full max-w-[285px]">
-          {totalExams === 0 ? (
-            /* ZERO EXAMS FALLBACK STATE */
-            <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                <FileQuestion className="h-5 w-5" />
-              </div>
-              <p className="mt-2 text-sm font-extrabold text-qc-navy">
-                No Examinations Today
-              </p>
+      <div className="relative flex min-h-0 flex-1 items-center justify-center py-2">
+        {totalExams === 0 ? (
+          /* ZERO EXAMS FALLBACK STATE */
+          <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+              <FileQuestion className="h-5 w-5" />
             </div>
-          ) : (
-          <ResponsiveContainer
-            width="100%"
-            height="100%"
-          >
-            <PieChart>
-
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                innerRadius="0"
-                outerRadius="80%"
-                paddingAngle={activeSlicesCount > 1? 1:0}
-                dataKey="value"
-                label={renderCustomizedLabel}
-                labelLine={false}
-                stroke="#FFFFFF"
-                strokeWidth={activeSlicesCount > 1? 1:0}
-                isAnimationActive={false}
-              >
-                {chartData.map(
-                  (_, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        COLORS[
-                          index %
-                            COLORS.length
-                        ]
-                      }
-                    />
-                  )
-                )}
-              </Pie>
-
-            </PieChart>
-          </ResponsiveContainer>
-          )}
-          
-
-          {/* =================================================
-              DONUT CENTER
-          ================================================= */}
-
-          {/*<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-
-            <span className="text-[44px] font-extrabold leading-none tracking-tight text-qc-navy">
-              {totalExams.toLocaleString()}
-            </span>
-
-            <span className="mt-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
-              Today
-            </span>
-
-          </div>*/}
-
-        </div>
-      </div>
-
-      {/* Modality Room Operational Status */}
-      <div className="mt-4 border-t border-slate-800/80 pt-4">
-        {allRoomsWorking ? (
-          <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-2.5 text-xs font-semibold text-emerald-400">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-            <span>All examination rooms are working</span>
+            <p className="mt-2 text-sm font-extrabold text-qc-navy">
+              No Examinations Today
+            </p>
+            <p className="mt-0.5 text-xs font-medium text-slate-400">
+              Data will update as examinations are scheduled.
+            </p>
           </div>
         ) : (
-          <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3.5 py-2.5 text-xs font-semibold text-amber-400">
-            <Wrench className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
-            <div>
-              <span className="font-bold">Maintenance Alert:</span>{" "}
-              {maintenanceRooms.map((r) => `(${r.room})`).join(", ")}{" "}
-              {maintenanceRooms.length === 1 ? "is" : "are"} currently under maintenance.
-            </div>
+          /* RECHARTS PIE CHART WITH EXPANDED RADIUS */
+          <div className="h-full w-full max-w-[340px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="0"
+                  outerRadius="95%" // Increased radius to enlarge the chart
+                  paddingAngle={activeSlicesCount > 1 ? 1 : 0}
+                  stroke="#FFFFFF"
+                  strokeWidth={activeSlicesCount > 1 ? 1 : 0}
+                  dataKey="value"
+                  label={renderCustomizedLabel}
+                  labelLine={false}
+                  isAnimationActive={false}
+                >
+                  {chartData.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         )}
       </div>
 
-
-
       {/* =====================================================
-          MODALITY BREAKDOWN
-          Two-column fixed public-display layout
-      ===================================================== 
-
-      <div className="min-h-0 flex-1 overflow-hidden pt-1">
-
-        <div className="grid h-full grid-cols-2 content-start gap-2">
-
-          {chartData.map(
-            (item, index) => {
-              const percentage =
-                totalExams > 0
-                  ? Math.round(
-                      (item.value /
-                        totalExams) *
-                        100,
-                    )
-                  : 0;
-
-              const color =
-                COLORS[
-                  index %
-                    COLORS.length
-                ];
-
-              return (
-                <div
-                  key={item.name}
-                  className="flex h-[46px] min-w-0 items-center justify-between rounded-xl border border-slate-200/70 bg-[#FAFBFD] px-3.5"
-                >
-
-                  {/* =================================================
-                      MODALITY LABEL
-                  ================================================= */}
-
-                  {/*<div className="flex min-w-0 items-center gap-2">
-
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor:
-                          color,
-                      }}
-                    />
-
-                    <span className="truncate text-[11px] font-extrabold text-qc-navy">
-                      {item.name}
-                    </span>
-
-                  </div>*/}
-
-                  {/* =================================================
-                      VALUE + %
-                  ================================================= */}
-
-                  {/*<div className="ml-2 flex shrink-0 items-center gap-2.5">
-
-                    <span
-                      className="text-[14px] font-extrabold leading-none"
-                      style={{
-                        color,
-                      }}
-                    >
-                      {item.value}
-                    </span>
-
-                    <span className="min-w-[28px] text-right text-[9px] font-bold leading-none text-slate-400">
-                      {percentage}%
-                    </span>
-
-                  </div>*
-
-                </div>
-              );
-            },
-          )}
-
-        </div>
-      </div>*/}
-
+          FIXED STATUS BAR AT BOTTOM
+      ===================================================== */}
+      <div className="mt-2 shrink-0 border-t border-slate-200/80 pt-3">
+        {allRoomsWorking ? (
+          <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-700 shadow-sm">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span>All examination rooms are working</span>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-50 px-3.5 py-2.5 text-xs font-semibold text-amber-800 shadow-sm">
+            <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div>
+              <span className="font-bold">Maintenance Alert:</span>{" "}
+              {maintenanceRooms.map((r) => `(${r.room})`).join(", ")}{" "}
+              {maintenanceRooms.length === 1 ? "is" : "are"} currently under
+              maintenance.
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
