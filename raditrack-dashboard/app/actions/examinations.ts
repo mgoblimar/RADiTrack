@@ -445,13 +445,19 @@ export async function fetchFilteredExaminationsAction(
       }),
       isoDate: new Date(e.studyDate).toISOString().split("T")[0],
       examCompletedAtFormatted: e.examCompletedAt
-        ? new Date(e.examCompletedAt).toLocaleTimeString("en-US", {
+        ? new Date(e.examCompletedAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
           })
         : null,
       reportSignedAtFormatted: e.report?.reportSignedAt
-        ? new Date(e.report.reportSignedAt).toLocaleTimeString("en-US", {
+        ? new Date(e.report.reportSignedAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
           })

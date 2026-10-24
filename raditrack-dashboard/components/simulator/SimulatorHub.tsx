@@ -591,7 +591,7 @@ export function SimulatorHub({
                   <td className="px-5 py-4">
                     <span className="font-mono text-xs font-semibold text-slate-500">
                       {item.targetTat
-                        ? `${(item.targetTat / 60).toFixed(0)} hrs (${item.targetTat} mins)`
+                        ? `${Math.round(item.targetTat / 60)} hrs`
                         : "No target"}
                     </span>
                   </td>
