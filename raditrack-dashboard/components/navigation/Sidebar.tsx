@@ -44,7 +44,7 @@ export function Sidebar({
   const navItems = [
     {
       id: "overview" as ActiveTab,
-      label: "Analytics",
+      label: "Dashboard",
       icon: LayoutDashboard,
     },
     {
@@ -59,9 +59,7 @@ export function Sidebar({
     },
   ];
 
-  const handleTabChange = (
-    tab: ActiveTab,
-  ) => {
+  const handleTabChange = (tab: ActiveTab) => {
     onTabChange(tab);
     setIsMobileOpen(false);
   };
@@ -89,7 +87,7 @@ export function Sidebar({
             </p>
 
             <p className="text-[10px] font-medium text-white/40">
-              QCGH Radiology
+              Radiology Operations
             </p>
           </div>
         </div>
@@ -97,12 +95,14 @@ export function Sidebar({
         <button
           type="button"
           onClick={() =>
-            setIsMobileOpen(
-              (prev) => !prev,
-            )
+            setIsMobileOpen((previous) => !previous)
           }
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 text-white/50 transition-all duration-200 hover:border-white/10 hover:bg-white/10 hover:text-white active:scale-95"
-          aria-label="Toggle navigation"
+          aria-label={
+            isMobileOpen
+              ? "Close navigation"
+              : "Open navigation"
+          }
           aria-expanded={isMobileOpen}
         >
           {isMobileOpen ? (
@@ -121,9 +121,7 @@ export function Sidebar({
         <button
           type="button"
           aria-label="Close navigation"
-          onClick={() =>
-            setIsMobileOpen(false)
-          }
+          onClick={() => setIsMobileOpen(false)}
           className="fixed inset-0 z-40 bg-qc-navy/50 backdrop-blur-[3px] lg:hidden"
         />
       )}
@@ -143,13 +141,15 @@ export function Sidebar({
             : "lg:w-[248px]"
         }`}
       >
-        {/* Background glow */}
+        {/* Background accents */}
+
         <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-qc-blue/[0.12] blur-3xl" />
 
         <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-qc-yellow/[0.035] blur-3xl" />
 
         {/* ===================================================
-            BRAND
+            RADiTrack BRAND
+            Official hospital logos are shown in the main header.
         =================================================== */}
 
         <div
@@ -170,7 +170,6 @@ export function Sidebar({
                 />
               </div>
 
-              {/* Subtle status dot */}
               <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-qc-yellow ring-2 ring-qc-navy" />
             </div>
           ) : (
@@ -190,21 +189,16 @@ export function Sidebar({
                     RADiTrack
                   </h2>
 
-                  <div className="mt-0.5 flex items-center gap-1.5">
-
-                    <p className="truncate text-[10px] font-medium tracking-wide text-white/40">
-                      QCGH Radiology
-                    </p>
-                  </div>
+                  <p className="mt-0.5 truncate text-[10px] font-medium tracking-wide text-white/40">
+                    Radiology Operations
+                  </p>
                 </div>
               </div>
 
               {onToggleCollapse && (
                 <button
                   type="button"
-                  onClick={
-                    onToggleCollapse
-                  }
+                  onClick={onToggleCollapse}
                   className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] text-white/35 transition-all duration-200 hover:border-white/10 hover:bg-white/[0.07] hover:text-white active:scale-95 lg:flex"
                   title="Collapse sidebar"
                   aria-label="Collapse sidebar"
@@ -215,9 +209,7 @@ export function Sidebar({
 
               <button
                 type="button"
-                onClick={() =>
-                  setIsMobileOpen(false)
-                }
+                onClick={() => setIsMobileOpen(false)}
                 className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] text-white/35 transition-all duration-200 hover:border-white/10 hover:bg-white/[0.07] hover:text-white active:scale-95 lg:hidden"
                 aria-label="Close navigation"
               >
@@ -228,16 +220,14 @@ export function Sidebar({
         </div>
 
         {/* ===================================================
-            COLLAPSED TOP CONTROL
+            EXPAND COLLAPSED SIDEBAR
         =================================================== */}
 
         {isCollapsed && onToggleCollapse && (
           <div className="relative flex justify-center border-b border-white/[0.06] px-2 py-2">
             <button
               type="button"
-              onClick={
-                onToggleCollapse
-              }
+              onClick={onToggleCollapse}
               className="flex h-8 w-8 items-center justify-center rounded-xl text-white/30 transition-all duration-200 hover:bg-white/[0.07] hover:text-white active:scale-95"
               title="Expand sidebar"
               aria-label="Expand sidebar"
@@ -248,35 +238,26 @@ export function Sidebar({
         )}
 
         {/* ===================================================
-            NAVIGATION
+            PRIMARY NAVIGATION
         =================================================== */}
 
         <div className="relative flex-1 overflow-y-auto px-3 py-5">
-          
-
           <nav
             className="space-y-2"
             aria-label="Primary navigation"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive =
-                activeTab === item.id;
+              const isActive = activeTab === item.id;
 
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() =>
-                    handleTabChange(
-                      item.id,
-                    )
-                  }
+                  onClick={() => handleTabChange(item.id)}
                   title={item.label}
                   aria-current={
-                    isActive
-                      ? "page"
-                      : undefined
+                    isActive ? "page" : undefined
                   }
                   className={`group relative flex w-full items-center rounded-2xl border transition-all duration-200 ${
                     isCollapsed
@@ -288,7 +269,6 @@ export function Sidebar({
                       : "border-transparent text-white/50 hover:border-white/[0.05] hover:bg-white/[0.045] hover:text-white"
                   }`}
                 >
-                  {/* Active rail */}
                   {isActive && (
                     <span
                       className={`absolute rounded-full bg-qc-yellow shadow-[0_0_10px_rgba(242,203,73,0.42)] ${
@@ -341,8 +321,7 @@ export function Sidebar({
                   </div>
 
                   {!isCollapsed &&
-                    item.id ===
-                      "examinations" &&
+                    item.id === "examinations" &&
                     pendingCount > 0 && (
                       <span
                         className={`flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-4 ${
@@ -355,14 +334,12 @@ export function Sidebar({
                       </span>
                     )}
 
-                  {!isCollapsed &&
-                    isActive && (
-                      <ChevronRight className="ml-2 h-3.5 w-3.5 shrink-0 text-white/25 transition-transform duration-200 group-hover:translate-x-0.5" />
-                    )}
+                  {!isCollapsed && isActive && (
+                    <ChevronRight className="ml-2 h-3.5 w-3.5 shrink-0 text-white/25 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  )}
 
                   {isCollapsed &&
-                    item.id ===
-                      "examinations" &&
+                    item.id === "examinations" &&
                     pendingCount > 0 && (
                       <span className="absolute right-0.5 top-0.5 flex min-w-[17px] items-center justify-center rounded-full bg-qc-orange px-1 text-[8px] font-extrabold leading-4 text-white shadow-[0_3px_8px_rgba(0,0,0,0.16)]">
                         {pendingCount}
@@ -379,9 +356,7 @@ export function Sidebar({
 
           <div
             className={`my-5 border-t border-white/[0.07] ${
-              isCollapsed
-                ? "mx-1"
-                : ""
+              isCollapsed ? "mx-1" : ""
             }`}
           />
 
@@ -392,22 +367,19 @@ export function Sidebar({
           )}
 
           <div className="space-y-2">
-            {/* Patient TV */}
+            {/* Patient TV Display */}
+
             <Link
               href="/patient"
               target="_blank"
               rel="noreferrer"
-              onClick={() =>
-                setIsMobileOpen(
-                  false,
-                )
-              }
+              onClick={() => setIsMobileOpen(false)}
+              title="Patient TV Display"
               className={`group relative flex w-full items-center rounded-2xl border border-transparent text-white/50 transition-all duration-200 hover:border-white/[0.05] hover:bg-white/[0.045] hover:text-white ${
                 isCollapsed
                   ? "h-12 justify-center"
                   : "justify-between px-3 py-2.5"
               }`}
-              title="Patient TV"
             >
               <div
                 className={`flex min-w-0 items-center ${
@@ -435,7 +407,7 @@ export function Sidebar({
 
                 {!isCollapsed && (
                   <span className="truncate text-[13px] font-semibold transition-colors group-hover:text-white">
-                    Patient TV
+                    Patient TV Display
                   </span>
                 )}
               </div>
@@ -452,19 +424,16 @@ export function Sidebar({
             </Link>
 
             {/* RIS Simulator */}
+
             <Link
               href="/simulator"
-              onClick={() =>
-                setIsMobileOpen(
-                  false,
-                )
-              }
+              onClick={() => setIsMobileOpen(false)}
+              title="RIS Simulator"
               className={`group relative flex w-full items-center rounded-2xl border border-transparent text-white/50 transition-all duration-200 hover:border-white/[0.05] hover:bg-white/[0.045] hover:text-white ${
                 isCollapsed
                   ? "h-12 justify-center"
                   : "justify-between px-3 py-2.5"
               }`}
-              title="RIS Simulator"
             >
               <div
                 className={`flex min-w-0 items-center ${
@@ -509,11 +478,7 @@ export function Sidebar({
             <div className="flex flex-col items-center gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  handleTabChange(
-                    "config",
-                  )
-                }
+                onClick={() => handleTabChange("config")}
                 title="Dr. Test Radiologist"
                 className="group relative"
               >
@@ -529,11 +494,7 @@ export function Sidebar({
 
               <button
                 type="button"
-                onClick={() =>
-                  handleTabChange(
-                    "config",
-                  )
-                }
+                onClick={() => handleTabChange("config")}
                 className="flex h-8 w-8 items-center justify-center rounded-xl text-white/30 transition-all duration-200 hover:bg-white/[0.07] hover:text-white active:scale-95"
                 title="Settings"
                 aria-label="Open settings"
@@ -548,11 +509,7 @@ export function Sidebar({
             <div className="flex items-center gap-2.5 rounded-2xl border border-white/[0.07] bg-white/[0.035] p-2.5 transition-colors hover:bg-white/[0.05]">
               <button
                 type="button"
-                onClick={() =>
-                  handleTabChange(
-                    "config",
-                  )
-                }
+                onClick={() => handleTabChange("config")}
                 className="group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-qc-blue/60 bg-qc-blue text-qc-yellow shadow-[0_5px_12px_rgba(24,41,140,0.18)] transition-all duration-200 hover:border-qc-yellow hover:shadow-[0_6px_16px_rgba(242,203,73,0.12)] active:scale-95"
                 title="Dr. Test Radiologist"
               >
@@ -566,11 +523,7 @@ export function Sidebar({
 
               <button
                 type="button"
-                onClick={() =>
-                  handleTabChange(
-                    "config",
-                  )
-                }
+                onClick={() => handleTabChange("config")}
                 className="min-w-0 flex-1 text-left"
                 title="Open profile settings"
               >
@@ -589,11 +542,7 @@ export function Sidebar({
 
               <button
                 type="button"
-                onClick={() =>
-                  handleTabChange(
-                    "config",
-                  )
-                }
+                onClick={() => handleTabChange("config")}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white/30 transition-all duration-200 hover:bg-white/[0.07] hover:text-white active:scale-95"
                 title="Settings"
                 aria-label="Open settings"
