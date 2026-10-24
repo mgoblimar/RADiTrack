@@ -1143,13 +1143,7 @@ export function ExaminationsHub({
 
             <div className="mt-3 flex items-baseline gap-1.5">
               <span className="text-2xl font-extrabold tracking-tight text-qc-navy">
-                {summary.avgTatMinutes >
-                0
-                  ? summary.avgTatHours >=
-                    1
-                    ? `${summary.avgTatHours}h`
-                    : `${summary.avgTatMinutes}m`
-                  : "—"}
+                {summary.avgTatMinutes > 0 ? `${summary.avgTatHours}h` : "—"}
               </span>
             </div>
           </div>
@@ -1247,11 +1241,7 @@ export function ExaminationsHub({
                 </th>
 
                 <th className="px-5 py-3.5">
-                  Triage
-                </th>
-
-                <th className="px-5 py-3.5">
-                  Priority
+                  Patient Category
                 </th>
 
                 <th className="px-5 py-3.5">
@@ -1283,7 +1273,7 @@ export function ExaminationsHub({
                     </th>
 
                     <th className="px-5 py-3.5">
-                      Signed
+                      Signed date
                     </th>
 
                     <th className="px-5 py-3.5 text-right">
@@ -1301,6 +1291,10 @@ export function ExaminationsHub({
                   <>
                     <th className="px-5 py-3.5">
                       Status
+                    </th>
+
+                    <th className="px-5 py-3.5">
+                      Signed date
                     </th>
 
                     <th className="px-5 py-3.5 text-right">
@@ -1371,16 +1365,7 @@ export function ExaminationsHub({
                     </span>
                   </td>
 
-                  {/* Urgency */}
-                  <td className="px-5 py-4">
-                    <span
-                      className={`inline-flex rounded-xl border px-2.5 py-1 text-[10px] font-extrabold ${getUrgencyBadgeClass(
-                        item.urgencyLevel,
-                      )}`}
-                    >
-                      {item.urgencyLevel}
-                    </span>
-                  </td>
+                  
 
                   {/* Study date */}
                   <td className="px-5 py-4">
@@ -1422,8 +1407,10 @@ export function ExaminationsHub({
 
                       <td className="px-5 py-4">
                         <span className="font-mono text-[11px] font-semibold text-muted-foreground">
-                          {item.targetTatMinutes
-                            ? `${item.targetTatMinutes}m`
+                          {item.targetTatHours !== null && item.targetTatHours !== undefined
+                            ? `${item.targetTatHours}h`
+                            : item.targetTatMinutes
+                            ? `${Math.round(item.targetTatMinutes / 60)}h`
                             : "—"}
                         </span>
                       </td>
@@ -1501,12 +1488,10 @@ export function ExaminationsHub({
 
                       <td className="px-5 py-4 text-right">
                         <span className="font-mono text-xs font-extrabold text-qc-blue">
-                          {item.tatMinutes
-                            ? item.tatHours &&
-                              item.tatHours >=
-                                1
-                              ? `${item.tatHours}h`
-                              : `${item.tatMinutes}m`
+                          {item.tatHours !== null && item.tatHours !== undefined
+                            ? `${item.tatHours}h`
+                            : item.tatMinutes
+                            ? `${Number((item.tatMinutes / 60).toFixed(1))}h`
                             : "—"}
                         </span>
                       </td>
@@ -1548,14 +1533,20 @@ export function ExaminationsHub({
                         </span>
                       </td>
 
+                      <td className="px-5 py-4">
+                        <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                          {item.reportSignedAtFormatted || "—"}
+                        </span>
+                      </td>
+
                       <td className="px-5 py-4 text-right">
                         {item.isFinalized ? (
                           <span className="font-mono text-xs font-extrabold text-qc-blue">
-                            {item.tatHours &&
-                            item.tatHours >=
-                              1
+                            {item.tatHours !== null && item.tatHours !== undefined
                               ? `${item.tatHours}h`
-                              : `${item.tatMinutes}m`}
+                              : item.tatMinutes
+                              ? `${Number((item.tatMinutes / 60).toFixed(1))}h`
+                              : "—"}
                           </span>
                         ) : (
                           <span className="font-mono text-xs font-extrabold text-qc-orange">
@@ -1614,7 +1605,7 @@ export function ExaminationsHub({
               {items.length === 0 && (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={8}
                     className="px-5 py-16 text-center"
                   >
                     <div className="mx-auto flex max-w-sm flex-col items-center">

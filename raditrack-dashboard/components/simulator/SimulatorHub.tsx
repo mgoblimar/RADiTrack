@@ -53,28 +53,28 @@ const SCENARIOS: {
   {
     id: "stat_ct",
     title: "Emergency trauma CT",
-    detail: "CT · ER · STAT · 60-min SLA",
-    badge: "STAT CT",
+    detail: "CT · ER · 48-hour SLA",
+    badge: "ER CT",
     tone: "red",
   },
   {
     id: "stat_xray",
     title: "Acute ER chest radiograph",
-    detail: "X-ray · ER · STAT · 30-min SLA",
-    badge: "STAT X-Ray",
+    detail: "X-ray · ER · 48-hour SLA",
+    badge: "ER X-Ray",
     tone: "orange",
   },
   {
     id: "opd_us",
     title: "Outpatient abdominal ultrasound",
-    detail: "Ultrasound · OPD · Routine · 12-hour SLA",
+    detail: "Ultrasound · OPD · 72-hour SLA",
     badge: "OPD US",
     tone: "blue",
   },
   {
     id: "in_mri",
     title: "Inpatient brain MRI",
-    detail: "MRI · Inpatient · Routine · 48-hour SLA",
+    detail: "MRI · Inpatient · 48-hour SLA",
     badge: "IN MRI",
     tone: "navy",
   },
@@ -318,8 +318,8 @@ export function SimulatorHub({
               />
             </div>
 
-            {/* THREE SELECTS */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {/* TWO SELECTS (Modality & Patient Category) */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label
                   htmlFor="simulator-modality"
@@ -349,7 +349,7 @@ export function SimulatorHub({
                   htmlFor="simulator-triage"
                   className="block text-xs font-extrabold uppercase tracking-[0.08em] text-qc-navy"
                 >
-                  Origin
+                  Patient Category
                 </label>
 
                 <select
@@ -361,30 +361,6 @@ export function SimulatorHub({
                   {Object.entries(TRIAGE_CONFIG).map(
                     ([level, config]) => (
                       <option key={level} value={level}>
-                        {config.label}
-                      </option>
-                    ),
-                  )}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="simulator-urgency"
-                  className="block text-xs font-extrabold uppercase tracking-[0.08em] text-qc-navy"
-                >
-                  Urgency
-                </label>
-
-                <select
-                  id="simulator-urgency"
-                  name="urgencyLevel"
-                  defaultValue={UrgencyLevel.ROUTINE}
-                  className="w-full rounded-xl border border-slate-200 bg-[#FAFBFD] px-3 py-3 text-sm font-semibold text-qc-navy outline-none transition-colors focus:border-qc-blue/30 focus:bg-white focus:ring-2 focus:ring-qc-blue/10"
-                >
-                  {Object.entries(URGENCY_CONFIG).map(
-                    ([urgency, config]) => (
-                      <option key={urgency} value={urgency}>
                         {config.label}
                       </option>
                     ),
@@ -615,7 +591,7 @@ export function SimulatorHub({
                   <td className="px-5 py-4">
                     <span className="font-mono text-xs font-semibold text-slate-500">
                       {item.targetTat
-                        ? `${item.targetTat} mins`
+                        ? `${Math.round(item.targetTat / 60)} hrs`
                         : "No target"}
                     </span>
                   </td>
