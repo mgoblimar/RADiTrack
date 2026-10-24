@@ -16,11 +16,12 @@ import {
   Layers,
   Loader2,
   RotateCcw,
+  Users,
   X,
 } from "lucide-react";
 
 import { type KpiPreset } from "@/app/actions";
-import { ModalityCode } from "@/lib/enums";
+import { ModalityCode, TriageLevel } from "@/lib/enums";
 
 export interface DateRangeFilterProps {
   currentPreset: KpiPreset;
@@ -34,6 +35,8 @@ export interface DateRangeFilterProps {
   isPending?: boolean;
   selectedModality?: "ALL" | ModalityCode;
   onModalityChange?: (modality: "ALL" | ModalityCode) => void;
+  selectedTriage?: "ALL" | TriageLevel;
+  onTriageChange?: (triage: "ALL" | TriageLevel) => void;
 
   // Kept for compatibility with DashboardShell.
   // Intentionally not displayed in this component.
@@ -102,6 +105,17 @@ const MODALITY_OPTIONS: {
   { id: ModalityCode.MAMMO, label: "Mammogram", dotColor: "bg-pink-500" },
 ];
 
+const TRIAGE_OPTIONS: {
+  id: "ALL" | TriageLevel;
+  label: string;
+  dotColor?: string;
+}[] = [
+  { id: "ALL", label: "All Categories" },
+  { id: TriageLevel.ER, label: "Emergency (ER)", dotColor: "bg-rose-500" },
+  { id: TriageLevel.OPD, label: "Outpatient (OPD)", dotColor: "bg-sky-500" },
+  { id: TriageLevel.IN, label: "Inpatient (IN)", dotColor: "bg-amber-500" },
+];
+
 export function DateRangeFilter({
   currentPreset,
   startDate,
@@ -111,6 +125,8 @@ export function DateRangeFilter({
   isPending = false,
   selectedModality = "ALL",
   onModalityChange,
+  selectedTriage = "ALL",
+  onTriageChange,
 }: DateRangeFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalityOpen, setIsModalityOpen] = useState(false);
@@ -138,6 +154,14 @@ export function DateRangeFilter({
       width: 500,
     });
 
+  const [isTriageOpen, setIsTriageOpen] = useState(false);
+  const triageButtonRef = useRef<HTMLButtonElement>(null);
+  const triagePopoverRef = useRef<HTMLDivElement>(null);
+  const [triagePopoverPosition, setTriagePopoverPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 220,
+  });
   const [modalityPopoverPosition, setModalityPopoverPosition] =
     useState({
       top: 0,
@@ -201,6 +225,20 @@ export function DateRangeFilter({
       left,
       width,
     });
+  };
+
+  const updateTriagePopoverPosition = () => {
+    if (!triageButtonRef.current) return;
+    const rect = triageButtonRef.current.getBoundingClientRect();
+    const viewportPadding = 12;
+    const width = 230;
+    let left = rect.left;
+    if (left + width > window.innerWidth - viewportPadding) {
+      left = window.innerWidth - width - viewportPadding;
+    }
+    left = Math.max(viewportPadding, left);
+    const top = rect.bottom + 8;
+    setTriagePopoverPosition({ top, left, width });
   };
 
   const updateModalityPopoverPosition = () => {
@@ -294,12 +332,25 @@ export function DateRangeFilter({
     };
   }, [isModalityOpen]);
 
+  useEffect(() => {
+    if (!isTriageOpen) return;
+    updateTriagePopoverPosition();
+    const handleResize = () => updateTriagePopoverPosition();
+    const handleScroll = () => updateTriagePopoverPosition();
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [isTriageOpen]);
+
   // =========================================================
   // Close when clicking outside / Escape
   // =========================================================
 
   useEffect(() => {
-    if (!isOpen && !isModalityOpen) {
+    if (!isOpen && !isModalityOpen && !isTriageOpen) {
       return;
     }
 
@@ -324,6 +375,14 @@ export function DateRangeFilter({
       ) {
         setIsModalityOpen(false);
       }
+
+      if (
+        isTriageOpen &&
+        !triageButtonRef.current?.contains(target) &&
+        !triagePopoverRef.current?.contains(target)
+      ) {
+        setIsTriageOpen(false);
+      }
     };
 
     const handleKeyDown = (
@@ -332,6 +391,7 @@ export function DateRangeFilter({
       if (event.key === "Escape") {
         setIsOpen(false);
         setIsModalityOpen(false);
+        setIsTriageOpen(false);
       }
     };
 
@@ -356,7 +416,7 @@ export function DateRangeFilter({
         handleKeyDown,
       );
     };
-  }, [isOpen, isModalityOpen]);
+  }, [isOpen, isModalityOpen, isTriageOpen]);
 
   // =========================================================
   // Active preset & modality
@@ -373,6 +433,11 @@ export function DateRangeFilter({
       (opt) => opt.id === selectedModality,
     ) ?? MODALITY_OPTIONS[0];
 
+  const activeTriageOption =
+    TRIAGE_OPTIONS.find(
+      (opt) => opt.id === selectedTriage,
+    ) ?? TRIAGE_OPTIONS[0];
+
   const isCustom =
     currentPreset === "CUSTOM";
 
@@ -386,6 +451,7 @@ export function DateRangeFilter({
     }
 
     setIsModalityOpen(false);
+    setIsTriageOpen(false);
     setIsOpen((previous) => !previous);
   };
 
@@ -395,7 +461,15 @@ export function DateRangeFilter({
     }
 
     setIsOpen(false);
+    setIsTriageOpen(false);
     setIsModalityOpen((previous) => !previous);
+  };
+
+  const toggleTriageDropdown = () => {
+    if (isPending) return;
+    setIsOpen(false);
+    setIsModalityOpen(false);
+    setIsTriageOpen((prev) => !prev);
   };
 
   // =========================================================
@@ -516,8 +590,10 @@ export function DateRangeFilter({
 
     onPresetChange("ALL");
     onModalityChange?.("ALL");
+    onTriageChange?.("ALL");
     setIsOpen(false);
     setIsModalityOpen(false);
+    setIsTriageOpen(false);
   };
 
   // =========================================================
@@ -779,6 +855,56 @@ export function DateRangeFilter({
     </div>
   ) : null;
 
+  const triagePopover = isTriageOpen ? (
+    <div
+      ref={triagePopoverRef}
+      role="dialog"
+      aria-label="Filter by Patient Category"
+      style={{
+        position: "fixed",
+        top: `${triagePopoverPosition.top}px`,
+        left: `${triagePopoverPosition.left}px`,
+        width: `${triagePopoverPosition.width}px`,
+        zIndex: 9999,
+      }}
+      className="overflow-hidden rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-[0_20px_50px_rgba(5,14,64,0.18)] backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-100"
+    >
+      <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground border-b border-border/60 mb-1">
+        Select Patient Category
+      </div>
+      <div className="space-y-0.5">
+        {TRIAGE_OPTIONS.map((opt) => {
+          const isSelected = selectedTriage === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                onTriageChange?.(opt.id);
+                setIsTriageOpen(false);
+              }}
+              className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all ${
+                isSelected
+                  ? "border border-qc-blue/15 bg-qc-blue/10 text-qc-blue"
+                  : "border border-transparent hover:border-qc-blue/15 hover:bg-qc-blue/5 text-qc-navy"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                {opt.dotColor ? (
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${opt.dotColor}`} />
+                ) : (
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-current opacity-40" />
+                )}
+                <span className="truncate">{opt.label}</span>
+              </div>
+              {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-qc-blue" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="relative">
       {/* =====================================================
@@ -895,10 +1021,61 @@ export function DateRangeFilter({
                 />
               </button>
             )}
+
+            {/* Divider */}
+            {onTriageChange && (
+              <div className="mx-1 h-5 w-px bg-border/80" />
+            )}
+
+            {/* Patient Category Filter merged right beside */}
+            {onTriageChange && (
+              <button
+                ref={triageButtonRef}
+                type="button"
+                onClick={toggleTriageDropdown}
+                disabled={isPending}
+                className={`group inline-flex min-w-0 items-center gap-2 rounded-xl px-3.5 py-2 text-left transition-all duration-150 ${
+                  isTriageOpen
+                    ? "border border-qc-navy bg-qc-navy text-white shadow-sm"
+                    : selectedTriage !== "ALL"
+                      ? "bg-qc-blue/10 text-qc-blue font-extrabold"
+                      : "text-qc-navy hover:bg-qc-blue/5 font-extrabold"
+                }`}
+                aria-expanded={isTriageOpen}
+                aria-haspopup="dialog"
+                aria-label="Filter dashboard by patient category"
+              >
+                <Users
+                  className={`h-4 w-4 shrink-0 ${
+                    isTriageOpen
+                      ? "text-qc-yellow"
+                      : selectedTriage !== "ALL"
+                        ? "text-qc-blue"
+                        : "text-muted-foreground group-hover:text-qc-blue"
+                  }`}
+                />
+
+                <span
+                  className={`truncate text-sm ${
+                    isTriageOpen ? "text-white" : "text-qc-navy"
+                  }`}
+                >
+                  {activeTriageOption.label}
+                </span>
+
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 transition-transform duration-150 ${
+                    isTriageOpen
+                      ? "rotate-180 text-white"
+                      : "text-muted-foreground group-hover:text-qc-blue"
+                  }`}
+                />
+              </button>
+            )}
           </div>
 
           {/* Reset Filters button */}
-          {(currentPreset !== "ALL" || (selectedModality && selectedModality !== "ALL")) && (
+          {(currentPreset !== "ALL" || (selectedModality && selectedModality !== "ALL") || (selectedTriage && selectedTriage !== "ALL")) && (
             <button
               type="button"
               onClick={handleResetAll}
@@ -922,6 +1099,10 @@ export function DateRangeFilter({
       {typeof document !== "undefined" &&
         isModalityOpen &&
         createPortal(modalityPopover, document.body)}
+
+      {typeof document !== "undefined" &&
+        isTriageOpen &&
+        createPortal(triagePopover, document.body)}
     </div>
   );
 }

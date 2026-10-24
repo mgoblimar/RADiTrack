@@ -215,34 +215,6 @@ export function EditExamDialog({
               </div>
 
               {/* ===================================================
-                  URGENCY
-                  =================================================== */}
-
-              <div className="space-y-2">
-                <label
-                  htmlFor={`urgency-${item.examId}`}
-                  className="block text-sm font-bold text-qc-navy"
-                >
-                  Clinical priority / urgency
-                </label>
-
-                <select
-                  id={`urgency-${item.examId}`}
-                  name="urgencyLevel"
-                  defaultValue={item.urgencyLevel}
-                  className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-colors focus:border-qc-blue/40 focus:bg-card focus:ring-2 focus:ring-qc-blue/10"
-                >
-                  <option value={UrgencyLevel.ROUTINE}>
-                    ROUTINE (Standard Queue)
-                  </option>
-
-                  <option value={UrgencyLevel.STAT}>
-                    STAT (Emergency Immediate)
-                  </option>
-                </select>
-              </div>
-
-              {/* ===================================================
                   NOTES
                   =================================================== */}
 

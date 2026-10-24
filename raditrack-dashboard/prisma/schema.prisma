@@ -70,7 +70,6 @@ model Examination {
   modalityCode String @map("modality_code")
   statusCode   String @map("status_code")
   triageLevel  String @default("OPD") @map("triage_level")
-  urgencyLevel String @default("ROUTINE") @map("urgency_level")
 
   studyDate       DateTime  @map("study_date")
   examCompletedAt DateTime? @map("exam_completed_at")
@@ -86,7 +85,7 @@ model Examination {
 
   @@index([examinationIdentifier])
   @@index([studyDate])
-  @@index([modalityCode, triageLevel, urgencyLevel])
+  @@index([modalityCode, triageLevel])
   @@index([statusCode])
   @@index([examCompletedAt])
   @@map("examinations")

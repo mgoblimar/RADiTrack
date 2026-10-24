@@ -6,10 +6,8 @@ import { createExaminationAction } from "@/app/actions";
 import {
   ModalityCode,
   TriageLevel,
-  UrgencyLevel,
   MODALITY_CONFIG,
   TRIAGE_CONFIG,
-  URGENCY_CONFIG,
 } from "@/lib/enums";
 import { notifyDatabaseChanged } from "@/lib/broadcast";
 
@@ -174,7 +172,7 @@ export function QuickIngestionModal() {
                     htmlFor="quick-ingestion-triage"
                     className="block text-sm font-bold text-qc-navy"
                   >
-                    Triage level
+                    Patient category
                   </label>
 
                   <select
@@ -192,34 +190,6 @@ export function QuickIngestionModal() {
                     )}
                   </select>
                 </div>
-              </div>
-
-              {/* ===================================================
-                  URGENCY
-                  =================================================== */}
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="quick-ingestion-urgency"
-                  className="block text-sm font-bold text-qc-navy"
-                >
-                  Urgency
-                </label>
-
-                <select
-                  id="quick-ingestion-urgency"
-                  name="urgencyLevel"
-                  defaultValue={UrgencyLevel.ROUTINE}
-                  className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-colors focus:border-qc-blue/40 focus:bg-card focus:ring-2 focus:ring-qc-blue/10"
-                >
-                  {Object.entries(URGENCY_CONFIG).map(
-                    ([urgency, config]) => (
-                      <option key={urgency} value={urgency}>
-                        {config.label}
-                      </option>
-                    ),
-                  )}
-                </select>
               </div>
 
               {/* ===================================================
