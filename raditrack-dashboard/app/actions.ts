@@ -217,6 +217,17 @@ export async function getDashboardData() {
         notes: e.notes ?? "",
       };
     }),
+    allExamsSummary: allExams.map((e) => ({
+      examId: e.examId,
+      modalityCode: e.modalityCode,
+      triageLevel: e.triageLevel,
+      urgencyLevel: e.urgencyLevel,
+      studyDate: e.studyDate.toISOString(),
+      statusCode: e.statusCode,
+      tatMinutes: e.report?.tatExamToSignMinutes ?? null,
+      isSlaBreached: Boolean(e.report?.isSlaBreached),
+      isFinalized: Boolean(e.report?.reportSignedAt),
+    })),
   };
 }
 
@@ -2084,6 +2095,8 @@ export interface FilteredKpiOptions {
   preset: KpiPreset;
   startDate?: string;
   endDate?: string;
+  modalityCode?: "ALL" | ModalityCode | string;
+  triageLevel?: "ALL" | TriageLevel | string;
 }
 
 export interface FilteredKpiResult {
@@ -2279,7 +2292,7 @@ export async function fetchFilteredExecutiveKpiAction(
         },
         report: { is: null },
       },
-      select: { examId: true, studyDate: true, modalityCode: true },
+      select: { examId: true, studyDate: true, modalityCode: true, triageLevel: true },
     }),
     prisma.modality.findMany({
       include: {
@@ -2297,14 +2310,17 @@ export async function fetchFilteredExecutiveKpiAction(
     }),
   ]);
 
-  const totalVolume = currentExams.length;
-  const finalizedExams = currentExams.filter((e) => e.report && e.report.reportSignedAt);
-  const finalizedCount = finalizedExams.length;
+  const targetModality =
+    options.modalityCode && options.modalityCode !== "ALL"
+      ? options.modalityCode
+      : undefined;
 
-  const pendingReadingCount = isAllTime
-    ? allActivePendingExams.length
-    : currentExams.filter((e) => !e.report || !e.report.reportSignedAt).length;
+  const targetTriage =
+    options.triageLevel && options.triageLevel !== "ALL"
+      ? options.triageLevel
+      : undefined;
 
+  // Breakdown by modality (respecting targetTriage if selected)
   const volumeByModality: Record<string, number> = {
     XRAY: 0,
     US: 0,
@@ -2313,6 +2329,7 @@ export async function fetchFilteredExecutiveKpiAction(
     MAMMO: 0,
   };
   currentExams.forEach((e) => {
+    if (targetTriage && e.triageLevel !== targetTriage) return;
     if (volumeByModality[e.modalityCode] !== undefined) {
       volumeByModality[e.modalityCode]++;
     }
@@ -2329,10 +2346,29 @@ export async function fetchFilteredExecutiveKpiAction(
     ? allActivePendingExams
     : currentExams.filter((e) => !e.report || !e.report.reportSignedAt);
   activePendingExams.forEach((e) => {
+    if (targetTriage && e.triageLevel !== targetTriage) return;
     if (pendingByModality[e.modalityCode] !== undefined) {
       pendingByModality[e.modalityCode]++;
     }
   });
+
+  // Filter scoped exams according to BOTH targetModality and targetTriage for the executive KPI cards
+  const scopedCurrentExams = currentExams.filter((e) => {
+    if (targetModality && e.modalityCode !== targetModality) return false;
+    if (targetTriage && e.triageLevel !== targetTriage) return false;
+    return true;
+  });
+
+  const scopedActivePendingExams = activePendingExams.filter((e) => {
+    if (targetModality && e.modalityCode !== targetModality) return false;
+    if (targetTriage && e.triageLevel !== targetTriage) return false;
+    return true;
+  });
+
+  const totalVolume = scopedCurrentExams.length;
+  const finalizedExams = scopedCurrentExams.filter((e) => e.report && e.report.reportSignedAt);
+  const finalizedCount = finalizedExams.length;
+  const pendingReadingCount = scopedActivePendingExams.length;
 
   const tatValues = finalizedExams
     .map((e) => e.report?.tatExamToSignMinutes || 0)
@@ -2352,8 +2388,13 @@ export async function fetchFilteredExecutiveKpiAction(
       : 100;
 
   // Prior period metrics
-  const priorTotalVolume = priorExams.length;
-  const priorFinalizedExams = priorExams.filter((e) => e.report && e.report.reportSignedAt);
+  const scopedPriorExams = priorExams.filter((e) => {
+    if (targetModality && e.modalityCode !== targetModality) return false;
+    if (targetTriage && e.triageLevel !== targetTriage) return false;
+    return true;
+  });
+  const priorTotalVolume = scopedPriorExams.length;
+  const priorFinalizedExams = scopedPriorExams.filter((e) => e.report && e.report.reportSignedAt);
   const priorFinalizedCount = priorFinalizedExams.length;
   const priorTatValues = priorFinalizedExams
     .map((e) => e.report?.tatExamToSignMinutes || 0)

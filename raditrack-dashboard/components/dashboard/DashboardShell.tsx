@@ -21,7 +21,7 @@ import {
   type FilteredKpiResult,
   type ModalityTatOverviewItem,
 } from "@/app/actions";
-import { ModalityCode, MODALITY_CONFIG } from "@/lib/enums";
+import { ModalityCode, MODALITY_CONFIG, TriageLevel, TRIAGE_CONFIG } from "@/lib/enums";
 
 import {
   BarChart3,
@@ -165,126 +165,129 @@ export function DashboardShell({
     ModalityTatOverviewItem[] | null
   >(null);
 
+  const [selectedModality, setSelectedModality] =
+    useState<"ALL" | ModalityCode>("ALL");
+
+  const [selectedTriage, setSelectedTriage] =
+    useState<"ALL" | TriageLevel>("ALL");
+
   /* =========================================================
      KPI filter
   ========================================================= */
 
-  const handlePresetChange = (
-    preset: KpiPreset,
-  ) => {
+  const handlePresetChange = (preset: KpiPreset) => {
     setFilterPreset(preset);
-
-    startKpiTransition(async () => {
-      try {
-        if (preset === "CUSTOM") {
-          const result =
-            await fetchFilteredExecutiveKpiAction({
-              preset: "CUSTOM",
-              startDate: customStart,
-              endDate: customEnd,
-            });
-
-          setKpiData(result);
-
-          setFilteredModalityData(
-            result.modalityOverview,
-          );
-
-          return;
-        }
-
-        const result =
-          await fetchFilteredExecutiveKpiAction({
-            preset,
-          });
-
-        setKpiData(result);
-
-        setFilteredModalityData(
-          result.modalityOverview,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to fetch filtered executive KPIs:",
-          error,
-        );
-      }
-    });
   };
 
   /* =========================================================
      Custom date range
   ========================================================= */
 
-  const handleCustomRangeApply = (
-    startDate: string,
-    endDate: string,
-  ) => {
+  const handleCustomRangeApply = (startDate: string, endDate: string) => {
     setCustomStart(startDate);
     setCustomEnd(endDate);
     setFilterPreset("CUSTOM");
-
-    startKpiTransition(async () => {
-      try {
-        const result =
-          await fetchFilteredExecutiveKpiAction({
-            preset: "CUSTOM",
-            startDate,
-            endDate,
-          });
-
-        setKpiData(result);
-
-        setFilteredModalityData(
-          result.modalityOverview,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to fetch custom executive KPIs:",
-          error,
-        );
-      }
-    });
   };
 
   useEffect(() => {
-    if (filterPreset !== "ALL") {
+    let isCancelled = false;
+
+    if (
+      filterPreset !== "ALL" ||
+      selectedModality !== "ALL" ||
+      selectedTriage !== "ALL"
+    ) {
       startKpiTransition(async () => {
         try {
-          if (filterPreset === "CUSTOM") {
-            const result = await fetchFilteredExecutiveKpiAction({
-              preset: "CUSTOM",
-              startDate: customStart,
-              endDate: customEnd,
-            });
+          const result = await fetchFilteredExecutiveKpiAction({
+            preset: filterPreset,
+            startDate: filterPreset === "CUSTOM" ? customStart : undefined,
+            endDate: filterPreset === "CUSTOM" ? customEnd : undefined,
+            modalityCode: selectedModality,
+            triageLevel: selectedTriage,
+          });
+          if (!isCancelled) {
             setKpiData(result);
             setFilteredModalityData(result.modalityOverview);
-            return;
           }
-          const result = await fetchFilteredExecutiveKpiAction({ preset: filterPreset });
-          setKpiData(result);
-          setFilteredModalityData(result.modalityOverview);
         } catch (error) {
-          console.error("Failed to re-sync filtered KPIs:", error);
+          if (!isCancelled) {
+            console.error("Failed to re-sync filtered KPIs:", error);
+          }
         }
       });
+    } else {
+      setKpiData(null);
+      setFilteredModalityData(null);
     }
-  }, [data, filterPreset, customStart, customEnd]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [data, filterPreset, customStart, customEnd, selectedModality, selectedTriage]);
 
   /* =========================================================
-     Resolved metrics
+     Instant Reactive & Server-Synced KPI Metrics
   ========================================================= */
 
-  const displayVolume = kpiData
-    ? kpiData.totalVolume
+  const liveKpiMetrics = useMemo(() => {
+    if (kpiData) return kpiData;
+
+    if (
+      filterPreset === "ALL" &&
+      selectedModality === "ALL" &&
+      selectedTriage === "ALL"
+    ) {
+      return null;
+    }
+
+    // Instant local calculation from allExamsSummary for 0ms UI reactivity
+    const all = data?.allExamsSummary || [];
+    const scoped = all.filter((e: any) => {
+      if (selectedModality !== "ALL" && e.modalityCode !== selectedModality) return false;
+      if (selectedTriage !== "ALL" && e.triageLevel !== selectedTriage) return false;
+      return true;
+    });
+
+    const finalized = scoped.filter((e: any) => e.isFinalized);
+    const tatValues = finalized.map((e: any) => e.tatMinutes || 0).filter((v: number) => v > 0);
+    const avgMinutes = tatValues.length > 0 ? Number((tatValues.reduce((a: number, b: number) => a + b, 0) / tatValues.length).toFixed(1)) : 0;
+    const avgHours = Number((avgMinutes / 60).toFixed(1));
+    const sortedTat = [...tatValues].sort((a, b) => a - b);
+    const mid = Math.floor(sortedTat.length / 2);
+    const medianMinutes = sortedTat.length === 0 ? 0 : sortedTat.length % 2 !== 0 ? sortedTat[mid] : (sortedTat[mid - 1] + sortedTat[mid]) / 2;
+    const breached = finalized.filter((e: any) => e.isSlaBreached).length;
+    const pct = finalized.length > 0 ? Number((((finalized.length - breached) / finalized.length) * 100).toFixed(1)) : 100;
+    const pending = scoped.filter((e: any) => !e.isFinalized && e.statusCode !== "CANCELLED").length;
+
+    return {
+      totalVolume: scoped.length,
+      finalizedCount: finalized.length,
+      pendingReadingCount: pending,
+      avgTatMinutes: avgMinutes,
+      avgTatHours: avgHours,
+      medianTatMinutes: medianMinutes,
+      pctOnTime: pct,
+      tatDeltaPercent: null,
+      volumeDeltaPercent: null,
+      volumeByModality: null,
+      pendingByModality: null,
+      modalityOverview: null,
+    };
+  }, [data?.allExamsSummary, filterPreset, selectedModality, selectedTriage, kpiData]);
+
+  const activeMetrics = kpiData || liveKpiMetrics;
+
+  const displayVolume = activeMetrics
+    ? activeMetrics.totalVolume
     : data.totalVolume;
 
-  const displayAvgMinutes = kpiData
-    ? kpiData.avgTatMinutes
+  const displayAvgMinutes = activeMetrics
+    ? activeMetrics.avgTatMinutes
     : data.avgTatMinutes;
 
-  const displayAvgHours = kpiData
-    ? kpiData.avgTatHours
+  const displayAvgHours = activeMetrics
+    ? activeMetrics.avgTatHours
     : Number(
         (
           data.avgTatMinutes / 60
@@ -292,32 +295,31 @@ export function DashboardShell({
       );
 
   const displayMedianMinutes =
-    kpiData
-      ? kpiData.medianTatMinutes
+    activeMetrics
+      ? activeMetrics.medianTatMinutes
       : data.medianTatMinutes;
 
   const displayMedianHours = Number(
     ((displayMedianMinutes ?? 0) / 60).toFixed(1),
   );
 
-  const displayPctOnTime = kpiData
-    ? kpiData.pctOnTime
+  const displayPctOnTime = activeMetrics
+    ? activeMetrics.pctOnTime
     : data.pctOnTime;
 
-  const displayFinalized = kpiData
-    ? kpiData.finalizedCount
+  const displayFinalized = activeMetrics
+    ? activeMetrics.finalizedCount
     : data.finalizedCount;
 
-  const displayPending = kpiData
-    ? kpiData.pendingReadingCount
+  const displayPending = activeMetrics
+    ? activeMetrics.pendingReadingCount
     : data.pendingReadingCount;
 
   /* =========================================================
      Modality breakdown & KPI filtering
   ========================================================= */
 
-  const [selectedModality, setSelectedModality] =
-    useState<"ALL" | ModalityCode>("ALL");
+
 
   const activeVolumeByModality: Record<string, number> = useMemo(() => {
     return (
@@ -345,25 +347,22 @@ export function DashboardShell({
     );
   }, [kpiData, data]);
 
-  const displayVolumeForCard =
-    selectedModality === "ALL"
-      ? displayVolume
-      : (activeVolumeByModality[selectedModality] ?? 0);
+  const filterScopeSubtitle = useMemo(() => {
+    const parts: string[] = [];
+    if (selectedModality !== "ALL") {
+      parts.push(MODALITY_CONFIG[selectedModality]?.shortName || selectedModality);
+    }
+    if (selectedTriage !== "ALL") {
+      parts.push(TRIAGE_CONFIG[selectedTriage]?.label || selectedTriage);
+    }
+    return parts.length > 0 ? parts.join(" · ") : "Across all modalities & categories";
+  }, [selectedModality, selectedTriage]);
 
-  const volumeSubtitle =
-    selectedModality === "ALL"
-      ? "Across all modalities"
-      : `${MODALITY_CONFIG[selectedModality]?.shortName || selectedModality} · Selected modality`;
+  const displayVolumeForCard = displayVolume;
+  const volumeSubtitle = filterScopeSubtitle;
 
-  const displayPendingForCard =
-    selectedModality === "ALL"
-      ? displayPending
-      : (activePendingByModality[selectedModality] ?? 0);
-
-  const pendingSubtitle =
-    selectedModality === "ALL"
-      ? "Across all modalities"
-      : `${MODALITY_CONFIG[selectedModality]?.shortName || selectedModality} · Awaiting sign-off`;
+  const displayPendingForCard = displayPending;
+  const pendingSubtitle = `${filterScopeSubtitle} · Awaiting sign-off`;
 
   /* =========================================================
      Recent analytics
@@ -499,6 +498,12 @@ export function DashboardShell({
                   onModalityChange={
                     setSelectedModality
                   }
+                  selectedTriage={
+                    selectedTriage
+                  }
+                  onTriageChange={
+                    setSelectedTriage
+                  }
                 />
               </section>
 
@@ -620,6 +625,9 @@ export function DashboardShell({
                         {displayMedianHours}h
                       </span>
                     </p>
+                    <p className="mt-1 text-[10px] font-medium text-muted-foreground/80 truncate max-w-[200px]">
+                      {volumeSubtitle}
+                    </p>
                   </div>
                 </div>
 
@@ -643,6 +651,9 @@ export function DashboardShell({
                         {displayFinalized}
                       </span>{" "}
                       finalized
+                    </p>
+                    <p className="mt-1 text-[10px] font-medium text-muted-foreground/80 truncate max-w-[200px]">
+                      {volumeSubtitle}
                     </p>
                   </div>
                 </div>
@@ -769,11 +780,15 @@ export function DashboardShell({
               <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.9fr)_minmax(300px,0.75fr)]">
                 <div className="min-w-0">
                   <TatOverviewChart
-                    key={`tat-${filterPreset}-${customStart}-${customEnd}`}
+                    key={`tat-${filterPreset}-${selectedModality}-${selectedTriage}-${customStart}-${customEnd}`}
                     data={
                       filteredModalityData ||
                       modalityTatOverview
                     }
+                    selectedModality={selectedModality}
+                    selectedCategory={selectedTriage}
+                    onModalityChange={setSelectedModality}
+                    onCategoryChange={setSelectedTriage}
                   />
                 </div>
 
