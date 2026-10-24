@@ -122,7 +122,7 @@ export default async function PatientActivityPage() {
 
             <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.08] px-4 py-2 shadow-sm">
 
-              <span className="h-2.5 w-2.5 rounded-full bg-qc-yellow shadow-[0_0_0_3px_rgba(242,203,73,0.12)]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-qc-red shadow-[0_0_0_3px_rgba(242,203,73,0.12)]" />
 
               <span className="text-[11px] font-bold text-white">
                 Live · {data.lastUpdatedTime}
