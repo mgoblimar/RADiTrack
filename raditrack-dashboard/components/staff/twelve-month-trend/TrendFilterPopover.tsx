@@ -238,13 +238,13 @@ export function TrendFilterPopover({
               </span>
 
               <span
-                className={`flex h-5 w-5 items-center justify-center rounded-md border ${
-                  comparePriorYear
-                    ? "border-qc-blue bg-qc-blue text-white"
-                    : "border-border bg-card"
-                }`}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors"
+                style={{
+                  backgroundColor: comparePriorYear ? "#18298C" : "#FFFFFF",
+                  borderColor: comparePriorYear ? "#18298C" : "#94A3B8",
+                }}
               >
-                {comparePriorYear && <Check className="h-3 w-3" />}
+                {comparePriorYear && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
               </span>
             </button>
           </div>

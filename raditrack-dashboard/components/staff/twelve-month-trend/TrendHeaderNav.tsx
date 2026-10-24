@@ -3,6 +3,7 @@
 import {
   Calendar,
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -136,7 +137,7 @@ export function TrendHeaderNav({
           onClick={onToggleComparePriorYear}
           className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
             comparePriorYear
-              ? "border-qc-purple/30 bg-qc-purple/10 text-qc-purple shadow-sm"
+              ? "border-[#7652B8]/40 bg-[#7652B8]/10 text-[#7652B8] shadow-sm"
               : "border-white/80 bg-white/75 text-muted-foreground hover:bg-white hover:text-qc-navy"
           }`}
           title="Toggle dashed line comparison with prior 12-month period"
@@ -150,13 +151,13 @@ export function TrendHeaderNav({
             {selectedPeriod === "rolling" ? "Compare Prior 12m" : "Compare Prior Year"}
           </span>
           <span
-            className={`flex h-4 w-4 items-center justify-center rounded text-[10px] font-bold ${
-              comparePriorYear
-                ? "bg-qc-purple text-white"
-                : "border border-border/80 text-transparent"
-            }`}
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
+            style={{
+              backgroundColor: comparePriorYear ? QC_PURPLE : "#FFFFFF",
+              borderColor: comparePriorYear ? QC_PURPLE : "#94A3B8",
+            }}
           >
-            ✓
+            {comparePriorYear && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
           </span>
         </button>
 
