@@ -369,7 +369,7 @@ export function TwelveMonthTrendChart({
           </p>
 
           <p className="mt-1 text-xs font-extrabold text-qc-navy">
-            {displayAnnualAvgHours} hours
+            {displayAnnualAvgHours} hrs
           </p>
         </div>
 

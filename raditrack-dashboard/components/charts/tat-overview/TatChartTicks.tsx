@@ -79,7 +79,7 @@ export const createActualTatLabelRenderer = (
           fontSize={10}
           fontWeight={800}
         >
-          {value}h
+          {value} hrs
         </text>
       </g>
     );
