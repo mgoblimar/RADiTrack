@@ -19,7 +19,6 @@ import {
   fetchFilteredExecutiveKpiAction,
   type KpiPreset,
   type FilteredKpiResult,
-  type ModalityTatOverviewItem,
 } from "@/app/actions";
 import { ModalityCode, MODALITY_CONFIG, TriageLevel, TRIAGE_CONFIG } from "@/lib/enums";
 
@@ -158,13 +157,6 @@ export function DashboardShell({
   const [kpiData, setKpiData] =
     useState<FilteredKpiResult | null>(null);
 
-  const [
-    filteredModalityData,
-    setFilteredModalityData,
-  ] = useState<
-    ModalityTatOverviewItem[] | null
-  >(null);
-
   const [selectedModality, setSelectedModality] =
     useState<"ALL" | ModalityCode>("ALL");
 
@@ -208,7 +200,6 @@ export function DashboardShell({
           });
           if (!isCancelled) {
             setKpiData(result);
-            setFilteredModalityData(result.modalityOverview);
           }
         } catch (error) {
           if (!isCancelled) {
@@ -218,7 +209,6 @@ export function DashboardShell({
       });
     } else {
       setKpiData(null);
-      setFilteredModalityData(null);
     }
 
     return () => {
@@ -780,15 +770,7 @@ export function DashboardShell({
               <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.9fr)_minmax(300px,0.75fr)]">
                 <div className="min-w-0">
                   <TatOverviewChart
-                    key={`tat-${filterPreset}-${selectedModality}-${selectedTriage}-${customStart}-${customEnd}`}
-                    data={
-                      filteredModalityData ||
-                      modalityTatOverview
-                    }
-                    selectedModality={selectedModality}
-                    selectedCategory={selectedTriage}
-                    onModalityChange={setSelectedModality}
-                    onCategoryChange={setSelectedTriage}
+                    data={modalityTatOverview}
                   />
                 </div>
 

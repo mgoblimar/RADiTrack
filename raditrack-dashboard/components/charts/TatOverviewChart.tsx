@@ -34,7 +34,6 @@ import {
   X,
 } from "lucide-react";
 
-import { ModalityCode, TriageLevel } from "@/lib/enums";
 import {
   fetchModalityTatDataAction,
   fetchModalityTatCustomRangeAction,
@@ -47,10 +46,6 @@ interface Props {
   data?:
     | ModalityTatOverviewItem[]
     | MultiPeriodModalityTatOverview;
-  selectedModality?: "ALL" | ModalityCode | string;
-  selectedCategory?: "ALL" | TriageLevel | string;
-  onModalityChange?: (modality: "ALL" | ModalityCode) => void;
-  onCategoryChange?: (category: "ALL" | TriageLevel) => void;
 }
 
 type ExtendedTemporalPeriod =
@@ -77,21 +72,12 @@ const QC_EMPTY = "#CBD5E1";
 
 export function TatOverviewChart({
   data,
-  selectedModality = "ALL",
-  selectedCategory = "ALL",
-  onModalityChange,
-  onCategoryChange,
 }: Props) {
   const [temporalPeriod, setTemporalPeriod] =
     useState<ExtendedTemporalPeriod>("ALL");
 
   const [patientCategory, setPatientCategory] =
     useState<PatientCategoryFilter>("ALL");
-
-  const effectiveCategory: PatientCategoryFilter =
-    selectedCategory && selectedCategory !== "ALL"
-      ? (selectedCategory as PatientCategoryFilter)
-      : patientCategory;
 
   const [periodDataset, setPeriodDataset] =
     useState<ModalityTatOverviewItem[] | null>(null);
@@ -410,11 +396,11 @@ export function TatOverviewChart({
   const displayData = activeDataset.map((item) => {
     let stats = item.all;
 
-    if (effectiveCategory === "OPD" && item.opd) {
+    if (patientCategory === "OPD" && item.opd) {
       stats = item.opd;
-    } else if (effectiveCategory === "ER" && (item.er || item.emergency)) {
+    } else if (patientCategory === "ER" && (item.er || item.emergency)) {
       stats = item.er ?? item.emergency;
-    } else if (effectiveCategory === "IN" && item.inpatient) {
+    } else if (patientCategory === "IN" && item.inpatient) {
       stats = item.inpatient;
     }
 
@@ -434,8 +420,7 @@ export function TatOverviewChart({
 
   const isFiltered =
     temporalPeriod !== "ALL" ||
-    effectiveCategory !== "ALL" ||
-    (Boolean(selectedModality) && selectedModality !== "ALL");
+    patientCategory !== "ALL";
 
   const handleResetFilters = () => {
     setTemporalPeriod("ALL");
@@ -443,8 +428,6 @@ export function TatOverviewChart({
     setPeriodDataset(null);
     setCustomDataset(null);
     setIsFilterOpen(false);
-    onCategoryChange?.("ALL");
-    onModalityChange?.("ALL");
   };
 
   const temporalLabels: Record<
@@ -666,15 +649,12 @@ export function TatOverviewChart({
                   { id: "IN", label: "Inpatient" },
                 ] as const
               ).map((cat) => {
-                const isActive = effectiveCategory === cat.id;
+                const isActive = patientCategory === cat.id;
                 return (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => {
-                      setPatientCategory(cat.id);
-                      onCategoryChange?.(cat.id as any);
-                    }}
+                    onClick={() => setPatientCategory(cat.id)}
                     className={`rounded-xl px-2 py-2 text-[11px] font-bold transition-colors ${
                       isActive
                         ? "bg-qc-navy text-white shadow-xs"
@@ -833,27 +813,9 @@ export function TatOverviewChart({
             </div>
 
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-extrabold tracking-tight text-qc-navy sm:text-2xl">
-                  TAT BY MODALITY
-                </h2>
-                {(selectedModality !== "ALL" || effectiveCategory !== "ALL") && (
-                  <span className="inline-flex items-center rounded-lg border border-qc-blue/20 bg-qc-blue/10 px-2.5 py-0.5 text-[11px] font-extrabold text-qc-blue">
-                    {[
-                      selectedModality !== "ALL" ? selectedModality : null,
-                      effectiveCategory !== "ALL"
-                        ? effectiveCategory === "ER"
-                          ? "Emergency (ER)"
-                          : effectiveCategory === "OPD"
-                            ? "Outpatient (OPD)"
-                            : "Inpatient (IN)"
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                )}
-              </div>
+              <h2 className="text-xl font-extrabold tracking-tight text-qc-navy sm:text-2xl">
+                TAT BY MODALITY
+              </h2>
               <p className="text-xs font-semibold text-muted-foreground">
                 Target SLA benchmark vs Actual TAT
               </p>
@@ -968,30 +930,13 @@ export function TatOverviewChart({
                   xAxisId="targetAxis"
                   dataKey="target"
                   name="Target SLA"
+                  fill="#4A69BD"
+                  fillOpacity={0.82}
+                  stroke="#2C4897"
+                  strokeWidth={1.5}
                   radius={[6, 6, 0, 0]}
                   barSize={50}
-                >
-                  {displayData.map((item, index) => {
-                    const isSelected = Boolean(selectedModality) && selectedModality !== "ALL" && selectedModality === item.modality;
-                    const isAnySelected = Boolean(selectedModality) && selectedModality !== "ALL";
-                    const opacity = isAnySelected ? (isSelected ? 0.95 : 0.3) : 0.82;
-                    return (
-                      <Cell
-                        key={`target-cell-${index}`}
-                        cursor={onModalityChange ? "pointer" : "default"}
-                        onClick={() => {
-                          if (onModalityChange) {
-                            onModalityChange(selectedModality === item.modality ? "ALL" : (item.modality as ModalityCode));
-                          }
-                        }}
-                        fill="#4A69BD"
-                        fillOpacity={opacity}
-                        stroke={isSelected ? "#F2CB49" : "#2C4897"}
-                        strokeWidth={isSelected ? 2 : 1.5}
-                      />
-                    );
-                  })}
-                </Bar>
+                />
 
                 {/* Narrow Actual TAT bar centered directly in foreground */}
                 <Bar
@@ -1001,34 +946,18 @@ export function TatOverviewChart({
                   radius={[4, 4, 0, 0]}
                   barSize={24}
                 >
-                  {displayData.map((item, index) => {
-                    const isSelected = Boolean(selectedModality) && selectedModality !== "ALL" && selectedModality === item.modality;
-                    const isAnySelected = Boolean(selectedModality) && selectedModality !== "ALL";
-                    const opacity = isAnySelected ? (isSelected ? 1.0 : 0.35) : 1.0;
-                    const isBreach = item.avgTat > item.target;
-
-                    return (
-                      <Cell
-                        key={`cell-${index}`}
-                        cursor={onModalityChange ? "pointer" : "default"}
-                        onClick={() => {
-                          if (onModalityChange) {
-                            onModalityChange(selectedModality === item.modality ? "ALL" : (item.modality as ModalityCode));
-                          }
-                        }}
-                        fill={
-                          item.volume === 0
-                            ? QC_EMPTY
-                            : isBreach
-                              ? "#C53030"
-                              : QC_NAVY
-                        }
-                        fillOpacity={opacity}
-                        stroke={isSelected ? "#F2CB49" : undefined}
-                        strokeWidth={isSelected ? 2.5 : 0}
-                      />
-                    );
-                  })}
+                  {displayData.map((item, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        item.volume === 0
+                          ? QC_EMPTY
+                          : item.avgTat > item.target
+                            ? "#C53030"
+                            : QC_NAVY
+                      }
+                    />
+                  ))}
                   <LabelList
                     dataKey="avgTat"
                     content={renderActualTatLabel}
