@@ -16,6 +16,7 @@ import { toIsoDate } from "@/lib/kpi-range";
 
 import {
   Calendar,
+  Columns2,
   ChevronDown,
   Filter,
   Layers,
@@ -116,6 +117,9 @@ export function SevenDayTatTable({
 
   const [mode, setMode] =
     useState<AnalyticsMode>("rolling");
+
+  // Off by default; shows the previous 7 days next to the current table.
+  const [showPrevious, setShowPrevious] = useState(false);
 
   const [isOptionsOpen, setIsOptionsOpen] =
     useState(false);
@@ -319,6 +323,7 @@ export function SevenDayTatTable({
 
   const renderTable = (
     rows: DayRow[],
+    isPrior = false,
   ) => {
     const totalVolume = rows.reduce(
       (sum, row) => sum + row.totalExams,
@@ -550,7 +555,11 @@ export function SevenDayTatTable({
                       ) : (
                         <span
                           className={`font-mono text-xs font-extrabold ${
-                            isSlow ? "text-qc-red" : "text-qc-navy"
+                            isSlow
+                              ? "text-qc-red"
+                              : isPrior
+                                ? "text-qc-blue"
+                                : "text-qc-navy"
                           }`}
                         >
                           {formatTurnaroundTime(
@@ -612,7 +621,11 @@ export function SevenDayTatTable({
                 </td>
 
                 <td className="px-4 py-3 text-right">
-                  <span className="font-mono text-xs font-extrabold text-qc-navy">
+                  <span
+                    className={`font-mono text-xs font-extrabold ${
+                      isPrior ? "text-qc-blue" : "text-qc-navy"
+                    }`}
+                  >
                     {weightedTat > 0
                       ? `${weightedTatHours} hrs`
                       : "—"}
@@ -743,6 +756,26 @@ export function SevenDayTatTable({
             </span>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+          {/* Compare with the previous 7 days */}
+          <button
+            type="button"
+            onClick={() => setShowPrevious((previous) => !previous)}
+            aria-pressed={showPrevious}
+            className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
+              showPrevious
+                ? "border-qc-blue bg-qc-blue text-white"
+                : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
+            }`}
+          >
+            <Columns2
+              className={`h-3.5 w-3.5 ${
+                showPrevious ? "text-qc-yellow" : "text-qc-blue"
+              }`}
+            />
+            {showPrevious ? "Hide previous 7 days" : "Compare previous 7 days"}
+          </button>
+
           {/* Options */}
           <button
             ref={optionsButtonRef}
@@ -750,7 +783,7 @@ export function SevenDayTatTable({
             onClick={() =>
               setIsOptionsOpen((previous) => !previous)
             }
-            className={`inline-flex h-9 items-center gap-2 self-start rounded-xl border px-3 text-xs font-extrabold transition-all lg:self-auto ${
+            className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
               isOptionsOpen
                 ? "border-qc-navy bg-qc-navy text-white"
                 : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
@@ -774,6 +807,7 @@ export function SevenDayTatTable({
               }`}
             />
           </button>
+          </div>
         </div>
       </div>
 
@@ -782,24 +816,63 @@ export function SevenDayTatTable({
         isOptionsOpen &&
         createPortal(optionsPopover, document.body)}
 
-      {/* Single table view */}
+      {/* Current table, optionally beside the previous 7 days */}
       <div className="px-4 pb-5 pt-4 sm:px-5">
-        <div className="min-w-0 space-y-2.5">
-          <div className="flex items-center justify-between gap-3 px-1">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-qc-yellow" />
-
-              <span className="text-sm font-extrabold text-qc-navy">
-                Current
+        <div
+          className={`grid grid-cols-1 gap-5 ${
+            showPrevious ? "xl:grid-cols-2" : ""
+          }`}
+        >
+          <div className="min-w-0 space-y-2.5">
+            <div className="flex items-center justify-between gap-3 px-1">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-qc-yellow" />
+                <span className="text-sm font-extrabold text-qc-navy">
+                  Current
+                </span>
+              </div>
+              <span className="text-[10px] font-semibold text-muted-foreground">
+                {currentData.currentTotalVolume} exams
               </span>
             </div>
 
-            <span className="text-[10px] font-semibold text-muted-foreground">
-              {currentData.currentTotalVolume} exams
-            </span>
+            {renderTable(currentData.dayRows)}
           </div>
 
-          {renderTable(currentData.dayRows)}
+          {showPrevious && (
+            <div className="min-w-0 space-y-2.5">
+              <div className="flex items-center justify-between gap-3 px-1">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-qc-blue" />
+                  <span className="text-sm font-extrabold text-qc-navy">
+                    Previous 7 days
+                  </span>
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground">
+                  {currentData.priorTotalVolume} exams
+                </span>
+              </div>
+
+              {currentData.priorDayRows &&
+              currentData.priorDayRows.length > 0 ? (
+                renderTable(currentData.priorDayRows, true)
+              ) : (
+                <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-border bg-background p-8 text-center">
+                  <div>
+                    <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <Layers className="h-4 w-4" />
+                    </div>
+                    <p className="mt-3 text-sm font-extrabold text-qc-navy">
+                      No previous data
+                    </p>
+                    <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                      There is no earlier seven-day period to compare with.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
