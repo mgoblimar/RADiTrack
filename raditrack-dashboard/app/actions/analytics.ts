@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import {
   TriageLevel,
   UrgencyLevel,
@@ -274,7 +275,9 @@ export interface MonthTrendData {
   priorYearAvgTatMinutes?: number;
   priorYearTotalFinalized?: number;
   byModality?: Record<string, MonthModalityTrend>;
-  [key: string]: any;
+  // Flattened per-modality fields, e.g. CT_avgTatHours, prior_CT_totalFinalized
+  [key: `${string}_avgTatHours`]: number;
+  [key: `${string}_totalFinalized`]: number;
 }
 
 export interface ModalityAnnualSummary {
@@ -384,7 +387,7 @@ export async function getTwelveMonthTatTrend(
   const minQueryDate = new Date(Math.min(...allDateStarts.map((d) => d.getTime())));
   const maxQueryDate = new Date(Math.max(...allDateEnds.map((d) => d.getTime())));
 
-  const examinationWhere: any = {
+  const examinationWhere: Prisma.ExaminationWhereInput = {
     studyDate: { gte: minQueryDate, lte: maxQueryDate },
     statusCode: { not: "CANCELLED" },
   };
@@ -764,7 +767,7 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
             ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
             : 0;
 
-        let sla: any;
+        let sla: (typeof m.slaConfigs)[number] | undefined;
         if (filterType === "isStat" || filterType === "ER") {
           sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER);
         } else if (filterType === "OPD") {
@@ -894,7 +897,7 @@ export async function fetchModalityTatDataAction(options: {
           ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
           : 0;
 
-      let sla: any;
+      let sla: (typeof m.slaConfigs)[number] | undefined;
       if (filterType === "isStat" || filterType === "ER") {
         sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER);
       } else if (filterType === "OPD") {

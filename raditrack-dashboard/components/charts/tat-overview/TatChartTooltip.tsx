@@ -1,10 +1,10 @@
 "use client";
 
-import type { PatientCategoryFilter } from "./types";
+import type { ModalityTatDisplayItem, PatientCategoryFilter } from "./types";
 
 interface TatChartTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: ReadonlyArray<{ payload?: ModalityTatDisplayItem }>;
   hasTargetSla: boolean;
   patientCategory: PatientCategoryFilter;
 }

@@ -1,11 +1,14 @@
 import React from "react";
+import type { LabelProps, XAxisTickContentProps } from "recharts";
 import type { ModalityTatDisplayItem } from "./types";
 
 /* =========================================================
    Custom Modality X-Axis Tick (Shows friendly modality name)
 ========================================================= */
-export const renderModalityTick = (props: any) => {
-  const { x, y, payload } = props;
+export const renderModalityTick = (props: XAxisTickContentProps) => {
+  const { payload } = props;
+  const x = Number(props.x);
+  const y = Number(props.y);
   if (!payload || payload.value === undefined || payload.value === null) return null;
 
   const raw = String(payload.value);
@@ -49,10 +52,13 @@ export const createActualTatLabelRenderer = (
   displayData: ModalityTatDisplayItem[],
   hasTargetSla: boolean,
 ) => {
-  return function renderActualTatLabel(props: any) {
-    const { x, y, width, value, index } = props;
+  return function renderActualTatLabel(props: LabelProps) {
+    const { value, index } = props;
+    const x = Number(props.x);
+    const y = Number(props.y);
+    const width = Number(props.width);
     if (value === undefined || value === null) return null;
-    const item = displayData[index];
+    const item = index === undefined ? undefined : displayData[index];
     if (!item || item.volume === 0) return null;
 
     const isBreach = hasTargetSla && item.target !== null && item.avgTat > item.target;

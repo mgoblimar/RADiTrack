@@ -31,9 +31,10 @@ import {
   URGENCY_CONFIG,
 } from "@/lib/enums";
 import { notifyDatabaseChanged } from "@/lib/broadcast";
+import type { PendingReadingQueueItem } from "@/lib/dashboard-types";
 
 interface SimulatorHubProps {
-  initialQueue: any[];
+  initialQueue: PendingReadingQueueItem[];
   totalExamsCount: number;
 }
 

@@ -28,7 +28,7 @@ export const MODALITIES: ModalityConfig[] = [
   { code: ModalityCode.MAMMO, label: "Mammogram", color: "#DB2777", lightColor: "#F9A8D4", dotClass: "bg-pink-500" },
 ];
 
-export const TRIAGE_OPTIONS = [
+export const TRIAGE_OPTIONS: ReadonlyArray<{ value: "ALL" | TriageLevel; label: string }> = [
   { value: "ALL", label: "All Categories" },
   { value: TriageLevel.OPD, label: "Outpatient (OPD)" },
   { value: TriageLevel.IN, label: "Inpatient (IN)" },

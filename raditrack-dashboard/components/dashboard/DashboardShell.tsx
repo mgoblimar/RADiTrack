@@ -16,6 +16,14 @@ import { TatOverviewChart } from "@/components/charts/TatOverviewChart";
 import { SevenDayTatTable } from "@/components/staff/SevenDayTatTable";
 import { TwelveMonthTrendChart } from "@/components/staff/TwelveMonthTrendChart";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
+import type {
+  ConfigurationsData,
+  DashboardData,
+  ModalityTatOverviewData,
+  SevenDayAnalyticsData,
+  TwelveMonthTrendData,
+} from "@/lib/dashboard-types";
+import { usePersistedBoolean } from "@/hooks/use-persisted-boolean";
 
 import {
   fetchFilteredExecutiveKpiAction,
@@ -44,12 +52,12 @@ const MODALITIES_LIST = [
 ];
 
 interface DashboardShellProps {
-  data: any;
-  sevenDayAnalytics: any;
-  twelveMonthTrend: any;
-  modalityTatOverview: any;
-  prevMonth: any;
-  configurationsData: any;
+  data: DashboardData;
+  sevenDayAnalytics: SevenDayAnalyticsData;
+  twelveMonthTrend: TwelveMonthTrendData;
+  modalityTatOverview: ModalityTatOverviewData;
+  prevMonth: TwelveMonthTrendData["months"][number] | null;
+  configurationsData: ConfigurationsData;
 }
 
 export function DashboardShell({
@@ -67,39 +75,8 @@ export function DashboardShell({
      Sidebar
   ========================================================= */
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] =
-    useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(
-        "raditrack_sidebar_collapsed",
-      );
-
-      if (saved !== null) {
-        setIsSidebarCollapsed(saved === "true");
-      }
-    } catch {
-      // Ignore localStorage errors.
-    }
-  }, []);
-
-  const handleToggleSidebar = () => {
-    setIsSidebarCollapsed((prev) => {
-      const next = !prev;
-
-      try {
-        localStorage.setItem(
-          "raditrack_sidebar_collapsed",
-          String(next),
-        );
-      } catch {
-        // Ignore localStorage errors.
-      }
-
-      return next;
-    });
-  };
+  const [isSidebarCollapsed, handleToggleSidebar] =
+    usePersistedBoolean("raditrack_sidebar_collapsed", false);
 
   /* =========================================================
      Dashboard filter
@@ -147,14 +124,36 @@ export function DashboardShell({
      Dynamic KPI / modality state
   ========================================================= */
 
-  const [kpiData, setKpiData] =
-    useState<FilteredKpiResult | null>(null);
-
   const [selectedModality, setSelectedModality] =
     useState<"ALL" | ModalityCode>("ALL");
 
   const [selectedTriage, setSelectedTriage] =
     useState<"ALL" | TriageLevel>("ALL");
+
+  // Server KPI result, tagged with the filter it was fetched for so a stale
+  // result is never shown for a different (or default) filter.
+  const [kpiResult, setKpiResult] = useState<{
+    filterKey: string;
+    data: FilteredKpiResult;
+  } | null>(null);
+
+  const isDefaultFilter =
+    filterPreset === "ALL" &&
+    selectedModality === "ALL" &&
+    selectedTriage === "ALL";
+
+  const filterKey = [
+    filterPreset,
+    filterPreset === "CUSTOM" ? customStart : "",
+    filterPreset === "CUSTOM" ? customEnd : "",
+    selectedModality,
+    selectedTriage,
+  ].join("|");
+
+  const kpiData =
+    !isDefaultFilter && kpiResult?.filterKey === filterKey
+      ? kpiResult.data
+      : null;
 
   /* =========================================================
      KPI filter
@@ -178,51 +177,47 @@ export function DashboardShell({
   };
 
   useEffect(() => {
+    if (isDefaultFilter) return;
+
     let isCancelled = false;
 
-    if (
-      filterPreset !== "ALL" ||
-      selectedModality !== "ALL" ||
-      selectedTriage !== "ALL"
-    ) {
-      startKpiTransition(async () => {
-        try {
-          const result =
-            await fetchFilteredExecutiveKpiAction({
-              preset: filterPreset,
-              startDate:
-                filterPreset === "CUSTOM"
-                  ? customStart
-                  : undefined,
-              endDate:
-                filterPreset === "CUSTOM"
-                  ? customEnd
-                  : undefined,
-              modalityCode: selectedModality,
-              triageLevel: selectedTriage,
-            });
+    startKpiTransition(async () => {
+      try {
+        const result =
+          await fetchFilteredExecutiveKpiAction({
+            preset: filterPreset,
+            startDate:
+              filterPreset === "CUSTOM"
+                ? customStart
+                : undefined,
+            endDate:
+              filterPreset === "CUSTOM"
+                ? customEnd
+                : undefined,
+            modalityCode: selectedModality,
+            triageLevel: selectedTriage,
+          });
 
-          if (!isCancelled) {
-            setKpiData(result);
-          }
-        } catch (error) {
-          if (!isCancelled) {
-            console.error(
-              "Failed to re-sync filtered KPIs:",
-              error,
-            );
-          }
+        if (!isCancelled) {
+          setKpiResult({ filterKey, data: result });
         }
-      });
-    } else {
-      setKpiData(null);
-    }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error(
+            "Failed to re-sync filtered KPIs:",
+            error,
+          );
+        }
+      }
+    });
 
     return () => {
       isCancelled = true;
     };
   }, [
     data,
+    isDefaultFilter,
+    filterKey,
     filterPreset,
     customStart,
     customEnd,
@@ -246,9 +241,9 @@ export function DashboardShell({
     }
 
     // Instant local calculation from allExamsSummary.
-    const all = data?.allExamsSummary || [];
+    const all = data.allExamsSummary;
 
-    const scoped = all.filter((e: any) => {
+    const scoped = all.filter((e) => {
       if (
         selectedModality !== "ALL" &&
         e.modalityCode !== selectedModality
@@ -267,11 +262,11 @@ export function DashboardShell({
     });
 
     const finalized = scoped.filter(
-      (e: any) => e.isFinalized,
+      (e) => e.isFinalized,
     );
 
     const tatValues = finalized
-      .map((e: any) => e.tatMinutes || 0)
+      .map((e) => e.tatMinutes || 0)
       .filter((value: number) => value > 0);
 
     const avgMinutes =
@@ -304,7 +299,7 @@ export function DashboardShell({
           : (sortedTat[mid - 1] + sortedTat[mid]) / 2;
 
     const breached = finalized.filter(
-      (e: any) => e.isSlaBreached,
+      (e) => e.isSlaBreached,
     ).length;
 
     const pct =
@@ -319,7 +314,7 @@ export function DashboardShell({
         : 100;
 
     const pending = scoped.filter(
-      (e: any) =>
+      (e) =>
         !e.isFinalized &&
         e.statusCode !== "CANCELLED",
     ).length;
@@ -339,7 +334,7 @@ export function DashboardShell({
       modalityOverview: null,
     };
   }, [
-    data?.allExamsSummary,
+    data.allExamsSummary,
     filterPreset,
     selectedModality,
     selectedTriage,

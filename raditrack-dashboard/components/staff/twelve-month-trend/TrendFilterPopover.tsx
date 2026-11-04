@@ -119,7 +119,7 @@ export function TrendFilterPopover({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => onSelectTriage(opt.value as any)}
+                  onClick={() => onSelectTriage(opt.value)}
                   className={`flex items-center justify-between rounded-xl px-3 py-2 text-[11px] font-bold transition-all ${
                     selectedTriage === opt.value
                       ? "bg-qc-navy text-white shadow-sm"

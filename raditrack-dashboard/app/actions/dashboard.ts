@@ -505,7 +505,7 @@ export async function fetchFilteredExecutiveKpiAction(
           ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
           : 0;
 
-      let sla: any;
+      let sla: (typeof m.slaConfigs)[number] | undefined;
       if (filterType === "isStat" || filterType === "ER") {
         sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER);
       } else if (filterType === "OPD") {

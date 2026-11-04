@@ -234,10 +234,16 @@ export function DateRangeFilter({
      Synchronize custom date inputs with parent state
   ========================================================= */
 
-  useEffect(() => {
+  // Adjust local state during render when the parent range changes.
+  const [prevRange, setPrevRange] = useState({ startDate, endDate });
+  if (
+    prevRange.startDate !== startDate ||
+    prevRange.endDate !== endDate
+  ) {
+    setPrevRange({ startDate, endDate });
     setLocalStart(startDate);
     setLocalEnd(endDate);
-  }, [startDate, endDate]);
+  }
 
   /* =========================================================
      Keep the date popover positioned correctly

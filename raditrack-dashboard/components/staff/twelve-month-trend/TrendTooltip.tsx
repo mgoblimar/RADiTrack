@@ -2,11 +2,11 @@
 
 import type { MonthTrendData } from "@/app/actions";
 import { ModalityCode } from "@/lib/enums";
-import { MODALITIES, QC_BLUE, QC_NAVY, QC_PURPLE } from "./types";
+import { MODALITIES, QC_BLUE, QC_PURPLE } from "./types";
 
 interface TrendTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: ReadonlyArray<{ payload?: MonthTrendData }>;
   label?: string;
   selectedModality: "ALL" | "MULTI" | ModalityCode;
   comparePriorYear: boolean;
@@ -27,7 +27,7 @@ export function TrendTooltip({
     return null;
   }
 
-  const point = payload[0]?.payload as MonthTrendData;
+  const point = payload[0]?.payload;
   if (!point) {
     return null;
   }

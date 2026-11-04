@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import {
   TriageLevel,
@@ -319,7 +320,7 @@ export async function fetchFilteredExaminationsAction(
     dateFilter = { gte: s, lte: e };
   }
 
-  const whereClause: any = {
+  const whereClause: Prisma.ExaminationWhereInput = {
     statusCode: { not: "CANCELLED" },
   };
 
@@ -366,10 +367,6 @@ export async function fetchFilteredExaminationsAction(
     }
   } else if (options.triageLevel && options.triageLevel !== "ALL") {
     whereClause.triageLevel = options.triageLevel;
-  }
-
-  if (options.urgencyLevel && options.urgencyLevel !== "ALL") {
-    whereClause.urgencyLevel = options.urgencyLevel;
   }
 
   if (options.searchTerm && options.searchTerm.trim() !== "") {

@@ -35,6 +35,7 @@ import {
   type FilteredExaminationsResult,
 } from "@/app/actions";
 import { notifyDatabaseChanged } from "@/lib/broadcast";
+import type { PendingReadingQueueItem } from "@/lib/dashboard-types";
 
 import {
   MODALITY_CONFIG,
@@ -44,7 +45,7 @@ import {
 } from "@/lib/enums";
 
 interface ExaminationsHubProps {
-  queue: any[];
+  queue: PendingReadingQueueItem[];
   finalizedCount: number;
 }
 
@@ -1418,7 +1419,7 @@ export function ExaminationsHub({
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-1.5">
                           <EditExamDialog
-                            item={item as any}
+                            item={item}
                           />
 
                           <DeleteExamDialog

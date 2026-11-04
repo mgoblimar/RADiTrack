@@ -164,9 +164,13 @@ export function SevenDayTatTable({
 
   const [analytics, setAnalytics] = useState(initialAnalytics);
 
-  useEffect(() => {
+  // Adjust state during render when fresh server data arrives.
+  const [prevInitialAnalytics, setPrevInitialAnalytics] =
+    useState(initialAnalytics);
+  if (prevInitialAnalytics !== initialAnalytics) {
+    setPrevInitialAnalytics(initialAnalytics);
     setAnalytics(initialAnalytics);
-  }, [initialAnalytics]);
+  }
 
   const [isPending, startTransition] = useTransition();
 

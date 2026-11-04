@@ -5,6 +5,7 @@ import {
   Pie,
   Cell,
   ResponsiveContainer,
+  type PieLabelRenderProps,
 } from "recharts";
 
 import {
@@ -31,15 +32,14 @@ const COLORS = [
   "#050E40",
 ];
 
-const renderOutsideLabel = ({
-  cx,
-  cy,
-  midAngle,
-  outerRadius,
-  value,
-  name,
-}: any) => {
+const renderOutsideLabel = (props: PieLabelRenderProps) => {
+  const { value, name } = props;
   if (value === 0) return null;
+
+  const cx = Number(props.cx);
+  const cy = Number(props.cy);
+  const midAngle = Number(props.midAngle);
+  const outerRadius = Number(props.outerRadius);
 
   const RADIAN = Math.PI / 180;
   const radius = outerRadius + 14;

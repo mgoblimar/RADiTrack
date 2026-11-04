@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useRef,
   useState,
   useTransition,
@@ -56,40 +57,43 @@ export function TwelveMonthTrendChart({
      Preserve selected filters during automatic data refreshes
   ========================================================= */
 
-  const selectedPeriodRef = useRef(selectedPeriod);
-  selectedPeriodRef.current = selectedPeriod;
+  const isDefaultFilter =
+    selectedPeriod === "rolling" && selectedTriage === "ALL";
 
-  const selectedTriageRef = useRef(selectedTriage);
-  selectedTriageRef.current = selectedTriage;
+  // Use incoming data directly when the default filters are active
+  // (adjusting state during render instead of in an effect).
+  const [prevInitialData, setPrevInitialData] = useState(initialData);
+  if (prevInitialData !== initialData) {
+    setPrevInitialData(initialData);
+    if (isDefaultFilter) {
+      setData(initialData);
+    }
+  }
+
+  // Re-fetch with the active filters to preserve the user's selection.
+  // An effect event reads the latest filters without re-running on them.
+  const refetchWithActiveFilters = useEffectEvent(() => {
+    if (isDefaultFilter) return;
+
+    startTransition(async () => {
+      try {
+        const result = await fetchYearlyTrendAction(
+          selectedPeriod,
+          selectedTriage,
+        );
+
+        setData(result);
+      } catch (error) {
+        console.error(
+          "Failed to refresh yearly Turnaround Time trend:",
+          error,
+        );
+      }
+    });
+  });
 
   useEffect(() => {
-    const currentPeriod = selectedPeriodRef.current;
-    const currentTriage = selectedTriageRef.current;
-
-    // Use incoming data directly when the default filters are active.
-    if (
-      currentPeriod === "rolling" &&
-      currentTriage === "ALL"
-    ) {
-      setData(initialData);
-    } else {
-      // Re-fetch with the active filters to preserve the user's selection.
-      startTransition(async () => {
-        try {
-          const result = await fetchYearlyTrendAction(
-            currentPeriod,
-            currentTriage,
-          );
-
-          setData(result);
-        } catch (error) {
-          console.error(
-            "Failed to refresh yearly Turnaround Time trend:",
-            error,
-          );
-        }
-      });
-    }
+    refetchWithActiveFilters();
   }, [initialData]);
 
   /* =========================================================
