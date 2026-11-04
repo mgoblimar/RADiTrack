@@ -16,7 +16,6 @@ import { BarChart3 } from "lucide-react";
 
 import {
   QC_GRID,
-  QC_MUTED,
   QC_NAVY,
   QC_EMPTY,
   QC_YELLOW,
@@ -31,6 +30,9 @@ import {
 import { TatChartLegend } from "./tat-overview/TatChartLegend";
 
 export { type TatOverviewChartProps } from "./tat-overview/types";
+
+// Slate-600: readable hour labels on the light card background.
+const Y_AXIS_TICK_COLOR = "#475569";
 
 export function TatOverviewChart({
   data,
@@ -124,7 +126,7 @@ export function TatOverviewChart({
                 margin={{
                   top: 24,
                   right: 16,
-                  left: -10,
+                  left: 8,
                   bottom: 45,
                 }}
               >
@@ -148,11 +150,16 @@ export function TatOverviewChart({
                 {/* Average Turnaround Time in hours */}
 
                 <YAxis
-                  stroke={QC_MUTED}
-                  fontSize={10}
+                  tick={{
+                    fill: Y_AXIS_TICK_COLOR,
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
                   tickLine={false}
                   axisLine={false}
-                  width={42}
+                  tickMargin={8}
+                  width={56}
+                  allowDecimals={false}
                   tickFormatter={(value) => `${value} hrs`}
                 />
 
