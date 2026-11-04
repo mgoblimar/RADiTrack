@@ -540,14 +540,14 @@ export function DateRangeFilter({
   const handleReset = () => {
     if (isPending) return;
 
-    onPresetChange("ALL");
+    onPresetChange("ROLLING_7D");
     setIsOpen(false);
   };
 
   const handleResetAll = () => {
     if (isPending) return;
 
-    onPresetChange("ALL");
+    onPresetChange("ROLLING_7D");
     onModalityChange?.("ALL");
     onTriageChange?.("ALL");
 
@@ -853,7 +853,7 @@ export function DateRangeFilter({
   ========================================================= */
 
   const hasActiveFilters =
-    currentPreset !== "ALL" ||
+    currentPreset !== "ROLLING_7D" ||
     (selectedModality !== undefined &&
       selectedModality !== "ALL") ||
     (selectedTriage !== undefined &&
