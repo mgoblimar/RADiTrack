@@ -5,7 +5,9 @@ import type { ModalityTatDisplayItem } from "./types";
 /* =========================================================
    Custom Modality X-Axis Tick (Shows friendly modality name)
 ========================================================= */
-export const renderModalityTick = (props: XAxisTickContentProps) => {
+/** X-axis tick showing the friendly modality name; the highlighted one is emphasised. */
+export const createModalityTickRenderer = (highlightCode: string | null) =>
+  function renderModalityTick(props: XAxisTickContentProps) {
   const { payload } = props;
   const x = Number(props.x);
   const y = Number(props.y);
@@ -26,6 +28,7 @@ export const renderModalityTick = (props: XAxisTickContentProps) => {
   };
 
   const label = labels[code] || raw;
+  const isHighlighted = highlightCode !== null && code === highlightCode;
 
   return (
     <g transform={`translate(${x}, ${y + 8})`}>
@@ -35,8 +38,9 @@ export const renderModalityTick = (props: XAxisTickContentProps) => {
         textAnchor="middle"
         dominantBaseline="hanging"
         fill="#050E40"
-        fontSize={12}
-        fontWeight={800}
+        fontSize={isHighlighted ? 13 : 12}
+        fontWeight={isHighlighted ? 900 : 800}
+        textDecoration={isHighlighted ? "underline" : undefined}
         className="select-none tracking-tight"
       >
         {label}

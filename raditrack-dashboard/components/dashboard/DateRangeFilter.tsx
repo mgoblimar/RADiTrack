@@ -22,6 +22,7 @@ import {
 
 import { type KpiPreset } from "@/app/actions";
 import { ModalityCode, TriageLevel } from "@/lib/enums";
+import { resolveKpiRange } from "@/lib/kpi-range";
 
 export interface DateRangeFilterProps {
   currentPreset: KpiPreset;
@@ -86,6 +87,11 @@ const MODALITY_OPTIONS: {
     dotColor: "bg-blue-500",
   },
   {
+    id: ModalityCode.MAMMO,
+    label: "Mammogram",
+    dotColor: "bg-pink-500",
+  },
+  {
     id: ModalityCode.US,
     label: "Ultrasound",
     dotColor: "bg-emerald-500",
@@ -99,11 +105,6 @@ const MODALITY_OPTIONS: {
     id: ModalityCode.MRI,
     label: "MRI",
     dotColor: "bg-purple-500",
-  },
-  {
-    id: ModalityCode.MAMMO,
-    label: "Mammogram",
-    dotColor: "bg-pink-500",
   },
 ];
 
@@ -436,6 +437,18 @@ export function DateRangeFilter({
 
   const isCustom = currentPreset === "CUSTOM";
 
+  // "Custom" only opens the date form; the preset switches on Apply,
+  // so the KPIs never refetch with half-chosen dates.
+  const [isCustomFormOpen, setIsCustomFormOpen] = useState(false);
+  const showCustomForm = isCustom || isCustomFormOpen;
+
+  const customRangeLabel = resolveKpiRange(
+    "CUSTOM",
+    new Date(),
+    startDate,
+    endDate,
+  ).dateRangeFormatted;
+
   /* =========================================================
      Dropdown controls
   ========================================================= */
@@ -445,6 +458,7 @@ export function DateRangeFilter({
 
     setIsModalityOpen(false);
     setIsCategoryOpen(false);
+    setIsCustomFormOpen(false);
     setIsOpen((previous) => !previous);
   };
 
@@ -472,7 +486,7 @@ export function DateRangeFilter({
     if (isPending) return;
 
     if (preset === "CUSTOM") {
-      onPresetChange("CUSTOM");
+      setIsCustomFormOpen(true);
 
       requestAnimationFrame(() => {
         const position = getPosition(
@@ -488,6 +502,7 @@ export function DateRangeFilter({
       return;
     }
 
+    setIsCustomFormOpen(false);
     onPresetChange(preset);
     setIsOpen(false);
   };
@@ -600,7 +615,10 @@ export function DateRangeFilter({
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {PRESETS.map((preset) => {
             const isActive =
-              currentPreset === preset.id;
+              preset.id === "CUSTOM"
+                ? showCustomForm
+                : currentPreset === preset.id &&
+                  !isCustomFormOpen;
 
             return (
               <button
@@ -628,7 +646,7 @@ export function DateRangeFilter({
       </div>
 
       {/* Custom range inputs */}
-      {isCustom && (
+      {showCustomForm && (
         <div className="border-t border-border bg-background/60 px-4 py-4">
           <div className="mb-3 text-xs font-extrabold text-qc-navy">
             Custom range
@@ -898,7 +916,7 @@ export function DateRangeFilter({
                 }`}
               >
                 {isCustom
-                  ? `${startDate} → ${endDate}`
+                  ? customRangeLabel
                   : activePreset.label}
               </span>
 

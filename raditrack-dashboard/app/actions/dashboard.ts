@@ -6,8 +6,10 @@ import {
   UrgencyLevel,
   ModalityCode,
   ExaminationStatusCode,
+  sortByModalityOrder,
 } from "@/lib/enums";
 import { calculatedMedian } from "./utils";
+import { resolveKpiRange, type KpiPreset } from "@/lib/kpi-range";
 import type { ModalityTatOverviewItem, ModalityTatStats } from "./analytics";
 
 // 3. QUERY: Dashboard Aggregations
@@ -144,16 +146,7 @@ export async function getDashboardData() {
 // Computes dynamic Executive KPIs, prior period baselines, and modality stats
 // ============================================================================
 
-export type KpiPreset =
-  | "ALL"
-  | "TODAY"
-  | "ROLLING_7D"
-  | "WEEK"
-  | "LAST_WEEK"
-  | "MONTH"
-  | "LAST_MONTH"
-  | "YEAR"
-  | "CUSTOM";
+export type { KpiPreset };
 
 export interface FilteredKpiOptions {
   preset: KpiPreset;
@@ -194,136 +187,17 @@ export async function fetchFilteredExecutiveKpiAction(
 ): Promise<FilteredKpiResult> {
   const now = new Date();
   const preset = options.preset || "ALL";
-
-  let start: Date;
-  let end: Date;
-  let priorStart: Date;
-  let priorEnd: Date;
-  let presetLabel: string;
-  let priorPeriodLabel: string;
-  let isAllTime = false;
-
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-  if (preset === "TODAY") {
-    start = todayStart;
-    end = todayEnd;
-    priorStart = new Date(todayStart);
-    priorStart.setDate(priorStart.getDate() - 1);
-    priorEnd = new Date(todayEnd);
-    priorEnd.setDate(priorEnd.getDate() - 1);
-    presetLabel = "Today";
-    priorPeriodLabel = "Yesterday";
-  } else if (preset === "ROLLING_7D") {
-    end = todayEnd;
-    start = new Date(todayStart);
-    start.setDate(start.getDate() - 6);
-    priorEnd = new Date(start.getTime() - 1);
-    priorStart = new Date(start);
-    priorStart.setDate(priorStart.getDate() - 7);
-    presetLabel = "Rolling 7 Days";
-    priorPeriodLabel = "Prior 7 Days";
-  } else if (preset === "WEEK") {
-    const day = now.getDay();
-    const diffToMon = now.getDate() - (day === 0 ? 6 : day - 1);
-    start = new Date(now.getFullYear(), now.getMonth(), diffToMon, 0, 0, 0, 0);
-    end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-
-    priorStart = new Date(start);
-    priorStart.setDate(start.getDate() - 7);
-    priorEnd = new Date(end);
-    priorEnd.setDate(end.getDate() - 7);
-    presetLabel = "This Week (Mon–Sun)";
-    priorPeriodLabel = "Last Week";
-  } else if (preset === "LAST_WEEK") {
-    const day = now.getDay();
-    const diffToMon = now.getDate() - (day === 0 ? 6 : day - 1) - 7;
-    start = new Date(now.getFullYear(), now.getMonth(), diffToMon, 0, 0, 0, 0);
-    end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-
-    priorStart = new Date(start);
-    priorStart.setDate(start.getDate() - 7);
-    priorEnd = new Date(end);
-    priorEnd.setDate(end.getDate() - 7);
-    presetLabel = "Last Week (Mon–Sun)";
-    priorPeriodLabel = "2 Weeks Ago";
-  } else if (preset === "MONTH") {
-    start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-    priorStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-    priorEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-    presetLabel = "This Month";
-    priorPeriodLabel = "Last Month";
-  } else if (preset === "LAST_MONTH") {
-    start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-    end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-
-    priorStart = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0, 0);
-    priorEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0, 23, 59, 59, 999);
-    presetLabel = "Last Month";
-    priorPeriodLabel = "2 Months Ago";
-  } else if (preset === "YEAR") {
-    start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
-    end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-
-    priorStart = new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0, 0);
-    priorEnd = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
-    presetLabel = "This Year";
-    priorPeriodLabel = "Last Year";
-  } else if (preset === "CUSTOM" && options.startDate && options.endDate) {
-    const sParts = options.startDate.split("-").map(Number);
-    const eParts = options.endDate.split("-").map(Number);
-    start = new Date(sParts[0], sParts[1] - 1, sParts[2], 0, 0, 0, 0);
-    end = new Date(eParts[0], eParts[1] - 1, eParts[2], 23, 59, 59, 999);
-
-    const durationMs = end.getTime() - start.getTime() + 1;
-    priorEnd = new Date(start.getTime() - 1);
-    priorStart = new Date(priorEnd.getTime() - durationMs + 1);
-    presetLabel = "Custom Range";
-    priorPeriodLabel = "Prior Period";
-  } else {
-    // ALL
-    isAllTime = true;
-    start = new Date(2020, 0, 1, 0, 0, 0, 0);
-    end = new Date(2035, 11, 31, 23, 59, 59, 999);
-    priorStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-    priorEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-    presetLabel = "All Time";
-    priorPeriodLabel = "Prev Month";
-  }
-
-  const formatShort = (d: Date) =>
-    d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-
-  let dateRangeFormatted = `${formatShort(start)} – ${formatShort(end)}`;
-  if (isAllTime) {
-    dateRangeFormatted = "All Recorded Scans";
-  } else if (preset === "TODAY") {
-    dateRangeFormatted = formatShort(start);
-  } else if (preset === "MONTH") {
-    dateRangeFormatted = start.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  } else if (preset === "LAST_MONTH") {
-    dateRangeFormatted = start.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  } else if (preset === "YEAR") {
-    dateRangeFormatted = `${start.getFullYear()} Calendar Year`;
-  }
-
-  let priorDateRangeFormatted = `${formatShort(priorStart)} – ${formatShort(priorEnd)}`;
-  if (preset === "TODAY") {
-    priorDateRangeFormatted = formatShort(priorStart);
-  } else if (preset === "MONTH" || preset === "ALL") {
-    priorDateRangeFormatted = priorStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  } else if (preset === "LAST_MONTH") {
-    priorDateRangeFormatted = priorStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  } else if (preset === "YEAR") {
-    priorDateRangeFormatted = `${priorStart.getFullYear()} Calendar Year`;
-  }
+  const {
+    start,
+    end,
+    priorStart,
+    priorEnd,
+    presetLabel,
+    priorPeriodLabel,
+    isAllTime,
+    dateRangeFormatted,
+    priorDateRangeFormatted,
+  } = resolveKpiRange(preset, now, options.startDate, options.endDate);
 
   const [currentExams, priorExams, allActivePendingExams, modalities] = await Promise.all([
     prisma.examination.findMany({
@@ -485,7 +359,7 @@ export async function fetchFilteredExecutiveKpiAction(
   }
 
   // Modality TAT Breakdown for this period
-  const modalityOverview: ModalityTatOverviewItem[] = modalities.map((m) => {
+  const modalityOverview: ModalityTatOverviewItem[] = sortByModalityOrder(modalities).map((m) => {
     const calcStats = (
       filterType: "all" | "isStat" | "isRoutine" | "OPD" | "ER" | "IN"
     ): ModalityTatStats => {

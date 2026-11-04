@@ -64,10 +64,10 @@ type DatePreset =
 
 const ALL_MODALITIES: ModalityCode[] = [
   ModalityCode.XRAY,
+  ModalityCode.MAMMO,
+  ModalityCode.US,
   ModalityCode.CT,
   ModalityCode.MRI,
-  ModalityCode.US,
-  ModalityCode.MAMMO,
 ];
 
 const ALL_CATEGORIES: TriageLevel[] = [

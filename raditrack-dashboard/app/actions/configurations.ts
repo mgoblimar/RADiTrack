@@ -6,6 +6,7 @@ import {
   TriageLevel,
   UrgencyLevel,
   ModalityCode,
+  sortByModalityOrder,
 } from "@/lib/enums";
 
 // ============================================================================
@@ -84,7 +85,7 @@ export async function getConfigurationsAction(): Promise<ConfigurationsData> {
     orderBy: { fullName: "asc" },
   });
 
-  const modalities: ModalityConfigItem[] = modalitiesRaw.map((m) => ({
+  const modalities: ModalityConfigItem[] = sortByModalityOrder(modalitiesRaw).map((m) => ({
     modalityCode: m.modalityCode,
     modalityName: m.modalityName,
     departmentRoom: m.departmentRoom,

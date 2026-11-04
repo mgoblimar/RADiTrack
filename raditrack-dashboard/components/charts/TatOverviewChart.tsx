@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import {
   ResponsiveContainer,
   Bar,
@@ -12,98 +12,36 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, ChevronDown, Filter } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 
 import {
   QC_GRID,
   QC_MUTED,
   QC_NAVY,
   QC_EMPTY,
+  QC_YELLOW,
   type TatOverviewChartProps,
 } from "./tat-overview/types";
 import { useTatOverviewData } from "./tat-overview/useTatOverviewData";
 import { TatChartTooltip } from "./tat-overview/TatChartTooltip";
 import {
-  renderModalityTick,
+  createModalityTickRenderer,
   createActualTatLabelRenderer,
 } from "./tat-overview/TatChartTicks";
 import { TatChartLegend } from "./tat-overview/TatChartLegend";
-import { TatChartFilterPopover } from "./tat-overview/TatChartFilterPopover";
 
 export { type TatOverviewChartProps } from "./tat-overview/types";
 
-export function TatOverviewChart({ data }: TatOverviewChartProps) {
-  const {
-    temporalPeriod,
-    patientCategory,
-    setPatientCategory,
-    customStartDate,
-    setCustomStartDate,
-    customEndDate,
-    setCustomEndDate,
-    isPending,
-    isFiltered,
-    hasTargetSla,
-    displayData,
-    handleSelectPeriod,
-    handleFetchCustomRange,
-    handleResetFilters,
-  } = useTatOverviewData(data);
+export function TatOverviewChart({
+  data,
+  filters,
+  scopeLabel,
+}: TatOverviewChartProps) {
+  const { patientCategory, isPending, hasTargetSla, displayData } =
+    useTatOverviewData(data, filters);
 
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-
-  const filterButtonRef = useRef<HTMLButtonElement>(null);
-
-  const [filterPosition, setFilterPosition] = useState({
-    top: 0,
-    left: 0,
-  });
-
-  /* =========================================================
-     Position filter popover
-  ========================================================= */
-
-  const updateFilterPosition = () => {
-    if (!filterButtonRef.current) return;
-
-    const rect = filterButtonRef.current.getBoundingClientRect();
-    const width = Math.min(320, window.innerWidth - 24);
-    const padding = 12;
-
-    const left = Math.max(
-      padding,
-      Math.min(
-        rect.right - width,
-        window.innerWidth - width - padding,
-      ),
-    );
-
-    setFilterPosition({
-      top: rect.bottom + 8,
-      left,
-    });
-  };
-
-  useEffect(() => {
-    if (!isFilterOpen) return;
-
-    updateFilterPosition();
-
-    const handleResize = () => updateFilterPosition();
-    const handleScroll = () => updateFilterPosition();
-
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleScroll, true);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener(
-        "scroll",
-        handleScroll,
-        true,
-      );
-    };
-  }, [isFilterOpen]);
+  const highlightModality =
+    filters.modality === "ALL" ? null : filters.modality;
 
   const renderActualTatLabel = useMemo(
     () =>
@@ -112,6 +50,11 @@ export function TatOverviewChart({ data }: TatOverviewChartProps) {
         hasTargetSla,
       ),
     [displayData, hasTargetSla],
+  );
+
+  const renderModalityTick = useMemo(
+    () => createModalityTickRenderer(highlightModality),
+    [highlightModality],
   );
 
   return (
@@ -146,70 +89,17 @@ export function TatOverviewChart({ data }: TatOverviewChartProps) {
             </div>
           </div>
 
-          {/* Filter control */}
+          {/* Scope set by the dashboard filter bar */}
 
-          <div className="flex shrink-0 items-center gap-2.5">
-            <button
-              ref={filterButtonRef}
-              type="button"
-              onClick={() => {
-                setIsFilterOpen((previous) => !previous);
-              }}
-              disabled={isPending}
-              className={`group inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-extrabold shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
-                isFilterOpen
-                  ? "border-qc-navy bg-qc-navy text-white shadow-[0_6px_14px_rgba(5,14,64,0.12)]"
-                  : isFiltered
-                    ? "border-qc-blue/20 bg-white text-qc-blue hover:border-qc-blue/30"
-                    : "border-border/80 bg-white/90 text-qc-navy hover:border-qc-blue/15 hover:bg-white"
-              }`}
-              aria-expanded={isFilterOpen}
-              aria-haspopup="dialog"
-              aria-label="Filter Turnaround Time chart"
-            >
-              <Filter
-                className={`h-3.5 w-3.5 transition-colors ${
-                  isFilterOpen
-                    ? "text-qc-yellow"
-                    : "text-qc-blue"
-                }`}
-              />
-
-              <span>Filter</span>
-
-              <ChevronDown
-                className={`h-3.5 w-3.5 transition-transform ${
-                  isFilterOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-          </div>
+          <span
+            className={`inline-flex h-9 shrink-0 items-center rounded-xl border border-border/80 bg-white/90 px-3 text-[11px] font-extrabold text-qc-navy shadow-sm ${
+              isPending ? "opacity-60" : ""
+            }`}
+          >
+            {scopeLabel}
+          </span>
         </div>
       </div>
-
-      {/* Filter popover */}
-
-      <TatChartFilterPopover
-        isOpen={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
-        position={filterPosition}
-        buttonRef={filterButtonRef}
-        patientCategory={patientCategory}
-        onSelectCategory={setPatientCategory}
-        temporalPeriod={temporalPeriod}
-        onSelectPeriod={handleSelectPeriod}
-        customStartDate={customStartDate}
-        setCustomStartDate={setCustomStartDate}
-        customEndDate={customEndDate}
-        setCustomEndDate={setCustomEndDate}
-        onApplyCustomRange={handleFetchCustomRange}
-        isPending={isPending}
-        isFiltered={isFiltered}
-        onResetFilters={() => {
-          handleResetFilters();
-          setIsFilterOpen(false);
-        }}
-      />
 
       {/* Chart */}
 
@@ -222,7 +112,7 @@ export function TatOverviewChart({ data }: TatOverviewChartProps) {
 
             <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
               No finalized scans match the selected filters.
-              Try selecting another period or patient category.
+              Try another date range or patient category in the filter bar.
             </p>
           </div>
         ) : (
@@ -309,9 +199,15 @@ export function TatOverviewChart({ data }: TatOverviewChartProps) {
                       item.target !== null &&
                       item.avgTat > item.target;
 
+                    const isHighlighted =
+                      highlightModality !== null &&
+                      item.modality.toUpperCase() === highlightModality;
+
                     return (
                       <Cell
                         key={`cell-${index}`}
+                        stroke={isHighlighted ? QC_YELLOW : undefined}
+                        strokeWidth={isHighlighted ? 3 : 0}
                         fill={
                           item.volume === 0
                             ? QC_EMPTY

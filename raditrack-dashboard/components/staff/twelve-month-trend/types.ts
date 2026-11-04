@@ -1,8 +1,13 @@
 import { ModalityCode, TriageLevel } from "@/lib/enums";
 import type { TwelveMonthTrendResult } from "@/app/actions";
+import type { DashboardFilters } from "@/lib/dashboard-types";
 
 export interface TwelveMonthTrendChartProps {
   data: TwelveMonthTrendResult;
+  /** Dashboard filter bar: patient category, modality and window end. */
+  filters: DashboardFilters;
+  /** Lets the trend's modality buttons update the dashboard filter bar. */
+  onModalityChange: (modality: "ALL" | ModalityCode) => void;
 }
 
 export const QC_NAVY = "#050E40";
@@ -22,10 +27,10 @@ export interface ModalityConfig {
 
 export const MODALITIES: ModalityConfig[] = [
   { code: ModalityCode.XRAY, label: "X-ray", color: "#2563EB", lightColor: "#93C5FD", dotClass: "bg-blue-500" },
+  { code: ModalityCode.MAMMO, label: "Mammogram", color: "#DB2777", lightColor: "#F9A8D4", dotClass: "bg-pink-500" },
   { code: ModalityCode.US, label: "Ultrasound", color: "#059669", lightColor: "#6EE7B7", dotClass: "bg-emerald-500" },
   { code: ModalityCode.CT, label: "CT-Scan", color: "#D97706", lightColor: "#FCD34D", dotClass: "bg-amber-500" },
   { code: ModalityCode.MRI, label: "MRI", color: "#7C3AED", lightColor: "#C4B5FD", dotClass: "bg-purple-500" },
-  { code: ModalityCode.MAMMO, label: "Mammogram", color: "#DB2777", lightColor: "#F9A8D4", dotClass: "bg-pink-500" },
 ];
 
 export const TRIAGE_OPTIONS: ReadonlyArray<{ value: "ALL" | TriageLevel; label: string }> = [

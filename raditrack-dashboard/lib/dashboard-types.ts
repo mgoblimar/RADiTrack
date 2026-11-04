@@ -1,3 +1,5 @@
+import type { ModalityCode, TriageLevel } from "@/lib/enums";
+import type { KpiPreset } from "@/lib/kpi-range";
 import type {
   getDashboardData,
   getSevenDayStaffAnalytics,
@@ -13,3 +15,16 @@ export type TwelveMonthTrendData = Awaited<ReturnType<typeof getTwelveMonthTatTr
 export type ModalityTatOverviewData = Awaited<ReturnType<typeof getModalityTatOverview>>;
 export type ConfigurationsData = Awaited<ReturnType<typeof getConfigurationsAction>>;
 export type PendingReadingQueueItem = DashboardData["pendingReadingQueue"][number];
+
+/**
+ * The staff dashboard's single filter bar, passed down to every section.
+ * Dates are local "YYYY-MM-DD" strings for the selected window.
+ */
+export interface DashboardFilters {
+  preset: KpiPreset;
+  rangeStart: string;
+  rangeEnd: string;
+  isAllTime: boolean;
+  modality: "ALL" | ModalityCode;
+  triage: "ALL" | TriageLevel;
+}

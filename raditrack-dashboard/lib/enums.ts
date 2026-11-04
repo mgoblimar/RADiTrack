@@ -54,10 +54,34 @@ export const URGENCY_CONFIG: Record<
 // 3. Modality Codes - Proposal Page 5 (The 5 Core QCGH Modalities)
 export enum ModalityCode {
   XRAY = "XRAY",
+  MAMMO = "MAMMO",
   US = "US",
   CT = "CT",
   MRI = "MRI",
-  MAMMO = "MAMMO",
+}
+
+// Display order used across the staff dashboard (graphs, filters, tables).
+export const MODALITY_ORDER: readonly ModalityCode[] = [
+  ModalityCode.XRAY,
+  ModalityCode.MAMMO,
+  ModalityCode.US,
+  ModalityCode.CT,
+  ModalityCode.MRI,
+];
+
+/** Position of a modality code in MODALITY_ORDER (unknown codes sort last). */
+export function modalityRank(code: string): number {
+  const index = MODALITY_ORDER.indexOf(code as ModalityCode);
+  return index === -1 ? MODALITY_ORDER.length : index;
+}
+
+/** Returns a new array sorted by MODALITY_ORDER. */
+export function sortByModalityOrder<T extends { modalityCode: string }>(
+  items: readonly T[],
+): T[] {
+  return [...items].sort(
+    (a, b) => modalityRank(a.modalityCode) - modalityRank(b.modalityCode),
+  );
 }
 
 export const MODALITY_CONFIG: Record<
@@ -68,6 +92,11 @@ export const MODALITY_CONFIG: Record<
     name: "General Radiography (X-ray)",
     shortName: "X-ray",
     defaultRoom: "X-Ray Room 1",
+  },
+  [ModalityCode.MAMMO]: {
+    name: "Mammography",
+    shortName: "Mammogram",
+    defaultRoom: "Breast Imaging Center",
   },
   [ModalityCode.US]: {
     name: "Ultrasound",
@@ -83,11 +112,6 @@ export const MODALITY_CONFIG: Record<
     name: "Magnetic Resonance Imaging (MRI)",
     shortName: "MRI",
     defaultRoom: "MRI Basement",
-  },
-  [ModalityCode.MAMMO]: {
-    name: "Mammography",
-    shortName: "Mammogram",
-    defaultRoom: "Breast Imaging Center",
   },
 };
 

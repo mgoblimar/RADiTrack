@@ -167,6 +167,10 @@ export function EditExamDialog({
                       X-ray
                     </option>
 
+                    <option value={ModalityCode.MAMMO}>
+                      Mammogram
+                    </option>
+
                     <option value={ModalityCode.US}>
                       Ultrasound
                     </option>
@@ -177,10 +181,6 @@ export function EditExamDialog({
 
                     <option value={ModalityCode.MRI}>
                       MRI
-                    </option>
-
-                    <option value={ModalityCode.MAMMO}>
-                      Mammogram
                     </option>
                   </select>
                 </div>

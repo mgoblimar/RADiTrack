@@ -3,8 +3,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronLeft, ChevronRight, Layers, X } from "lucide-react";
-import { TriageLevel } from "@/lib/enums";
-import { TRIAGE_OPTIONS } from "./types";
 
 interface TrendFilterPopoverProps {
   isOpen: boolean;
@@ -16,8 +14,6 @@ interface TrendFilterPopoverProps {
     openAbove: boolean;
   };
   buttonRef: React.RefObject<HTMLButtonElement | null>;
-  selectedTriage: "ALL" | TriageLevel;
-  onSelectTriage: (triage: "ALL" | TriageLevel) => void;
   selectedPeriod: string;
   onSelectPeriod: (period: string) => void;
   availableYears: number[];
@@ -31,8 +27,6 @@ export function TrendFilterPopover({
   onClose,
   position,
   buttonRef,
-  selectedTriage,
-  onSelectTriage,
   selectedPeriod,
   onSelectPeriod,
   availableYears,
@@ -108,35 +102,8 @@ export function TrendFilterPopover({
       {/* Scrollable settings content */}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
         <div className="space-y-4">
-          {/* Patient Category Filter */}
-          <div>
-            <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-              Patient Category
-            </p>
-
-            <div className="grid grid-cols-2 gap-1.5">
-              {TRIAGE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => onSelectTriage(opt.value)}
-                  className={`flex items-center justify-between rounded-xl px-3 py-2 text-[11px] font-bold transition-all ${
-                    selectedTriage === opt.value
-                      ? "bg-qc-navy text-white shadow-sm"
-                      : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-                  }`}
-                >
-                  <span>{opt.label}</span>
-                  {selectedTriage === opt.value && (
-                    <Check className="h-3.5 w-3.5 text-qc-yellow" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Rolling */}
-          <div className="border-t border-border pt-4">
+          <div>
             <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
               Period
             </p>

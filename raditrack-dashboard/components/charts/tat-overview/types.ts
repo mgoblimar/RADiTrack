@@ -3,11 +3,16 @@ import type {
   MultiPeriodModalityTatOverview,
   ModalityTemporalPeriod,
 } from "@/app/actions";
+import type { DashboardFilters } from "@/lib/dashboard-types";
 
 export interface TatOverviewChartProps {
   data?:
     | ModalityTatOverviewItem[]
     | MultiPeriodModalityTatOverview;
+  /** Date window, patient category and modality from the dashboard filter bar. */
+  filters: DashboardFilters;
+  /** Human-readable scope shown in the header, e.g. "Oct 29 – Nov 4 · ER". */
+  scopeLabel: string;
 }
 
 export type ExtendedTemporalPeriod =

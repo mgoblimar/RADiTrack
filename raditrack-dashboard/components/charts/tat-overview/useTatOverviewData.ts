@@ -1,120 +1,70 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   fetchModalityTatDataAction,
   type ModalityTatOverviewItem,
   type MultiPeriodModalityTatOverview,
-  type ModalityTemporalPeriod,
 } from "@/app/actions";
-import type {
-  ExtendedTemporalPeriod,
-  PatientCategoryFilter,
-  ModalityTatDisplayItem,
-} from "./types";
+import type { DashboardFilters } from "@/lib/dashboard-types";
+import type { PatientCategoryFilter, ModalityTatDisplayItem } from "./types";
 
-export function useTatOverviewData(
+/** All-time dataset from the page's initial server data. */
+function initialAllTime(
   data?: ModalityTatOverviewItem[] | MultiPeriodModalityTatOverview,
+): ModalityTatOverviewItem[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  return data.periods?.ALL ?? [];
+}
+
+/**
+ * Data for the Turnaround Time by Modality chart, driven by the dashboard's
+ * single filter bar: its date window and patient category.
+ */
+export function useTatOverviewData(
+  data: ModalityTatOverviewItem[] | MultiPeriodModalityTatOverview | undefined,
+  filters: DashboardFilters,
 ) {
-  const [temporalPeriod, setTemporalPeriod] =
-    useState<ExtendedTemporalPeriod>("ALL");
-  const [patientCategory, setPatientCategory] =
-    useState<PatientCategoryFilter>("ALL");
-  const [periodDataset, setPeriodDataset] =
-    useState<ModalityTatOverviewItem[] | null>(null);
+  const patientCategory: PatientCategoryFilter = filters.triage;
+  const rangeKey = `${filters.rangeStart}|${filters.rangeEnd}`;
 
-  const todayIso = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, []);
-
-  const defaultStartIso = useMemo(() => {
-    const now = new Date();
-    now.setDate(now.getDate() - 14);
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, []);
-
-  const [customStartDate, setCustomStartDate] = useState(defaultStartIso);
-  const [customEndDate, setCustomEndDate] = useState(todayIso);
-  const [customDataset, setCustomDataset] =
-    useState<ModalityTatOverviewItem[] | null>(null);
-
+  // Fetched dataset tagged with the window it belongs to.
+  const [fetched, setFetched] = useState<{
+    rangeKey: string;
+    items: ModalityTatOverviewItem[];
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const handleSelectPeriod = (period: ExtendedTemporalPeriod) => {
-    setTemporalPeriod(period);
+  useEffect(() => {
+    if (filters.isAllTime) return;
 
-    if (period === "ALL") {
-      setPeriodDataset(null);
-      return;
-    }
-
-    if (period === "CUSTOM") {
-      if (!customDataset) {
-        handleFetchCustomRange(customStartDate, customEndDate);
-      }
-      return;
-    }
-
+    let isCancelled = false;
     startTransition(async () => {
       try {
-        const result = await fetchModalityTatDataAction({ period });
-        setPeriodDataset(result);
-      } catch (error) {
-        console.error("Failed to fetch modality TAT for period:", error);
-      }
-    });
-  };
-
-  const handleFetchCustomRange = (start: string, end: string) => {
-    if (!start || !end || start > end) return;
-
-    setCustomStartDate(start);
-    setCustomEndDate(end);
-    setTemporalPeriod("CUSTOM");
-
-    startTransition(async () => {
-      try {
-        const result = await fetchModalityTatDataAction({
+        const items = await fetchModalityTatDataAction({
           period: "CUSTOM",
-          startDate: start,
-          endDate: end,
+          startDate: filters.rangeStart,
+          endDate: filters.rangeEnd,
         });
-        setCustomDataset(result);
+        if (!isCancelled) setFetched({ rangeKey, items });
       } catch (error) {
-        console.error("Failed to fetch custom modality TAT range:", error);
+        console.error("Failed to fetch modality Turnaround Time for range:", error);
       }
     });
-  };
 
-  /* =========================================================
-     Resolve dataset
-  ========================================================= */
-  let activeDataset: ModalityTatOverviewItem[] = [];
+    return () => {
+      isCancelled = true;
+    };
+  }, [data, filters.isAllTime, filters.rangeStart, filters.rangeEnd, rangeKey]);
 
-  if (temporalPeriod === "CUSTOM" && customDataset) {
-    activeDataset = customDataset;
-  } else if (temporalPeriod !== "ALL" && periodDataset) {
-    activeDataset = periodDataset;
-  } else if (data) {
-    if ("periods" in data && data.periods) {
-      const key = temporalPeriod === "CUSTOM" ? "ALL" : temporalPeriod;
-      activeDataset =
-        data.periods[key as ModalityTemporalPeriod] ?? data.periods.ALL ?? [];
-    } else if (Array.isArray(data)) {
-      activeDataset = data;
-    }
-  }
+  const activeDataset = filters.isAllTime
+    ? initialAllTime(data)
+    : fetched?.rangeKey === rangeKey
+      ? fetched.items
+      : [];
 
-  /* =========================================================
-     Display data
-  ========================================================= */
+  const isLoading = !filters.isAllTime && fetched?.rangeKey !== rangeKey;
   const hasTargetSla = patientCategory !== "ALL";
 
   const displayData: ModalityTatDisplayItem[] = activeDataset.map((item) => {
@@ -143,29 +93,10 @@ export function useTatOverviewData(
     };
   });
 
-  const isFiltered = temporalPeriod !== "ALL" || patientCategory !== "ALL";
-
-  const handleResetFilters = () => {
-    setTemporalPeriod("ALL");
-    setPatientCategory("ALL");
-    setPeriodDataset(null);
-    setCustomDataset(null);
-  };
-
   return {
-    temporalPeriod,
     patientCategory,
-    setPatientCategory,
-    customStartDate,
-    setCustomStartDate,
-    customEndDate,
-    setCustomEndDate,
-    isPending,
-    isFiltered,
+    isPending: isPending || isLoading,
     hasTargetSla,
     displayData,
-    handleSelectPeriod,
-    handleFetchCustomRange,
-    handleResetFilters,
   };
 }
