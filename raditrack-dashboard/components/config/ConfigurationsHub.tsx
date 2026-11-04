@@ -580,7 +580,7 @@ export function ConfigurationsHub({
               </span>
             </button>
 
-            <button
+            {/*<button
               type="button"
               onClick={() =>
                 setActiveTab("radiologists")
@@ -603,7 +603,7 @@ export function ConfigurationsHub({
               >
                 {radiologists.length}
               </span>
-            </button>
+            </button>*/}
 
             <button
               type="button"
@@ -617,7 +617,7 @@ export function ConfigurationsHub({
               }`}
             >
               <ShieldCheck className="h-4 w-4" />
-              Data Governance
+              RADiTrack Guide
             </button>
           </div>
         </div>
@@ -1096,7 +1096,7 @@ export function ConfigurationsHub({
           TAB 3 — RADIOLOGISTS
           ========================================================= */}
 
-      {activeTab === "radiologists" && (
+      {/*{activeTab === "radiologists" && (
         <section
           className={panelBase + " overflow-hidden"}
         >
@@ -1249,10 +1249,10 @@ export function ConfigurationsHub({
             </table>
           </div>
         </section>
-      )}
+      )}*/}
 
       {/* =========================================================
-          TAB 4 — DATA GOVERNANCE
+          TAB 4 — RADiTrack GUIDE (diko pa alam lalagay dito)
           ========================================================= */}
 
       {activeTab === "governance" && (
@@ -1261,12 +1261,8 @@ export function ConfigurationsHub({
         >
           <div className="border-b border-white/70 bg-white/[0.62] px-5 py-4 sm:px-6">
             <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
-                Privacy & compliance
-              </p>
-
               <h3 className="mt-1 text-lg font-extrabold text-qc-navy">
-                DATA GOVERNANCE
+                HOW TO USE RADiTrack
               </h3>
             </div>
           </div>

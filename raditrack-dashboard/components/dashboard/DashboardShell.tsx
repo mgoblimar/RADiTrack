@@ -102,11 +102,11 @@ export function DashboardShell({
   };
 
   /* =========================================================
-     Dashboard filter
+     Dashboard filter (Default set to SEVEN_DAYS)
   ========================================================= */
 
   const [filterPreset, setFilterPreset] =
-    useState<KpiPreset>("ALL");
+    useState<KpiPreset>("ROLLING_7D");
 
   const [isKpiPending, startKpiTransition] =
     useTransition();
@@ -128,7 +128,7 @@ export function DashboardShell({
   const defaultStartIso = useMemo(() => {
     const now = new Date();
 
-    now.setDate(now.getDate() - 14);
+    now.setDate(now.getDate() - 6);
 
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");
@@ -181,7 +181,7 @@ export function DashboardShell({
     let isCancelled = false;
 
     if (
-      filterPreset !== "ALL" ||
+      filterPreset !== "ROLLING_7D" ||
       selectedModality !== "ALL" ||
       selectedTriage !== "ALL"
     ) {
@@ -245,7 +245,6 @@ export function DashboardShell({
       return null;
     }
 
-    // Instant local calculation from allExamsSummary.
     const all = data?.allExamsSummary || [];
 
     const scoped = all.filter((e: any) => {
@@ -434,12 +433,73 @@ export function DashboardShell({
       : "";
   }, [selectedModality, selectedTriage]);
 
+  /* =========================================================
+     Date Range Formatting & Card Subtitles
+  ========================================================= */
+
+  const dateRangeLabel = useMemo(() => {
+    const formatDateStr = (dateStr: string) => {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      if (!y || !m || !d) return dateStr;
+      const date = new Date(y, m - 1, d);
+      return new Intl.DateTimeFormat("en-PH", {
+        month: "short",
+        day: "numeric",
+      }).format(date);
+    };
+
+    if (filterPreset === "ROLLING_7D") {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 6);
+
+      const format = (date: Date) =>
+        new Intl.DateTimeFormat("en-PH", {
+          month: "short",
+          day: "numeric",
+        }).format(date);
+
+      return `${format(start)} – ${format(end)}`;
+    }
+
+    if (filterPreset === "TODAY") {
+      return "Today";
+    }
+
+    if (filterPreset === "MONTH") {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 31);
+
+      const format = (date: Date) =>
+        new Intl.DateTimeFormat("en-PH", {
+          month: "short",
+          day: "numeric",
+        }).format(date);
+
+      return `${format(start)} – ${format(end)}`;
+    }
+
+    if (filterPreset === "CUSTOM" && customStart && customEnd) {
+      return `${formatDateStr(customStart)} – ${formatDateStr(customEnd)}`;
+    }
+
+    return "All time";
+  }, [filterPreset, customStart, customEnd]);
+
   const displayVolumeForCard = displayVolume;
-  const volumeSubtitle = filterScopeSubtitle;
+  
+  const volumeSubtitle = useMemo(() => {
+    if (filterScopeSubtitle && dateRangeLabel) {
+      return `${dateRangeLabel} · ${filterScopeSubtitle}`;
+    }
+    return dateRangeLabel || filterScopeSubtitle || "All time";
+  }, [filterScopeSubtitle, dateRangeLabel]);
 
   const displayPendingForCard = displayPending;
-  const pendingSubtitle =
-    `${filterScopeSubtitle} Awaiting sign-off`;
+  const pendingSubtitle = filterScopeSubtitle
+    ? `${filterScopeSubtitle} · Awaiting sign-off`
+    : "Awaiting sign-off";
 
   /* =========================================================
      Recent analytics and date range
@@ -502,14 +562,8 @@ export function DashboardShell({
   const recentAvgHours =
     recentAnalytics?.currentAvgTatHours ?? 0;
 
-  const recentAvgMinutes =
-    recentAnalytics?.currentAvgTatMinutes ?? 0;
-
   const priorAvgHours =
     recentAnalytics?.priorAvgTatHours ?? 0;
-
-  const priorAvgMinutes =
-    recentAnalytics?.priorAvgTatMinutes ?? 0;
 
   const recentPctChange =
     recentAnalytics?.pctChange ?? 0;
@@ -608,10 +662,6 @@ export function DashboardShell({
                 Department of Radiology
               </p>
             </div>
-
-            <div className="sm:ml-auto sm:pl-4">
-              
-            </div>
           </header>
 
           {/* =================================================
@@ -620,8 +670,6 @@ export function DashboardShell({
 
           {activeTab === "overview" && (
             <div className="space-y-4">
-              
-
               {/* Filters */}
 
               <section aria-label="Dashboard date filters">
@@ -669,6 +717,7 @@ export function DashboardShell({
                       {displayVolumeForCard}
                     </div>
 
+                    {/* Displays covered date range (e.g. "Oct 18 – Oct 24") */}
                     <p className="mt-2 text-[11px] font-medium text-white/60">
                       {volumeSubtitle}
                     </p>
@@ -1154,8 +1203,6 @@ export function DashboardShell({
 
           {activeTab === "examinations" && (
             <div className="space-y-4">
-              
-
               <ExaminationsHub
                 queue={data.pendingReadingQueue}
                 finalizedCount={data.finalizedCount}
@@ -1169,8 +1216,6 @@ export function DashboardShell({
 
           {activeTab === "config" && (
             <div className="space-y-4">
-              
-
               <ConfigurationsHub initialData={configurationsData} />
             </div>
           )}
