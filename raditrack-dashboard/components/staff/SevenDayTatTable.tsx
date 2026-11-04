@@ -18,10 +18,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Columns2,
   Filter,
   Layers,
-  Maximize2,
   RotateCcw,
   Settings2,
   X,
@@ -64,7 +62,6 @@ interface Props {
   };
 }
 
-type ViewLayout = "sideBySide" | "single";
 type AnalyticsMode = "rolling" | "static";
 
 const MODALITY_TABS = [
@@ -117,9 +114,6 @@ export function SevenDayTatTable({
 
   const [mode, setMode] =
     useState<AnalyticsMode>("rolling");
-
-  const [viewLayout, setViewLayout] =
-    useState<ViewLayout>("sideBySide");
 
   const [isOptionsOpen, setIsOptionsOpen] =
     useState(false);
@@ -367,12 +361,11 @@ export function SevenDayTatTable({
   ) => `${hours} hrs`;
 
   /* =========================================================
-     Render comparison table
+     Render table
   ========================================================= */
 
   const renderTable = (
     rows: DayRow[],
-    isPrior = false,
   ) => {
     const totalVolume = rows.reduce(
       (sum, row) => sum + row.totalExams,
@@ -459,7 +452,6 @@ export function SevenDayTatTable({
                   <span className="block text-[10px] font-extrabold text-qc-navy">
                     Patient Category
                   </span>
-                  
                 </th>
 
                 <th
@@ -561,7 +553,7 @@ export function SevenDayTatTable({
                       </span>
                     </td>
 
-                    {/* Separate category counts under their headers */}
+                    {/* Category counts */}
                     {CATEGORY_COLUMNS.map((category, index) => (
                       <td
                         key={category.key}
@@ -605,11 +597,7 @@ export function SevenDayTatTable({
                       ) : (
                         <span
                           className={`font-mono text-xs font-extrabold ${
-                            isSlow
-                              ? "text-qc-red"
-                              : isPrior
-                                ? "text-qc-blue"
-                                : "text-qc-navy"
+                            isSlow ? "text-qc-red" : "text-qc-navy"
                           }`}
                         >
                           {formatTurnaroundTime(
@@ -671,13 +659,7 @@ export function SevenDayTatTable({
                 </td>
 
                 <td className="px-4 py-3 text-right">
-                  <span
-                    className={`font-mono text-xs font-extrabold ${
-                      isPrior
-                        ? "text-qc-blue"
-                        : "text-qc-navy"
-                    }`}
-                  >
+                  <span className="font-mono text-xs font-extrabold text-qc-navy">
                     {weightedTat > 0
                       ? `${weightedTatHours} hrs`
                       : "—"}
@@ -798,47 +780,6 @@ export function SevenDayTatTable({
             </button>
           </div>
         </div>
-
-        {/* Layout */}
-        <div className="border-t border-border pt-4">
-          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-            Layout
-          </p>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                setViewLayout("sideBySide");
-                setIsOptionsOpen(false);
-              }}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2.5 text-[10px] font-bold transition-colors ${
-                viewLayout === "sideBySide"
-                  ? "bg-qc-blue text-white"
-                  : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-              }`}
-            >
-              <Columns2 className="h-3.5 w-3.5" />
-              Side-by-side
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setViewLayout("single");
-                setIsOptionsOpen(false);
-              }}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2.5 text-[10px] font-bold transition-colors ${
-                viewLayout === "single"
-                  ? "bg-qc-blue text-white"
-                  : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-              }`}
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-              Single
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   ) : null;
@@ -952,87 +893,25 @@ export function SevenDayTatTable({
         isOptionsOpen &&
         createPortal(optionsPopover, document.body)}
 
-      {/* Comparison tables */}
+      {/* Single table view */}
       <div className="px-4 pb-5 pt-4 sm:px-5">
-        {viewLayout === "sideBySide" ? (
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            {/* Current period */}
-            <div className="min-w-0 space-y-2.5">
-              <div className="flex items-center justify-between gap-3 px-1">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-qc-yellow" />
+        <div className="min-w-0 space-y-2.5">
+          <div className="flex items-center justify-between gap-3 px-1">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-qc-yellow" />
 
-                  <span className="text-sm font-extrabold text-qc-navy">
-                    Current
-                  </span>
-                </div>
-
-                <span className="text-[10px] font-semibold text-muted-foreground">
-                  {currentData.currentTotalVolume} exams
-                </span>
-              </div>
-
-              {renderTable(currentData.dayRows, false)}
-            </div>
-
-            {/* Prior period */}
-            <div className="min-w-0 space-y-2.5">
-              <div className="flex items-center justify-between gap-3 px-1">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-qc-blue" />
-
-                  <span className="text-sm font-extrabold text-qc-navy">
-                    Prior
-                  </span>
-                </div>
-
-                <span className="text-[10px] font-semibold text-muted-foreground">
-                  {currentData.priorTotalVolume} exams
-                </span>
-              </div>
-
-              {currentData.priorDayRows &&
-              currentData.priorDayRows.length > 0 ? (
-                renderTable(currentData.priorDayRows, true)
-              ) : (
-                <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-border bg-background p-8 text-center">
-                  <div>
-                    <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                      <Layers className="h-4 w-4" />
-                    </div>
-
-                    <p className="mt-3 text-sm font-extrabold text-qc-navy">
-                      No prior data
-                    </p>
-
-                    <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-                      A previous seven-day baseline is not
-                      available.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="min-w-0 space-y-2.5">
-            <div className="flex items-center justify-between gap-3 px-1">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-qc-yellow" />
-
-                <span className="text-sm font-extrabold text-qc-navy">
-                  Current
-                </span>
-              </div>
-
-              <span className="text-[10px] font-semibold text-muted-foreground">
-                {currentData.currentTotalVolume} exams
+              <span className="text-sm font-extrabold text-qc-navy">
+                Current
               </span>
             </div>
 
-            {renderTable(currentData.dayRows, false)}
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              {currentData.currentTotalVolume} exams
+            </span>
           </div>
-        )}
+
+          {renderTable(currentData.dayRows)}
+        </div>
       </div>
     </div>
   );
