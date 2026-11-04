@@ -2,16 +2,82 @@
 
 import type { MonthTrendData } from "@/app/actions";
 import { ModalityCode } from "@/lib/enums";
-import { MODALITIES, QC_BLUE, QC_NAVY, QC_PURPLE } from "./types";
+import { MODALITIES, QC_BLUE, QC_PURPLE } from "./types";
 
 interface TrendTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: ReadonlyArray<{ payload?: MonthTrendData }>;
   label?: string;
   selectedModality: "ALL" | "MULTI" | ModalityCode;
   comparePriorYear: boolean;
-  priorPeriodLabel: string;
+  /** Kept for callers; tooltip now labels the exact prior-year month. */
+  priorPeriodLabel?: string;
   triageLabel: string;
+}
+
+const CARD_CLASS =
+  "min-w-[250px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]";
+
+/** % change from `previous` to `current`, or null when either is missing. */
+function percentChange(current: number, previous: number): number | null {
+  if (current <= 0 || previous <= 0) return null;
+  return Number((((current - previous) / previous) * 100).toFixed(1));
+}
+
+function formatHours(hours: number, hasData = hours > 0): string {
+  return hasData ? `${hours}h` : "—";
+}
+
+/** "12% faster" / "+8% longer" row; lower TAT is better. */
+function ChangeRow({ label, change }: { label: string; change: number | null }) {
+  if (change === null) return null;
+
+  const tone =
+    change < 0 ? "text-qc-blue" : change > 0 ? "text-qc-red" : "text-muted-foreground";
+  const text =
+    change < 0 ? `${Math.abs(change)}% faster` : change > 0 ? `+${change}% longer` : "No change";
+
+  return (
+    <div className="flex items-center justify-between gap-3 text-[11px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`font-extrabold ${tone}`}>{text}</span>
+    </div>
+  );
+}
+
+function ValueRow({
+  label,
+  value,
+  color,
+  dashed = false,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  dashed?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="flex items-center gap-1.5 font-semibold" style={{ color }}>
+        {dashed ? (
+          <span className="h-0 w-3 border-t-2 border-dashed" style={{ borderColor: color }} />
+        ) : (
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+        )}
+        {label}
+      </span>
+      <strong className="font-mono text-qc-navy">{value}</strong>
+    </div>
+  );
+}
+
+function Header({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
+      <p className="font-extrabold text-qc-navy">{title}</p>
+      <span className="text-[10px] font-semibold text-muted-foreground">{subtitle}</span>
+    </div>
+  );
 }
 
 export function TrendTooltip({
@@ -20,87 +86,83 @@ export function TrendTooltip({
   label,
   selectedModality,
   comparePriorYear,
-  priorPeriodLabel,
   triageLabel,
 }: TrendTooltipProps) {
-  if (!active || !payload || payload.length === 0) {
-    return null;
-  }
-
-  const point = payload[0]?.payload as MonthTrendData;
+  const point = active ? payload?.[0]?.payload : undefined;
   if (!point) {
     return null;
   }
 
-  // 1. Overall View
+  const title = point.fullMonth || label || "";
+  const previousMonthLabel = point.previousMonthLabel ?? "previous month";
+  const priorYearMonthLabel = point.priorYearMonthLabel ?? "last year";
+
+  // 1. Overall view
   if (selectedModality === "ALL") {
     const currentTat = point.avgTatHours;
-    const priorTat = point.priorYearAvgTatHours ?? 0;
-    let yoy: number | null = null;
-    if (comparePriorYear && priorTat > 0 && currentTat > 0) {
-      yoy = Number((((currentTat - priorTat) / priorTat) * 100).toFixed(1));
-    }
+    const previousMonthTat = point.previousMonthAvgTatHours ?? 0;
+    const priorYearTat = point.priorYearAvgTatHours ?? 0;
 
     return (
-      <div className="min-w-[240px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]">
-        <div className="flex items-center justify-between border-b border-border pb-2">
-          <p className="font-extrabold text-qc-navy">{point.fullMonth || label}</p>
-          <span className="text-[10px] font-semibold text-muted-foreground">
-            {point.totalFinalized} finalized
-          </span>
-        </div>
+      <div className={CARD_CLASS}>
+        <Header title={title} subtitle={`${point.totalFinalized} finalized`} />
 
         <div className="mt-2.5 space-y-2">
-          <div className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-1.5 font-bold text-qc-blue">
-              <span className="h-2 w-2 rounded-full bg-qc-blue" />
-              Overall Avg TAT ({triageLabel})
-            </span>
-            <strong className="font-mono text-qc-navy">{currentTat}h</strong>
+          <ValueRow
+            label={`Overall Avg TAT (${triageLabel})`}
+            value={formatHours(currentTat)}
+            color={QC_BLUE}
+          />
+          <ValueRow
+            label={`Previous month (${previousMonthLabel})`}
+            value={formatHours(previousMonthTat)}
+            color="#94A3B8"
+          />
+          {comparePriorYear && (
+            <ValueRow
+              label={`Same month last year (${priorYearMonthLabel})`}
+              value={formatHours(priorYearTat)}
+              color={QC_PURPLE}
+              dashed
+            />
+          )}
+
+          <div className="space-y-1 border-t border-border/80 pt-1.5">
+            <ChangeRow
+              label="Change vs previous month"
+              change={percentChange(currentTat, previousMonthTat)}
+            />
+            {comparePriorYear && (
+              <ChangeRow
+                label="Change vs same month last year"
+                change={percentChange(currentTat, priorYearTat)}
+              />
+            )}
           </div>
-
-          {comparePriorYear && priorTat > 0 && (
-            <div className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5 font-semibold" style={{ color: QC_PURPLE }}>
-                <span className="h-0 w-3 border-t-2 border-dashed" style={{ borderColor: QC_PURPLE }} />
-                {priorPeriodLabel}
-              </span>
-              <strong className="font-mono text-qc-navy">{priorTat}h</strong>
-            </div>
-          )}
-
-          {yoy !== null && (
-            <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-1.5 text-[11px]">
-              <span className="text-muted-foreground">YoY Change</span>
-              <span className={`font-extrabold ${yoy < 0 ? "text-qc-blue" : yoy > 0 ? "text-qc-red" : "text-muted-foreground"}`}>
-                {yoy < 0 ? `${Math.abs(yoy)}% faster` : yoy > 0 ? `+${yoy}% longer` : "No change"}
-              </span>
-            </div>
-          )}
 
           {point.byModality && (
             <div className="mt-2.5 border-t border-border pt-2">
-              <p className="mb-1.5 text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                Modality Contribution
+              <p className="mb-1.5 flex justify-between text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                <span>Modality (this month)</span>
+                <span>Previous month</span>
               </p>
               <div className="space-y-1">
                 {MODALITIES.map((m) => {
                   const stats = point.byModality?.[m.code];
                   if (!stats) return null;
                   return (
-                    <div key={m.code} className="flex items-center justify-between text-[11px]">
+                    <div key={m.code} className="flex items-center justify-between gap-3 text-[11px]">
                       <span className="flex items-center gap-1.5">
                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
                         <span className="text-muted-foreground">{m.label}</span>
-                      </span>
-                      <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-qc-navy">
-                          {stats.totalFinalized > 0 ? `${stats.avgTatHours}h` : "—"}
+                          {formatHours(stats.avgTatHours, stats.totalFinalized > 0)}
                         </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          ({stats.totalFinalized})
-                        </span>
-                      </div>
+                        <span className="text-[10px] text-muted-foreground">({stats.totalFinalized})</span>
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {formatHours(stats.previousMonthAvgTatHours, stats.previousMonthTotalFinalized > 0)}
+                      </span>
                     </div>
                   );
                 })}
@@ -112,16 +174,11 @@ export function TrendTooltip({
     );
   }
 
-  // 2. Multi-Modality View
+  // 2. Multi-modality view
   if (selectedModality === "MULTI") {
     return (
-      <div className="min-w-[260px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]">
-        <div className="flex items-center justify-between border-b border-border pb-2">
-          <p className="font-extrabold text-qc-navy">{point.fullMonth || label}</p>
-          <span className="text-[10px] font-semibold text-muted-foreground">
-            {point.totalFinalized} finalized
-          </span>
-        </div>
+      <div className={`${CARD_CLASS} min-w-[290px]`}>
+        <Header title={title} subtitle={`${point.totalFinalized} finalized`} />
 
         <div className="mt-2.5 space-y-1.5">
           <div className="flex items-center justify-between border-b border-border/70 pb-1.5 text-[11px]">
@@ -134,21 +191,23 @@ export function TrendTooltip({
 
           {MODALITIES.map((m) => {
             const curHours = point[`${m.code}_avgTatHours`] ?? 0;
-            const priHours = point[`prior_${m.code}_avgTatHours`] ?? 0;
             const vol = point[`${m.code}_totalFinalized`] ?? 0;
+            const prevMonthHours = point[`prevMonth_${m.code}_avgTatHours`] ?? 0;
+            const priorYearHours = point[`prior_${m.code}_avgTatHours`] ?? 0;
             return (
-              <div key={m.code} className="flex items-center justify-between text-[11px]">
+              <div key={m.code} className="flex items-center justify-between gap-3 text-[11px]">
                 <span className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
                   <span className="font-medium text-qc-navy">{m.label}</span>
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-qc-navy">
-                    {vol > 0 ? `${curHours}h` : "—"}
+                  <span className="font-mono font-bold text-qc-navy">{formatHours(curHours, vol > 0)}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    prev. month {formatHours(prevMonthHours)}
                   </span>
-                  {comparePriorYear && priHours > 0 && (
+                  {comparePriorYear && priorYearHours > 0 && (
                     <span className="font-mono text-[10px] text-muted-foreground">
-                      (pri: {priHours}h)
+                      · last year {priorYearHours}h
                     </span>
                   )}
                 </div>
@@ -160,58 +219,47 @@ export function TrendTooltip({
     );
   }
 
-  // 3. Single-Modality View
+  // 3. Single-modality view
   const activeMod = MODALITIES.find((m) => m.code === selectedModality);
   const modLabel = activeMod?.label ?? selectedModality;
   const modColor = activeMod?.color ?? QC_BLUE;
   const curTat = point[`${selectedModality}_avgTatHours`] ?? 0;
-  const priTat = point[`prior_${selectedModality}_avgTatHours`] ?? 0;
   const modVol = point[`${selectedModality}_totalFinalized`] ?? 0;
+  const prevMonthTat = point[`prevMonth_${selectedModality}_avgTatHours`] ?? 0;
+  const priorYearTat = point[`prior_${selectedModality}_avgTatHours`] ?? 0;
   const overallTat = point.avgTatHours;
-
-  let yoy: number | null = null;
-  if (comparePriorYear && priTat > 0 && curTat > 0) {
-    yoy = Number((((curTat - priTat) / priTat) * 100).toFixed(1));
-  }
-
-  const diffFromOverall = curTat > 0 && overallTat > 0 ? Number((curTat - overallTat).toFixed(1)) : null;
+  const diffFromOverall =
+    curTat > 0 && overallTat > 0 ? Number((curTat - overallTat).toFixed(1)) : null;
 
   return (
-    <div className="min-w-[230px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]">
-      <div className="flex items-center justify-between border-b border-border pb-2">
-        <p className="font-extrabold text-qc-navy">{point.fullMonth || label}</p>
-        <span className="text-[10px] font-semibold text-muted-foreground">
-          {modVol} {modLabel} finalized
-        </span>
-      </div>
+    <div className={CARD_CLASS}>
+      <Header title={title} subtitle={`${modVol} ${modLabel} finalized`} />
 
       <div className="mt-2.5 space-y-2">
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 font-bold" style={{ color: modColor }}>
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: modColor }} />
-            {modLabel} TAT
-          </span>
-          <strong className="font-mono text-qc-navy">{modVol > 0 ? `${curTat}h` : "—"}</strong>
-        </div>
-
+        <ValueRow label={`${modLabel} TAT`} value={formatHours(curTat, modVol > 0)} color={modColor} />
+        <ValueRow
+          label={`Previous month (${previousMonthLabel})`}
+          value={formatHours(prevMonthTat)}
+          color="#94A3B8"
+        />
         {comparePriorYear && (
-          <div className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-1.5 font-semibold" style={{ color: modColor }}>
-              <span className="h-0 w-3 border-t-2 border-dashed" style={{ borderColor: modColor }} />
-              {modLabel} ({priorPeriodLabel})
-            </span>
-            <strong className="font-mono text-qc-navy">{priTat > 0 ? `${priTat}h` : "—"}</strong>
-          </div>
+          <ValueRow
+            label={`Same month last year (${priorYearMonthLabel})`}
+            value={formatHours(priorYearTat)}
+            color={modColor}
+            dashed
+          />
         )}
 
-        {yoy !== null && (
-          <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-1.5 text-[11px]">
-            <span className="text-muted-foreground">YoY Change</span>
-            <span className={`font-extrabold ${yoy < 0 ? "text-qc-blue" : yoy > 0 ? "text-qc-red" : "text-muted-foreground"}`}>
-              {yoy < 0 ? `${Math.abs(yoy)}% faster` : yoy > 0 ? `+${yoy}% longer` : "No change"}
-            </span>
-          </div>
-        )}
+        <div className="space-y-1 border-t border-border/80 pt-1.5">
+          <ChangeRow label="Change vs previous month" change={percentChange(curTat, prevMonthTat)} />
+          {comparePriorYear && (
+            <ChangeRow
+              label="Change vs same month last year"
+              change={percentChange(curTat, priorYearTat)}
+            />
+          )}
+        </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-1.5 text-[11px]">
           <span className="text-muted-foreground">Hospital Overall TAT</span>

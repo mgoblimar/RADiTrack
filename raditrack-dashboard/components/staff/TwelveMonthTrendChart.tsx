@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -12,7 +13,8 @@ import {
   type TwelveMonthTrendResult,
 } from "@/app/actions";
 
-import { ModalityCode, TriageLevel } from "@/lib/enums";
+import { ModalityCode } from "@/lib/enums";
+import { toIsoDate } from "@/lib/kpi-range";
 
 import {
   MODALITIES,
@@ -30,67 +32,99 @@ export { type TwelveMonthTrendChartProps } from "./twelve-month-trend/types";
 
 export function TwelveMonthTrendChart({
   data: initialData,
+  filters,
+  onModalityChange,
 }: TwelveMonthTrendChartProps) {
-  const [data, setData] =
-    useState<TwelveMonthTrendResult>(initialData);
-
   const [selectedPeriod, setSelectedPeriod] =
     useState<string>(initialData.selectedPeriod || "rolling");
 
-  const [selectedTriage, setSelectedTriage] =
-    useState<"ALL" | TriageLevel>("ALL");
+  // Patient category and modality come from the dashboard filter bar.
+  const selectedTriage = filters.triage;
 
   const [comparePriorYear, setComparePriorYear] =
     useState(true);
 
-  const [selectedModality, setSelectedModality] =
-    useState<"ALL" | "MULTI" | ModalityCode>("ALL");
+  // View when no single modality is filtered: overall line or one line per modality.
+  const [viewMode, setViewMode] =
+    useState<"ALL" | "MULTI">("ALL");
+
+  const selectedModality: "ALL" | "MULTI" | ModalityCode =
+    filters.modality !== "ALL" ? filters.modality : viewMode;
+
+  const handleSelectModality = (
+    modality: "ALL" | "MULTI" | ModalityCode,
+  ) => {
+    if (modality === "ALL" || modality === "MULTI") {
+      setViewMode(modality);
+      onModalityChange("ALL");
+      return;
+    }
+    onModalityChange(modality);
+  };
 
   const [isSettingsOpen, setIsSettingsOpen] =
     useState(false);
 
-  const [isPending, startTransition] =
-    useTransition();
-
   /* =========================================================
-     Preserve selected filters during automatic data refreshes
+     Data: rolling window ends on the filter bar's end month
   ========================================================= */
 
-  const selectedPeriodRef = useRef(selectedPeriod);
-  selectedPeriodRef.current = selectedPeriod;
+  const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const anchorDate = filters.isAllTime ? todayIso : filters.rangeEnd;
+  const anchorMonth = anchorDate.slice(0, 7);
+  const requestKey = `${selectedPeriod}|${selectedTriage}|${
+    selectedPeriod === "rolling" ? anchorMonth : ""
+  }`;
+  const isInitialRequest =
+    requestKey === `rolling|ALL|${todayIso.slice(0, 7)}`;
 
-  const selectedTriageRef = useRef(selectedTriage);
-  selectedTriageRef.current = selectedTriage;
+  const [fetched, setFetched] = useState<{
+    key: string;
+    data: TwelveMonthTrendResult;
+  } | null>(null);
+
+  const [isTransitionPending, startTransition] =
+    useTransition();
 
   useEffect(() => {
-    const currentPeriod = selectedPeriodRef.current;
-    const currentTriage = selectedTriageRef.current;
+    if (isInitialRequest) return;
 
-    // Use incoming data directly when the default filters are active.
-    if (
-      currentPeriod === "rolling" &&
-      currentTriage === "ALL"
-    ) {
-      setData(initialData);
-    } else {
-      // Re-fetch with the active filters to preserve the user's selection.
-      startTransition(async () => {
-        try {
-          const result = await fetchYearlyTrendAction(
-            currentPeriod,
-            currentTriage,
-          );
+    let isCancelled = false;
+    startTransition(async () => {
+      try {
+        const result = await fetchYearlyTrendAction(
+          selectedPeriod,
+          selectedTriage,
+          anchorDate,
+        );
+        if (!isCancelled) setFetched({ key: requestKey, data: result });
+      } catch (error) {
+        console.error(
+          "Failed to fetch yearly Turnaround Time trend:",
+          error,
+        );
+      }
+    });
 
-          setData(result);
-        } catch (error) {
-          console.error(
-            "Failed to refresh yearly Turnaround Time trend:",
-            error,
-          );
-        }
-      });
-    }
-  }, [initialData]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    initialData,
+    isInitialRequest,
+    selectedPeriod,
+    selectedTriage,
+    anchorDate,
+    requestKey,
+  ]);
+
+  // Keep showing the last result while a new window loads.
+  const data = isInitialRequest
+    ? initialData
+    : (fetched?.data ?? initialData);
+  const isPending =
+    isTransitionPending ||
+    (!isInitialRequest && fetched?.key !== requestKey);
 
   /* =========================================================
      Settings popover
@@ -225,38 +259,8 @@ export function TwelveMonthTrendChart({
      Filter handlers
   ========================================================= */
 
-  const handleFilterChange = (
-    newPeriod = selectedPeriod,
-    newTriage = selectedTriage,
-  ) => {
-    setSelectedPeriod(newPeriod);
-    setSelectedTriage(newTriage);
-
-    startTransition(async () => {
-      try {
-        const result = await fetchYearlyTrendAction(
-          newPeriod,
-          newTriage,
-        );
-
-        setData(result);
-      } catch (error) {
-        console.error(
-          "Failed to fetch filtered yearly Turnaround Time trend:",
-          error,
-        );
-      }
-    });
-  };
-
   const handleSelectPeriod = (period: string) => {
-    handleFilterChange(period, selectedTriage);
-  };
-
-  const handleSelectTriage = (
-    triage: "ALL" | TriageLevel,
-  ) => {
-    handleFilterChange(selectedPeriod, triage);
+    setSelectedPeriod(period);
   };
 
   const handleStepYear = (step: number) => {
@@ -346,14 +350,14 @@ export function TwelveMonthTrendChart({
         onToggleSettings={() =>
           setIsSettingsOpen((previous) => !previous)
         }
-        hasActiveFilters={selectedTriage !== "ALL"}
+        hasActiveFilters={false}
       />
 
       {/* 2. Modality selector */}
 
       <TrendModalityBar
         selectedModality={selectedModality}
-        onSelectModality={setSelectedModality}
+        onSelectModality={handleSelectModality}
         isModalitySpecific={isModalitySpecific}
         activeModalityConfig={activeModalityConfig}
       />
@@ -426,8 +430,6 @@ export function TwelveMonthTrendChart({
         onClose={() => setIsSettingsOpen(false)}
         position={settingsPosition}
         buttonRef={settingsButtonRef}
-        selectedTriage={selectedTriage}
-        onSelectTriage={handleSelectTriage}
         selectedPeriod={selectedPeriod}
         onSelectPeriod={handleSelectPeriod}
         availableYears={data.availableYears}

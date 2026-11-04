@@ -16,6 +16,17 @@ import { TatOverviewChart } from "@/components/charts/TatOverviewChart";
 import { SevenDayTatTable } from "@/components/staff/SevenDayTatTable";
 import { TwelveMonthTrendChart } from "@/components/staff/TwelveMonthTrendChart";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
+import type {
+  ConfigurationsData,
+  DashboardData,
+  DashboardFilters,
+  ModalityTatOverviewData,
+  SevenDayAnalyticsData,
+  TwelveMonthTrendData,
+} from "@/lib/dashboard-types";
+import { capAtToday, resolveKpiRange, toIsoDate } from "@/lib/kpi-range";
+import { usePersistedBoolean } from "@/hooks/use-persisted-boolean";
+import { ReportBuilderDialog } from "@/components/report/ReportBuilderDialog";
 
 import {
   fetchFilteredExecutiveKpiAction,
@@ -33,23 +44,24 @@ import {
 import {
   BarChart3,
   CalendarDays,
+  FileText,
 } from "lucide-react";
 
 const MODALITIES_LIST = [
   { code: ModalityCode.XRAY, label: "X-ray", color: "bg-blue-500" },
+  { code: ModalityCode.MAMMO, label: "Mammogram", color: "bg-pink-500" },
   { code: ModalityCode.US, label: "Ultrasound", color: "bg-emerald-500" },
   { code: ModalityCode.CT, label: "CT-Scan", color: "bg-amber-500" },
   { code: ModalityCode.MRI, label: "MRI", color: "bg-purple-500" },
-  { code: ModalityCode.MAMMO, label: "Mammogram", color: "bg-pink-500" },
 ];
 
 interface DashboardShellProps {
-  data: any;
-  sevenDayAnalytics: any;
-  twelveMonthTrend: any;
-  modalityTatOverview: any;
-  prevMonth: any;
-  configurationsData: any;
+  data: DashboardData;
+  sevenDayAnalytics: SevenDayAnalyticsData;
+  twelveMonthTrend: TwelveMonthTrendData;
+  modalityTatOverview: ModalityTatOverviewData;
+  prevMonth: TwelveMonthTrendData["months"][number] | null;
+  configurationsData: ConfigurationsData;
 }
 
 export function DashboardShell({
@@ -67,39 +79,8 @@ export function DashboardShell({
      Sidebar
   ========================================================= */
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] =
-    useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(
-        "raditrack_sidebar_collapsed",
-      );
-
-      if (saved !== null) {
-        setIsSidebarCollapsed(saved === "true");
-      }
-    } catch {
-      // Ignore localStorage errors.
-    }
-  }, []);
-
-  const handleToggleSidebar = () => {
-    setIsSidebarCollapsed((prev) => {
-      const next = !prev;
-
-      try {
-        localStorage.setItem(
-          "raditrack_sidebar_collapsed",
-          String(next),
-        );
-      } catch {
-        // Ignore localStorage errors.
-      }
-
-      return next;
-    });
-  };
+  const [isSidebarCollapsed, handleToggleSidebar] =
+    usePersistedBoolean("raditrack_sidebar_collapsed", false);
 
   /* =========================================================
      Dashboard filter (Default set to SEVEN_DAYS)
@@ -147,14 +128,44 @@ export function DashboardShell({
      Dynamic KPI / modality state
   ========================================================= */
 
-  const [kpiData, setKpiData] =
-    useState<FilteredKpiResult | null>(null);
-
   const [selectedModality, setSelectedModality] =
     useState<"ALL" | ModalityCode>("ALL");
 
   const [selectedTriage, setSelectedTriage] =
     useState<"ALL" | TriageLevel>("ALL");
+
+  // Server KPI result, tagged with the filter it was fetched for so a stale
+  // result is never shown for a different (or default) filter.
+  const [kpiResult, setKpiResult] = useState<{
+    filterKey: string;
+    data: FilteredKpiResult;
+  } | null>(null);
+
+  // Only true "All time" with no filters matches the page's initial data;
+  // every other combination (including the 7-day default) is fetched.
+  const isDefaultFilter =
+    filterPreset === "ALL" &&
+    selectedModality === "ALL" &&
+    selectedTriage === "ALL";
+
+  // Same dates the server uses, for card subtitles and the instant estimate.
+  const kpiRange = useMemo(
+    () => resolveKpiRange(filterPreset, new Date(), customStart, customEnd),
+    [filterPreset, customStart, customEnd],
+  );
+
+  const filterKey = [
+    filterPreset,
+    filterPreset === "CUSTOM" ? customStart : "",
+    filterPreset === "CUSTOM" ? customEnd : "",
+    selectedModality,
+    selectedTriage,
+  ].join("|");
+
+  const kpiData =
+    !isDefaultFilter && kpiResult?.filterKey === filterKey
+      ? kpiResult.data
+      : null;
 
   /* =========================================================
      KPI filter
@@ -178,51 +189,47 @@ export function DashboardShell({
   };
 
   useEffect(() => {
+    if (isDefaultFilter) return;
+
     let isCancelled = false;
 
-    if (
-      filterPreset !== "ROLLING_7D" ||
-      selectedModality !== "ALL" ||
-      selectedTriage !== "ALL"
-    ) {
-      startKpiTransition(async () => {
-        try {
-          const result =
-            await fetchFilteredExecutiveKpiAction({
-              preset: filterPreset,
-              startDate:
-                filterPreset === "CUSTOM"
-                  ? customStart
-                  : undefined,
-              endDate:
-                filterPreset === "CUSTOM"
-                  ? customEnd
-                  : undefined,
-              modalityCode: selectedModality,
-              triageLevel: selectedTriage,
-            });
+    startKpiTransition(async () => {
+      try {
+        const result =
+          await fetchFilteredExecutiveKpiAction({
+            preset: filterPreset,
+            startDate:
+              filterPreset === "CUSTOM"
+                ? customStart
+                : undefined,
+            endDate:
+              filterPreset === "CUSTOM"
+                ? customEnd
+                : undefined,
+            modalityCode: selectedModality,
+            triageLevel: selectedTriage,
+          });
 
-          if (!isCancelled) {
-            setKpiData(result);
-          }
-        } catch (error) {
-          if (!isCancelled) {
-            console.error(
-              "Failed to re-sync filtered KPIs:",
-              error,
-            );
-          }
+        if (!isCancelled) {
+          setKpiResult({ filterKey, data: result });
         }
-      });
-    } else {
-      setKpiData(null);
-    }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error(
+            "Failed to re-sync filtered KPIs:",
+            error,
+          );
+        }
+      }
+    });
 
     return () => {
       isCancelled = true;
     };
   }, [
     data,
+    isDefaultFilter,
+    filterKey,
     filterPreset,
     customStart,
     customEnd,
@@ -237,17 +244,25 @@ export function DashboardShell({
   const liveKpiMetrics = useMemo(() => {
     if (kpiData) return kpiData;
 
-    if (
-      filterPreset === "ALL" &&
-      selectedModality === "ALL" &&
-      selectedTriage === "ALL"
-    ) {
+    if (isDefaultFilter) {
       return null;
     }
 
-    const all = data?.allExamsSummary || [];
+    // Instant local estimate from allExamsSummary while the server result
+    // loads. It uses the same date window, so the cards never flash
+    // all-time numbers under a 7-day label.
+    const all = data.allExamsSummary;
+    const rangeStartMs = kpiRange.start.getTime();
+    const rangeEndMs = kpiRange.end.getTime();
 
-    const scoped = all.filter((e: any) => {
+    const scoped = all.filter((e) => {
+      if (!kpiRange.isAllTime) {
+        const studyMs = new Date(e.studyDate).getTime();
+        if (studyMs < rangeStartMs || studyMs > rangeEndMs) {
+          return false;
+        }
+      }
+
       if (
         selectedModality !== "ALL" &&
         e.modalityCode !== selectedModality
@@ -266,11 +281,11 @@ export function DashboardShell({
     });
 
     const finalized = scoped.filter(
-      (e: any) => e.isFinalized,
+      (e) => e.isFinalized,
     );
 
     const tatValues = finalized
-      .map((e: any) => e.tatMinutes || 0)
+      .map((e) => e.tatMinutes || 0)
       .filter((value: number) => value > 0);
 
     const avgMinutes =
@@ -303,7 +318,7 @@ export function DashboardShell({
           : (sortedTat[mid - 1] + sortedTat[mid]) / 2;
 
     const breached = finalized.filter(
-      (e: any) => e.isSlaBreached,
+      (e) => e.isSlaBreached,
     ).length;
 
     const pct =
@@ -318,7 +333,7 @@ export function DashboardShell({
         : 100;
 
     const pending = scoped.filter(
-      (e: any) =>
+      (e) =>
         !e.isFinalized &&
         e.statusCode !== "CANCELLED",
     ).length;
@@ -338,8 +353,9 @@ export function DashboardShell({
       modalityOverview: null,
     };
   }, [
-    data?.allExamsSummary,
-    filterPreset,
+    data.allExamsSummary,
+    isDefaultFilter,
+    kpiRange,
     selectedModality,
     selectedTriage,
     kpiData,
@@ -434,58 +450,38 @@ export function DashboardShell({
   }, [selectedModality, selectedTriage]);
 
   /* =========================================================
+     Single filter bar shared by every section
+  ========================================================= */
+
+  const dashboardFilters: DashboardFilters = useMemo(
+    () => ({
+      preset: filterPreset,
+      rangeStart: toIsoDate(kpiRange.start),
+      // Capped at today so time-shaped charts never end on empty future days.
+      rangeEnd: toIsoDate(capAtToday(kpiRange.end, kpiRange.isAllTime)),
+      isAllTime: kpiRange.isAllTime,
+      modality: selectedModality,
+      triage: selectedTriage,
+    }),
+    [filterPreset, kpiRange, selectedModality, selectedTriage],
+  );
+
+  const [isReportOpen, setIsReportOpen] = useState(false);
+
+  const chartScopeLabel = [
+    kpiRange.isAllTime ? "All time" : kpiRange.dateRangeFormatted,
+    selectedTriage !== "ALL"
+      ? TRIAGE_CONFIG[selectedTriage]?.label || selectedTriage
+      : "All patients",
+  ].join(" · ");
+
+  /* =========================================================
      Date Range Formatting & Card Subtitles
   ========================================================= */
 
-  const dateRangeLabel = useMemo(() => {
-    const formatDateStr = (dateStr: string) => {
-      const [y, m, d] = dateStr.split("-").map(Number);
-      if (!y || !m || !d) return dateStr;
-      const date = new Date(y, m - 1, d);
-      return new Intl.DateTimeFormat("en-PH", {
-        month: "short",
-        day: "numeric",
-      }).format(date);
-    };
-
-    if (filterPreset === "ROLLING_7D") {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - 6);
-
-      const format = (date: Date) =>
-        new Intl.DateTimeFormat("en-PH", {
-          month: "short",
-          day: "numeric",
-        }).format(date);
-
-      return `${format(start)} – ${format(end)}`;
-    }
-
-    if (filterPreset === "TODAY") {
-      return "Today";
-    }
-
-    if (filterPreset === "MONTH") {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - 31);
-
-      const format = (date: Date) =>
-        new Intl.DateTimeFormat("en-PH", {
-          month: "short",
-          day: "numeric",
-        }).format(date);
-
-      return `${format(start)} – ${format(end)}`;
-    }
-
-    if (filterPreset === "CUSTOM" && customStart && customEnd) {
-      return `${formatDateStr(customStart)} – ${formatDateStr(customEnd)}`;
-    }
-
-    return "All time";
-  }, [filterPreset, customStart, customEnd]);
+  const dateRangeLabel = kpiRange.isAllTime
+    ? "All time"
+    : kpiRange.dateRangeFormatted;
 
   const displayVolumeForCard = displayVolume;
   
@@ -672,7 +668,11 @@ export function DashboardShell({
             <div className="space-y-4">
               {/* Filters */}
 
-              <section aria-label="Dashboard date filters">
+              <section
+                aria-label="Dashboard filters"
+                className="flex flex-col gap-2 lg:flex-row lg:items-start"
+              >
+                <div className="min-w-0 flex-1">
                 <DateRangeFilter
                   currentPreset={filterPreset}
                   startDate={customStart}
@@ -684,6 +684,22 @@ export function DashboardShell({
                   onModalityChange={setSelectedModality}
                   selectedTriage={selectedTriage}
                   onTriageChange={setSelectedTriage}
+                />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsReportOpen(true)}
+                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-qc-navy px-4 text-xs font-extrabold text-white shadow-[0_6px_16px_rgba(5,14,64,0.18)] transition-colors hover:bg-qc-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-yellow"
+                >
+                  <FileText className="h-4 w-4 text-qc-yellow" />
+                  Generate report
+                </button>
+
+                <ReportBuilderDialog
+                  isOpen={isReportOpen}
+                  onClose={() => setIsReportOpen(false)}
+                  filters={dashboardFilters}
                 />
               </section>
 
@@ -1031,7 +1047,11 @@ export function DashboardShell({
 
               <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.9fr)_minmax(300px,0.75fr)]">
                 <div className="min-w-0">
-                  <TatOverviewChart data={modalityTatOverview} />
+                  <TatOverviewChart
+                    data={modalityTatOverview}
+                    filters={dashboardFilters}
+                    scopeLabel={chartScopeLabel}
+                  />
                 </div>
 
                 {/* Recent Pulse */}
@@ -1165,7 +1185,10 @@ export function DashboardShell({
                 </div>
 
                 <div className="bg-[linear-gradient(180deg,#FCFCFE_0%,#FFFFFF_100%)]">
-                  <SevenDayTatTable analytics={sevenDayAnalytics} />
+                  <SevenDayTatTable
+                    analytics={sevenDayAnalytics}
+                    filters={dashboardFilters}
+                  />
                 </div>
               </section>
 
@@ -1191,7 +1214,11 @@ export function DashboardShell({
                 </div>
 
                 <div className="bg-white p-4 sm:p-6">
-                  <TwelveMonthTrendChart data={twelveMonthTrend} />
+                  <TwelveMonthTrendChart
+                    data={twelveMonthTrend}
+                    filters={dashboardFilters}
+                    onModalityChange={setSelectedModality}
+                  />
                 </div>
               </section>
             </div>

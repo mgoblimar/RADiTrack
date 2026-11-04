@@ -398,3 +398,42 @@
     margin: 0 auto;
   }
 }
+
+/* =========================================================
+   Printable report (/report) — A4, colours preserved
+========================================================= */
+/* Named page so only the report uses these margins. */
+@page report {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .report-page,
+  .report-sheet {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .report-sheet {
+    page: report;
+    width: 100%;
+    margin: 0;
+  }
+
+  .report-section {
+    break-inside: avoid;
+  }
+
+  .report-sheet thead {
+    display: table-header-group;
+  }
+
+  .report-sheet tr {
+    break-inside: avoid;
+  }
+}

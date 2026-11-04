@@ -11,16 +11,15 @@ import { createPortal } from "react-dom";
 
 import { ModalityCode } from "@/lib/enums";
 import { fetchSevenDayAnalyticsAction } from "@/app/actions";
+import type { DashboardFilters } from "@/lib/dashboard-types";
+import { toIsoDate } from "@/lib/kpi-range";
 
 import {
   Calendar,
-  Check,
+  Columns2,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Filter,
   Layers,
-  RotateCcw,
   Settings2,
   X,
 } from "lucide-react";
@@ -60,6 +59,8 @@ interface Props {
     all: ModalityAnalytics;
     byModality: Record<string, ModalityAnalytics>;
   };
+  /** Dashboard filter bar: modality and the window's end date. */
+  filters: DashboardFilters;
 }
 
 type AnalyticsMode = "rolling" | "static";
@@ -67,10 +68,10 @@ type AnalyticsMode = "rolling" | "static";
 const MODALITY_TABS = [
   { key: "ALL", label: "All" },
   { key: ModalityCode.XRAY, label: "X-ray" },
+  { key: ModalityCode.MAMMO, label: "Mammogram" },
   { key: ModalityCode.US, label: "Ultrasound" },
   { key: ModalityCode.CT, label: "CT" },
   { key: ModalityCode.MRI, label: "MRI" },
-  { key: ModalityCode.MAMMO, label: "Mammogram" },
 ];
 
 const CATEGORY_COLUMNS = [
@@ -105,15 +106,20 @@ const CATEGORY_COLUMNS = [
 
 export function SevenDayTatTable({
   analytics: initialAnalytics,
+  filters,
 }: Props) {
   /* =========================================================
      UI state
   ========================================================= */
 
-  const [activeTab, setActiveTab] = useState<string>("ALL");
+  // Modality comes from the dashboard filter bar.
+  const activeTab: string = filters.modality;
 
   const [mode, setMode] =
     useState<AnalyticsMode>("rolling");
+
+  // Off by default; shows the previous 7 days next to the current table.
+  const [showPrevious, setShowPrevious] = useState(false);
 
   const [isOptionsOpen, setIsOptionsOpen] =
     useState(false);
@@ -132,37 +138,48 @@ export function SevenDayTatTable({
     });
 
   /* =========================================================
-     Today's date
+     Analytics: the 7 days ending on the filter bar's end date
   ========================================================= */
 
-  const todayIso = useMemo(() => {
-    const now = new Date();
+  const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const anchorDate = filters.isAllTime ? todayIso : filters.rangeEnd;
+  const requestKey = `${anchorDate}|${mode}`;
+  const isInitialRequest = requestKey === `${todayIso}|rolling`;
 
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(
-      2,
-      "0",
-    );
-    const day = String(now.getDate()).padStart(2, "0");
+  const [fetched, setFetched] = useState<{
+    key: string;
+    data: Props["analytics"];
+  } | null>(null);
 
-    return `${year}-${month}-${day}`;
-  }, []);
-
-  /* =========================================================
-     Analytics state
-  ========================================================= */
-
-  const [anchorDate, setAnchorDate] = useState<string>(
-    initialAnalytics.all.anchorFormatted || todayIso,
-  );
-
-  const [analytics, setAnalytics] = useState(initialAnalytics);
+  const [isTransitionPending, startTransition] = useTransition();
 
   useEffect(() => {
-    setAnalytics(initialAnalytics);
-  }, [initialAnalytics]);
+    if (isInitialRequest) return;
 
-  const [isPending, startTransition] = useTransition();
+    let isCancelled = false;
+    startTransition(async () => {
+      try {
+        const result = await fetchSevenDayAnalyticsAction(anchorDate, mode);
+        if (!isCancelled) setFetched({ key: requestKey, data: result });
+      } catch (error) {
+        console.error(
+          "Failed to fetch seven-day Turnaround Time analytics:",
+          error,
+        );
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [initialAnalytics, isInitialRequest, anchorDate, mode, requestKey]);
+
+  // Keep showing the last result while a new window loads.
+  const analytics = isInitialRequest
+    ? initialAnalytics
+    : (fetched?.data ?? initialAnalytics);
+  const isPending =
+    isTransitionPending || (!isInitialRequest && fetched?.key !== requestKey);
 
   /* =========================================================
      Current modality data
@@ -181,6 +198,9 @@ export function SevenDayTatTable({
     activeTab === "ALL"
       ? "For all Modalities"
       : `${currentTabLabel} only`;
+
+  const modeLabel =
+    mode === "rolling" ? "Rolling 7 days" : "Monday–Sunday";
 
   /* =========================================================
      Date labels
@@ -289,69 +309,6 @@ export function SevenDayTatTable({
   }, [isOptionsOpen]);
 
   /* =========================================================
-     Fetch analytics
-  ========================================================= */
-
-  const handleFetch = (
-    newAnchor: string,
-    newMode: AnalyticsMode,
-  ) => {
-    setAnchorDate(newAnchor);
-    setMode(newMode);
-
-    startTransition(async () => {
-      try {
-        const result = await fetchSevenDayAnalyticsAction(
-          newAnchor,
-          newMode,
-        );
-
-        setAnalytics(result);
-      } catch (error) {
-        console.error(
-          "Failed to fetch seven-day Turnaround Time analytics:",
-          error,
-        );
-      }
-    });
-  };
-
-  /* =========================================================
-     Move anchor by seven days
-  ========================================================= */
-
-  const stepAnchor = (days: number) => {
-    const parts = anchorDate.split("-").map(Number);
-
-    if (parts.length !== 3) return;
-
-    const date = new Date(
-      parts[0],
-      parts[1] - 1,
-      parts[2],
-    );
-
-    date.setDate(date.getDate() + days);
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(
-      2,
-      "0",
-    );
-    const day = String(date.getDate()).padStart(2, "0");
-
-    handleFetch(`${year}-${month}-${day}`, mode);
-  };
-
-  /* =========================================================
-     Reset anchor
-  ========================================================= */
-
-  const handleResetToday = () => {
-    handleFetch(todayIso, mode);
-  };
-
-  /* =========================================================
      Format Turnaround Time
   ========================================================= */
 
@@ -366,6 +323,7 @@ export function SevenDayTatTable({
 
   const renderTable = (
     rows: DayRow[],
+    isPrior = false,
   ) => {
     const totalVolume = rows.reduce(
       (sum, row) => sum + row.totalExams,
@@ -597,7 +555,11 @@ export function SevenDayTatTable({
                       ) : (
                         <span
                           className={`font-mono text-xs font-extrabold ${
-                            isSlow ? "text-qc-red" : "text-qc-navy"
+                            isSlow
+                              ? "text-qc-red"
+                              : isPrior
+                                ? "text-qc-blue"
+                                : "text-qc-navy"
                           }`}
                         >
                           {formatTurnaroundTime(
@@ -659,7 +621,11 @@ export function SevenDayTatTable({
                 </td>
 
                 <td className="px-4 py-3 text-right">
-                  <span className="font-mono text-xs font-extrabold text-qc-navy">
+                  <span
+                    className={`font-mono text-xs font-extrabold ${
+                      isPrior ? "text-qc-blue" : "text-qc-navy"
+                    }`}
+                  >
                     {weightedTat > 0
                       ? `${weightedTatHours} hrs`
                       : "—"}
@@ -711,39 +677,8 @@ export function SevenDayTatTable({
       </div>
 
       <div className="space-y-4 p-4">
-        {/* Modality */}
-        <div>
-          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-            Modality
-          </p>
-
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-            {MODALITY_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab.key);
-                  setIsOptionsOpen(false);
-                }}
-                className={`flex items-center justify-between gap-1 rounded-xl px-2.5 py-2 text-[10px] font-bold transition-colors ${
-                  activeTab === tab.key
-                    ? "bg-qc-yellow text-qc-navy"
-                    : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-                }`}
-              >
-                <span className="truncate">{tab.label}</span>
-
-                {activeTab === tab.key && (
-                  <Check className="h-3 w-3 shrink-0" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Time mode */}
-        <div className="border-t border-border pt-4">
+        <div>
           <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
             Time mode
           </p>
@@ -752,7 +687,7 @@ export function SevenDayTatTable({
             <button
               type="button"
               onClick={() => {
-                handleFetch(anchorDate, "rolling");
+                setMode("rolling");
                 setIsOptionsOpen(false);
               }}
               className={`rounded-xl px-2.5 py-2.5 text-[10px] font-bold transition-colors ${
@@ -767,7 +702,7 @@ export function SevenDayTatTable({
             <button
               type="button"
               onClick={() => {
-                handleFetch(anchorDate, "static");
+                setMode("static");
                 setIsOptionsOpen(false);
               }}
               className={`rounded-xl px-2.5 py-2.5 text-[10px] font-bold transition-colors ${
@@ -796,17 +731,6 @@ export function SevenDayTatTable({
           {/* Date navigation and selected modality */}
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => stepAnchor(-7)}
-                disabled={isPending}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-50"
-                title="Previous 7 days"
-                aria-label="Previous 7 days"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
               <div className="flex min-w-0 items-center gap-2 rounded-xl bg-background px-3 py-2">
                 <Calendar className="h-3.5 w-3.5 shrink-0 text-qc-blue" />
 
@@ -814,28 +738,6 @@ export function SevenDayTatTable({
                   {firstDay} – {lastDay}
                 </span>
               </div>
-
-              <button
-                type="button"
-                onClick={() => stepAnchor(7)}
-                disabled={isPending}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-50"
-                title="Next 7 days"
-                aria-label="Next 7 days"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleResetToday}
-                disabled={isPending}
-                className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-blue disabled:opacity-50"
-                title="Reset to today"
-                aria-label="Reset to today"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-              </button>
 
               {isPending && (
                 <span className="ml-1 h-2 w-2 shrink-0 animate-pulse rounded-full bg-qc-yellow" />
@@ -854,6 +756,26 @@ export function SevenDayTatTable({
             </span>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+          {/* Compare with the previous 7 days */}
+          <button
+            type="button"
+            onClick={() => setShowPrevious((previous) => !previous)}
+            aria-pressed={showPrevious}
+            className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
+              showPrevious
+                ? "border-qc-blue bg-qc-blue text-white"
+                : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
+            }`}
+          >
+            <Columns2
+              className={`h-3.5 w-3.5 ${
+                showPrevious ? "text-qc-yellow" : "text-qc-blue"
+              }`}
+            />
+            {showPrevious ? "Hide previous 7 days" : "Compare previous 7 days"}
+          </button>
+
           {/* Options */}
           <button
             ref={optionsButtonRef}
@@ -861,7 +783,7 @@ export function SevenDayTatTable({
             onClick={() =>
               setIsOptionsOpen((previous) => !previous)
             }
-            className={`inline-flex h-9 items-center gap-2 self-start rounded-xl border px-3 text-xs font-extrabold transition-all lg:self-auto ${
+            className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
               isOptionsOpen
                 ? "border-qc-navy bg-qc-navy text-white"
                 : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
@@ -877,7 +799,7 @@ export function SevenDayTatTable({
               }`}
             />
 
-            <span>{currentTabLabel}</span>
+            <span>{modeLabel}</span>
 
             <ChevronDown
               className={`h-3.5 w-3.5 transition-transform ${
@@ -885,6 +807,7 @@ export function SevenDayTatTable({
               }`}
             />
           </button>
+          </div>
         </div>
       </div>
 
@@ -893,24 +816,63 @@ export function SevenDayTatTable({
         isOptionsOpen &&
         createPortal(optionsPopover, document.body)}
 
-      {/* Single table view */}
+      {/* Current table, optionally beside the previous 7 days */}
       <div className="px-4 pb-5 pt-4 sm:px-5">
-        <div className="min-w-0 space-y-2.5">
-          <div className="flex items-center justify-between gap-3 px-1">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-qc-yellow" />
-
-              <span className="text-sm font-extrabold text-qc-navy">
-                Current
+        <div
+          className={`grid grid-cols-1 gap-5 ${
+            showPrevious ? "xl:grid-cols-2" : ""
+          }`}
+        >
+          <div className="min-w-0 space-y-2.5">
+            <div className="flex items-center justify-between gap-3 px-1">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-qc-yellow" />
+                <span className="text-sm font-extrabold text-qc-navy">
+                  Current
+                </span>
+              </div>
+              <span className="text-[10px] font-semibold text-muted-foreground">
+                {currentData.currentTotalVolume} exams
               </span>
             </div>
 
-            <span className="text-[10px] font-semibold text-muted-foreground">
-              {currentData.currentTotalVolume} exams
-            </span>
+            {renderTable(currentData.dayRows)}
           </div>
 
-          {renderTable(currentData.dayRows)}
+          {showPrevious && (
+            <div className="min-w-0 space-y-2.5">
+              <div className="flex items-center justify-between gap-3 px-1">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-qc-blue" />
+                  <span className="text-sm font-extrabold text-qc-navy">
+                    Previous 7 days
+                  </span>
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground">
+                  {currentData.priorTotalVolume} exams
+                </span>
+              </div>
+
+              {currentData.priorDayRows &&
+              currentData.priorDayRows.length > 0 ? (
+                renderTable(currentData.priorDayRows, true)
+              ) : (
+                <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-border bg-background p-8 text-center">
+                  <div>
+                    <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <Layers className="h-4 w-4" />
+                    </div>
+                    <p className="mt-3 text-sm font-extrabold text-qc-navy">
+                      No previous data
+                    </p>
+                    <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                      There is no earlier seven-day period to compare with.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

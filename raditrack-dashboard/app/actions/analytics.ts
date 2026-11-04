@@ -1,10 +1,12 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import {
   TriageLevel,
   UrgencyLevel,
   ModalityCode,
+  sortByModalityOrder,
 } from "@/lib/enums";
 import { calculatedMedian } from "./utils";
 
@@ -261,6 +263,8 @@ export interface MonthModalityTrend {
   priorYearAvgTatHours: number;
   priorYearAvgTatMinutes: number;
   priorYearTotalFinalized: number;
+  previousMonthAvgTatHours: number;
+  previousMonthTotalFinalized: number;
 }
 
 export interface MonthTrendData {
@@ -273,8 +277,16 @@ export interface MonthTrendData {
   priorYearAvgTatHours?: number;
   priorYearAvgTatMinutes?: number;
   priorYearTotalFinalized?: number;
+  /** The calendar month just before this one, e.g. "Sep '26". */
+  previousMonthLabel?: string;
+  /** Same calendar month one year earlier, e.g. "Nov '25". */
+  priorYearMonthLabel?: string;
+  previousMonthAvgTatHours?: number;
+  previousMonthTotalFinalized?: number;
   byModality?: Record<string, MonthModalityTrend>;
-  [key: string]: any;
+  // Flattened per-modality fields, e.g. CT_avgTatHours, prior_CT_totalFinalized
+  [key: `${string}_avgTatHours`]: number;
+  [key: `${string}_totalFinalized`]: number;
 }
 
 export interface ModalityAnnualSummary {
@@ -314,10 +326,40 @@ export interface TwelveMonthTrendResult {
   byModalityAnnual?: Record<string, ModalityAnnualSummary>;
 }
 
+function parseAnchorDate(iso?: string): Date | null {
+  if (!iso) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : null;
+}
+
+/** Short month label, e.g. "Sep '26". */
+function shortMonthLabel(d: Date): string {
+  return `${d.toLocaleDateString("en-US", { month: "short" })} '${String(d.getFullYear()).slice(-2)}`;
+}
+
+/** Range and short label (e.g. "Sep '26") of the calendar month before `start`. */
+function previousMonthOf(start: Date) {
+  const prevStart = new Date(start.getFullYear(), start.getMonth() - 1, 1, 0, 0, 0, 0);
+  const prevEnd = new Date(start.getFullYear(), start.getMonth(), 0, 23, 59, 59, 999);
+  const prevLabel = shortMonthLabel(prevStart);
+  return { prevStart, prevEnd, prevLabel };
+}
+
+/** Average exam-to-sign TAT in hours (1 decimal) over reports with a TAT. */
+function averageTatHours(rows: ReadonlyArray<{ tatExamToSignMinutes: number | null }>): number {
+  const tats = rows.map((r) => r.tatExamToSignMinutes ?? 0).filter((v) => v > 0);
+  if (tats.length === 0) return 0;
+  const avgMinutes = Number((tats.reduce((a, b) => a + b, 0) / tats.length).toFixed(1));
+  return Number((avgMinutes / 60).toFixed(1));
+}
+
 export async function getTwelveMonthTatTrend(
-  period: string = "rolling", triageLevel: "ALL" | TriageLevel = "ALL"
+  period: string = "rolling",
+  triageLevel: "ALL" | TriageLevel = "ALL",
+  /** Optional "YYYY-MM-DD"; the rolling window ends on this date's month. */
+  anchorDate?: string,
 ): Promise<TwelveMonthTrendResult> {
-  const now = new Date();
+  const now = parseAnchorDate(anchorDate) ?? new Date();
   const isRolling = period === "rolling";
   const targetYear = !isRolling && !isNaN(Number(period)) ? Number(period) : now.getFullYear();
 
@@ -329,6 +371,9 @@ export async function getTwelveMonthTatTrend(
     end: Date;
     priStart: Date;
     priEnd: Date;
+    prevStart: Date;
+    prevEnd: Date;
+    prevLabel: string;
   }> = [];
 
   if (isRolling) {
@@ -349,6 +394,7 @@ export async function getTwelveMonthTatTrend(
         end,
         priStart,
         priEnd,
+        ...previousMonthOf(start),
       });
     }
   } else {
@@ -368,6 +414,7 @@ export async function getTwelveMonthTatTrend(
         end,
         priStart,
         priEnd,
+        ...previousMonthOf(start),
       });
     }
   }
@@ -384,7 +431,7 @@ export async function getTwelveMonthTatTrend(
   const minQueryDate = new Date(Math.min(...allDateStarts.map((d) => d.getTime())));
   const maxQueryDate = new Date(Math.max(...allDateEnds.map((d) => d.getTime())));
 
-  const examinationWhere: any = {
+  const examinationWhere: Prisma.ExaminationWhereInput = {
     studyDate: { gte: minQueryDate, lte: maxQueryDate },
     statusCode: { not: "CANCELLED" },
   };
@@ -477,6 +524,12 @@ export async function getTwelveMonthTatTrend(
     allPriorTats.push(...priTatList);
     priorAnnualTotalFinalized += priReports.length;
 
+    const prevReports = reports.filter((r) => {
+      const s = new Date(r.examination.studyDate);
+      return s >= cfg.prevStart && s <= cfg.prevEnd && r.tatExamToSignMinutes;
+    });
+    const prevAvgHours = averageTatHours(prevReports);
+
     const byModality: Record<string, MonthModalityTrend> = {};
     const flatModalityProps: Record<string, number> = {};
 
@@ -503,6 +556,8 @@ export async function getTwelveMonthTatTrend(
       modalityPriorTats[mCode].push(...priModTats);
       modalityPriorCounts[mCode] += priModReports.length;
 
+      const prevModReports = prevReports.filter((r) => r.examination.modalityCode === mCode);
+
       byModality[mCode] = {
         avgTatHours: curModAvgHours,
         avgTatMinutes: curModAvgMin,
@@ -510,12 +565,16 @@ export async function getTwelveMonthTatTrend(
         priorYearAvgTatHours: priModAvgHours,
         priorYearAvgTatMinutes: priModAvgMin,
         priorYearTotalFinalized: priModReports.length,
+        previousMonthAvgTatHours: averageTatHours(prevModReports),
+        previousMonthTotalFinalized: prevModReports.length,
       };
 
       flatModalityProps[`${mCode}_avgTatHours`] = curModAvgHours;
       flatModalityProps[`${mCode}_totalFinalized`] = curModReports.length;
       flatModalityProps[`prior_${mCode}_avgTatHours`] = priModAvgHours;
       flatModalityProps[`prior_${mCode}_totalFinalized`] = priModReports.length;
+      flatModalityProps[`prevMonth_${mCode}_avgTatHours`] = byModality[mCode].previousMonthAvgTatHours;
+      flatModalityProps[`prevMonth_${mCode}_totalFinalized`] = prevModReports.length;
     }
 
     return {
@@ -528,6 +587,10 @@ export async function getTwelveMonthTatTrend(
       priorYearAvgTatHours: priAvgHours,
       priorYearAvgTatMinutes: priAvgMinutes,
       priorYearTotalFinalized: priReports.length,
+      previousMonthLabel: cfg.prevLabel,
+      priorYearMonthLabel: shortMonthLabel(cfg.priStart),
+      previousMonthAvgTatHours: prevAvgHours,
+      previousMonthTotalFinalized: prevReports.length,
       byModality,
       ...flatModalityProps,
     };
@@ -646,8 +709,12 @@ export async function getTwelveMonthTatTrend(
   };
 }
 
-export async function fetchYearlyTrendAction(period: string = "rolling", triageLevel: "ALL" | TriageLevel = "ALL") {
-  return await getTwelveMonthTatTrend(period, triageLevel);
+export async function fetchYearlyTrendAction(
+  period: string = "rolling",
+  triageLevel: "ALL" | TriageLevel = "ALL",
+  anchorDate?: string,
+) {
+  return await getTwelveMonthTatTrend(period, triageLevel, anchorDate);
 }
 
 // ============================================================================
@@ -696,7 +763,7 @@ export interface MultiPeriodModalityTatOverview {
 }
 
 export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOverview> {
-  const modalities = await prisma.modality.findMany({
+  const modalitiesUnsorted = await prisma.modality.findMany({
     include: {
       slaConfigs: true,
       examinations: {
@@ -709,6 +776,7 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
     },
     orderBy: { modalityCode: "asc" },
   });
+  const modalities = sortByModalityOrder(modalitiesUnsorted);
 
   const now = new Date();
   const sevenDaysAgo = new Date(now);
@@ -764,7 +832,7 @@ export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOv
             ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
             : 0;
 
-        let sla: any;
+        let sla: (typeof m.slaConfigs)[number] | undefined;
         if (filterType === "isStat" || filterType === "ER") {
           sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER);
         } else if (filterType === "OPD") {
@@ -859,7 +927,7 @@ export async function fetchModalityTatDataAction(options: {
     end = new Date(eParts[0], eParts[1] - 1, eParts[2], 23, 59, 59, 999);
   }
 
-  const modalities = await prisma.modality.findMany({
+  const modalitiesUnsorted = await prisma.modality.findMany({
     include: {
       slaConfigs: true,
       examinations: {
@@ -873,6 +941,7 @@ export async function fetchModalityTatDataAction(options: {
     },
     orderBy: { modalityCode: "asc" },
   });
+  const modalities = sortByModalityOrder(modalitiesUnsorted);
 
   return modalities.map((m) => {
     const calcStats = (
@@ -894,7 +963,7 @@ export async function fetchModalityTatDataAction(options: {
           ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
           : 0;
 
-      let sla: any;
+      let sla: (typeof m.slaConfigs)[number] | undefined;
       if (filterType === "isStat" || filterType === "ER") {
         sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER);
       } else if (filterType === "OPD") {

@@ -1,11 +1,16 @@
 import React from "react";
+import type { LabelProps, XAxisTickContentProps } from "recharts";
 import type { ModalityTatDisplayItem } from "./types";
 
 /* =========================================================
    Custom Modality X-Axis Tick (Shows friendly modality name)
 ========================================================= */
-export const renderModalityTick = (props: any) => {
-  const { x, y, payload } = props;
+/** X-axis tick showing the friendly modality name; the highlighted one is emphasised. */
+export const createModalityTickRenderer = (highlightCode: string | null) =>
+  function renderModalityTick(props: XAxisTickContentProps) {
+  const { payload } = props;
+  const x = Number(props.x);
+  const y = Number(props.y);
   if (!payload || payload.value === undefined || payload.value === null) return null;
 
   const raw = String(payload.value);
@@ -23,6 +28,7 @@ export const renderModalityTick = (props: any) => {
   };
 
   const label = labels[code] || raw;
+  const isHighlighted = highlightCode !== null && code === highlightCode;
 
   return (
     <g transform={`translate(${x}, ${y + 8})`}>
@@ -32,8 +38,9 @@ export const renderModalityTick = (props: any) => {
         textAnchor="middle"
         dominantBaseline="hanging"
         fill="#050E40"
-        fontSize={12}
-        fontWeight={800}
+        fontSize={isHighlighted ? 13 : 12}
+        fontWeight={isHighlighted ? 900 : 800}
+        textDecoration={isHighlighted ? "underline" : undefined}
         className="select-none tracking-tight"
       >
         {label}
@@ -49,10 +56,13 @@ export const createActualTatLabelRenderer = (
   displayData: ModalityTatDisplayItem[],
   hasTargetSla: boolean,
 ) => {
-  return function renderActualTatLabel(props: any) {
-    const { x, y, width, value, index } = props;
+  return function renderActualTatLabel(props: LabelProps) {
+    const { value, index } = props;
+    const x = Number(props.x);
+    const y = Number(props.y);
+    const width = Number(props.width);
     if (value === undefined || value === null) return null;
-    const item = displayData[index];
+    const item = index === undefined ? undefined : displayData[index];
     if (!item || item.volume === 0) return null;
 
     const isBreach = hasTargetSla && item.target !== null && item.avgTat > item.target;
