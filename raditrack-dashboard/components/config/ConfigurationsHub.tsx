@@ -1,5 +1,6 @@
 "use client";
 
+import { RaditrackGuide } from "@/components/config/RaditrackGuide";
 import { useState, useTransition, useMemo } from "react";
 import {
   ShieldCheck,
@@ -1252,133 +1253,11 @@ export function ConfigurationsHub({
       )}*/}
 
       {/* =========================================================
-          TAB 4 — RADiTrack GUIDE (diko pa alam lalagay dito)
+          TAB 4 — RADiTrack GUIDE
           ========================================================= */}
 
       {activeTab === "governance" && (
-        <section
-          className={panelBase + " overflow-hidden"}
-        >
-          <div className="border-b border-white/70 bg-white/[0.62] px-5 py-4 sm:px-6">
-            <div>
-              <h3 className="mt-1 text-lg font-extrabold text-qc-navy">
-                HOW TO USE RADiTrack
-              </h3>
-            </div>
-          </div>
-
-          <div className="divide-y divide-slate-200/70">
-            {/* Zero-PII */}
-            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-              <div>
-                <p className="text-sm font-bold text-qc-navy">
-                  Zero-PII mode
-                </p>
-
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Patient-identifying information is not used
-                  in the operational dashboard.
-                </p>
-              </div>
-
-              <span
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-extrabold ${
-                  governance.phiZeroCompliance
-                    ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
-                    : "border-orange-200 bg-orange-50 text-qc-orange"
-                }`}
-              >
-                {governance.phiZeroCompliance
-                  ? "Enabled"
-                  : "Review"}
-              </span>
-            </div>
-
-            {/* Accession keys */}
-            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-              <div>
-                <p className="text-sm font-bold text-qc-navy">
-                  Examination identifiers
-                </p>
-
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Workflow records use de-identified accession
-                  keys.
-                </p>
-              </div>
-
-              <span className="shrink-0 text-xs font-semibold text-slate-500">
-                De-identified
-              </span>
-            </div>
-
-            {/* Timestamp */}
-            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-              <div>
-                <p className="text-sm font-bold text-qc-navy">
-                  TAT timestamps
-                </p>
-
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Calculated from examination completion (T₁)
-                  to report sign-off (T₂).
-                </p>
-              </div>
-
-              <span className="shrink-0 text-xs font-semibold text-slate-500">
-                T₁ → T₂
-              </span>
-            </div>
-
-            {/* Accreditation */}
-            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-              <div>
-                <p className="text-sm font-bold text-qc-navy">
-                  Hospital accreditation
-                </p>
-
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {governance.hospitalName}
-                </p>
-              </div>
-
-              <span className="max-w-[240px] text-right text-xs font-semibold text-slate-500">
-                {governance.dohAccreditation}
-              </span>
-            </div>
-
-            {/* Ingestion */}
-            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-              <div>
-                <p className="text-sm font-bold text-qc-navy">
-                  Ingestion
-                </p>
-
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Simulation and ingestion workflows remain
-                  separate from the dashboard.
-                </p>
-              </div>
-
-              <span className="shrink-0 text-xs font-semibold text-slate-500">
-                Isolated
-              </span>
-            </div>
-
-            {/* Version */}
-            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-              <div>
-                <p className="text-sm font-bold text-qc-navy">
-                  System version
-                </p>
-              </div>
-
-              <span className="shrink-0 font-mono text-xs font-semibold text-slate-500">
-                {governance.systemVersion}
-              </span>
-            </div>
-          </div>
-        </section>
+        <RaditrackGuide modalities={modalities} governance={governance} />
       )}
 
       {/* =========================================================

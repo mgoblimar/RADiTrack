@@ -597,7 +597,8 @@ export function DashboardShell({
     "text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#F7F9FC] text-foreground">
+    <div className="relative min-h-screen overflow-clip bg-[#F7F9FC] text-foreground">
+      {/* overflow-clip (not overflow-hidden) keeps sticky bars working inside */}
       {/* Global QCGH background */}
 
       <div
