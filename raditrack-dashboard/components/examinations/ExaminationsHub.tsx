@@ -77,6 +77,11 @@ const ALL_CATEGORIES: TriageLevel[] = [
   TriageLevel.IN,
 ];
 
+/** Local "YYYY-MM-DD" for date inputs. */
+function toLocalIsoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function ExaminationsHub({
   queue,
   finalizedCount: initialFinalizedCount,
@@ -91,9 +96,7 @@ export function ExaminationsHub({
   const [datePreset, setDatePreset] =
     useState<DatePreset>("all");
 
-  const todayStr = new Date()
-    .toISOString()
-    .split("T")[0];
+  const todayStr = toLocalIsoDate(new Date());
 
   const [startDate, setStartDate] =
     useState<string>(todayStr);
@@ -289,14 +292,27 @@ export function ExaminationsHub({
 
   const items = result?.items ?? [];
 
+  // Counts cover every status for the current filters, so the tab badges
+  // always add up: All = Finalized + Backlog.
   const summary = result?.summary ?? {
-    totalFinalized:
-      initialFinalizedCount,
+    totalCount: initialFinalizedCount + queue.length,
+    totalFinalized: initialFinalizedCount,
     totalBacklog: queue.length,
     avgTatMinutes: 0,
     avgTatHours: 0,
     totalBreached: 0,
+    totalOverdue: 0,
   };
+
+  // Red badge for the open tab: overdue waiting exams and/or breached reports.
+  const slaAlerts = [
+    statusTab !== "finalized" && summary.totalOverdue > 0
+      ? `${summary.totalOverdue} past SLA, still unsigned`
+      : null,
+    statusTab !== "backlog" && summary.totalBreached > 0
+      ? `${summary.totalBreached} signed late (SLA breached)`
+      : null,
+  ].filter((text): text is string => text !== null);
 
   /* =========================================================
      Display helpers
@@ -411,8 +427,8 @@ export function ExaminationsHub({
             ================================================= */}
 
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex min-w-0">
-                <div className="flex w-full overflow-x-auto rounded-2xl border border-[#E2E7F1] bg-[#F7F9FC] p-1 xl:w-fit">
+              <div className="flex min-w-0 xl:shrink-0">
+                <div className="flex w-full overflow-x-auto rounded-2xl border border-[#E2E7F1] bg-[#F7F9FC] p-1 [scrollbar-width:none] xl:w-fit xl:overflow-visible">
                   {/* Backlog */}
                   <button
                     type="button"
@@ -524,8 +540,7 @@ export function ExaminationsHub({
                           : "bg-white text-muted-foreground"
                       }`}
                     >
-                      {result?.totalCount ??
-                        0}
+                      {summary.totalCount}
                     </span>
                   </button>
                 </div>
@@ -535,9 +550,9 @@ export function ExaminationsHub({
                   SEARCH / FILTER / EXPORT
               ================================================= */}
 
-              <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-auto">
+              <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center xl:w-auto">
                 {/* Search */}
-                <div className="relative min-w-0 flex-1 sm:min-w-[250px] xl:w-[290px] xl:flex-none">
+                <div className="relative min-w-0 flex-1 sm:min-w-[200px] xl:w-[240px] xl:flex-none">
                   <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
                   <input
@@ -902,7 +917,7 @@ export function ExaminationsHub({
                 </div>
 
                 {/* Import / Export */}
-                <div className="flex flex-wrap items-center gap-2 sm:w-auto">
+                <div className="flex shrink-0 items-center gap-2">
                   <ImportExamsButton />
                   <ExportCsvButton />
                 </div>
@@ -1210,20 +1225,12 @@ export function ExaminationsHub({
               </span>
             )}
 
-            {!isPending &&
-              summary.totalBreached >
-                0 && (
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-[10px] font-extrabold text-qc-red">
-                  <AlertTriangle className="h-3 w-3" />
-
-                  {summary.totalBreached} SLA
-                  {summary.totalBreached ===
-                  1
-                    ? ""
-                    : "s"}{" "}
-                  breached
-                </span>
-              )}
+            {!isPending && slaAlerts.length > 0 && (
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-[10px] font-extrabold text-qc-red">
+                <AlertTriangle className="h-3 w-3" />
+                {slaAlerts.join(" · ")}
+              </span>
+            )}
           </div>
         </div>
 
@@ -1662,17 +1669,10 @@ export function ExaminationsHub({
           </span>
 
           <div className="flex items-center gap-4">
-            {summary.totalBreached >
-              0 && (
+            {slaAlerts.length > 0 && (
               <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold text-qc-red">
                 <span className="h-1.5 w-1.5 rounded-full bg-qc-red" />
-
-                {summary.totalBreached} SLA
-                {summary.totalBreached ===
-                1
-                  ? ""
-                  : "s"}{" "}
-                breached
+                {slaAlerts.join(" · ")}
               </span>
             )}
 

@@ -266,15 +266,31 @@ export interface FilteredExaminationItem {
 }
 
 export interface FilteredExaminationsResult {
+  /** Rows for the selected status tab. */
   items: FilteredExaminationItem[];
+  /** Number of rows in `items`. */
   totalCount: number;
+  /**
+   * Counts across ALL statuses for the same date/modality/category/search
+   * filters, so the tab badges and KPI cards stay consistent whichever tab is
+   * open: totalCount = totalFinalized + totalBacklog.
+   */
   summary: {
+    totalCount: number;
     totalFinalized: number;
     totalBacklog: number;
     avgTatMinutes: number;
     avgTatHours: number;
+    /** Signed reports whose TAT exceeded the SLA target. */
     totalBreached: number;
+    /** Unsigned exams already waiting longer than their SLA target. */
+    totalOverdue: number;
   };
+}
+
+/** Local "YYYY-MM-DD" (toISOString would shift Philippine mornings to the previous day). */
+function toLocalIsoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export async function fetchFilteredExaminationsAction(
@@ -328,11 +344,8 @@ export async function fetchFilteredExaminationsAction(
     whereClause.studyDate = dateFilter;
   }
 
-  if (options.statusType === "backlog") {
-    whereClause.report = { is: null };
-  } else if (options.statusType === "finalized") {
-    whereClause.report = { reportSignedAt: { not: null } };
-  }
+  // The status tab is applied after counting (below), not in the query, so the
+  // summary always covers every status for the current filters.
 
   // Modality filter: supports multiple codes or "ALL"
   if (options.modalityCodes !== undefined) {
@@ -384,6 +397,7 @@ export async function fetchFilteredExaminationsAction(
 
   const tatList: number[] = [];
   let totalBreached = 0;
+  let totalOverdue = 0;
   let totalFinalized = 0;
   let totalBacklog = 0;
 
@@ -424,7 +438,7 @@ export async function fetchFilteredExaminationsAction(
         dwellHours = Number((dwellMinutes / 60).toFixed(1));
         if (targetTat && dwellMinutes > targetTat) {
           isBreached = true;
-          totalBreached++;
+          totalOverdue++;
         }
       }
     }
@@ -440,7 +454,7 @@ export async function fetchFilteredExaminationsAction(
         day: "numeric",
         year: "numeric",
       }),
-      isoDate: new Date(e.studyDate).toISOString().split("T")[0],
+      isoDate: toLocalIsoDate(new Date(e.studyDate)),
       examCompletedAtFormatted: e.examCompletedAt
         ? new Date(e.examCompletedAt).toLocaleDateString("en-US", {
             month: "short",
@@ -473,6 +487,13 @@ export async function fetchFilteredExaminationsAction(
     };
   });
 
+  const visibleItems =
+    options.statusType === "backlog"
+      ? items.filter((item) => !item.isFinalized)
+      : options.statusType === "finalized"
+        ? items.filter((item) => item.isFinalized)
+        : items;
+
   const avgTatMinutes =
     tatList.length > 0
       ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
@@ -480,14 +501,16 @@ export async function fetchFilteredExaminationsAction(
   const avgTatHours = Number((avgTatMinutes / 60).toFixed(1));
 
   return {
-    items,
-    totalCount: items.length,
+    items: visibleItems,
+    totalCount: visibleItems.length,
     summary: {
+      totalCount: items.length,
       totalFinalized,
       totalBacklog,
       avgTatMinutes,
       avgTatHours,
       totalBreached,
+      totalOverdue,
     },
   };
 }

@@ -27,10 +27,10 @@ export function ImportExamsButton() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-extrabold text-qc-navy transition-colors hover:border-qc-blue/25 hover:bg-qc-blue/5"
+        className="inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-border bg-background px-4 text-sm font-extrabold text-qc-navy shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-qc-blue/20 hover:bg-qc-blue/5 hover:text-qc-blue"
       >
         <Upload className="h-4 w-4 text-qc-blue" />
-        Import exams
+        <span className="whitespace-nowrap">Import exams</span>
       </button>
       {isOpen && typeof document !== "undefined" && createPortal(<ImportDialog onClose={() => setIsOpen(false)} />, document.body)}
     </>
