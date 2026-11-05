@@ -104,7 +104,7 @@ export function TrendFilterPopover({
         <div className="space-y-4">
           {/* Rolling */}
           <div>
-            <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+            <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
               Period
             </p>
 
@@ -124,7 +124,7 @@ export function TrendFilterPopover({
 
           {/* Years */}
           <div className="border-t border-border pt-4">
-            <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+            <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
               Calendar year
             </p>
 
@@ -186,7 +186,7 @@ export function TrendFilterPopover({
 
           {/* Comparison */}
           <div className="border-t border-border pt-4">
-            <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+            <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
               Comparison
             </p>
 

@@ -29,6 +29,7 @@ import { ExportCsvButton } from "@/components/staff/ExportCsvButton";
 import { ImportExamsButton } from "@/components/examinations/ImportExamsDialog";
 import { EditExamDialog } from "@/components/dashboard/EditExamDialog";
 import { DeleteExamDialog } from "@/components/dashboard/DeleteExamDialog";
+import { ExamCardList } from "@/components/examinations/ExamCardList";
 
 import {
   fetchFilteredExaminationsAction,
@@ -437,7 +438,7 @@ export function ExaminationsHub({
                         "backlog",
                       )
                     }
-                    className={`group flex min-w-[118px] shrink-0 items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-extrabold transition-all duration-200 ${
+                    className={`group flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 sm:min-w-[118px] sm:flex-none sm:gap-2 sm:px-3.5 text-xs font-extrabold transition-all duration-200 ${
                       statusTab ===
                       "backlog"
                         ? "bg-qc-navy text-white shadow-[0_5px_14px_rgba(5,14,64,0.14)]"
@@ -458,7 +459,7 @@ export function ExaminationsHub({
                     </span>
 
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[9px] ${
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] ${
                         statusTab ===
                         "backlog"
                           ? "bg-white/10 text-white"
@@ -477,7 +478,7 @@ export function ExaminationsHub({
                         "finalized",
                       )
                     }
-                    className={`group flex min-w-[118px] shrink-0 items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-extrabold transition-all duration-200 ${
+                    className={`group flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 sm:min-w-[118px] sm:flex-none sm:gap-2 sm:px-3.5 text-xs font-extrabold transition-all duration-200 ${
                       statusTab ===
                       "finalized"
                         ? "bg-qc-navy text-white shadow-[0_5px_14px_rgba(5,14,64,0.14)]"
@@ -498,7 +499,7 @@ export function ExaminationsHub({
                     </span>
 
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[9px] ${
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] ${
                         statusTab ===
                         "finalized"
                           ? "bg-white/10 text-white"
@@ -515,7 +516,7 @@ export function ExaminationsHub({
                     onClick={() =>
                       setStatusTab("all")
                     }
-                    className={`group flex min-w-[118px] shrink-0 items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-extrabold transition-all duration-200 ${
+                    className={`group flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 sm:min-w-[118px] sm:flex-none sm:gap-2 sm:px-3.5 text-xs font-extrabold transition-all duration-200 ${
                       statusTab === "all"
                         ? "bg-qc-navy text-white shadow-[0_5px_14px_rgba(5,14,64,0.14)]"
                         : "text-muted-foreground hover:bg-white hover:text-qc-navy"
@@ -533,7 +534,7 @@ export function ExaminationsHub({
                     <span>All</span>
 
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[9px] ${
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] ${
                         statusTab ===
                         "all"
                           ? "bg-white/10 text-white"
@@ -599,7 +600,7 @@ export function ExaminationsHub({
                     </span>
 
                     {activeFilterCount > 0 && (
-                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-qc-orange px-1 text-[9px] font-black text-white">
+                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-qc-orange px-1 text-[10px] font-black text-white">
                         {activeFilterCount}
                       </span>
                     )}
@@ -725,7 +726,7 @@ export function ExaminationsHub({
                               className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
                             />
                             <span className="flex-1">All modalities</span>
-                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                               ALL
                             </span>
                           </label>
@@ -794,7 +795,7 @@ export function ExaminationsHub({
                               className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
                             />
                             <span className="flex-1">All patient categories</span>
-                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                               ALL
                             </span>
                           </label>
@@ -927,7 +928,7 @@ export function ExaminationsHub({
             {/* Active filter chips */}
             {hasActiveFilters && (
               <div className="flex flex-wrap items-center gap-2 border-t border-[#E7EAF1] pt-3">
-                <span className="text-[9px] font-extrabold uppercase tracking-[0.13em] text-muted-foreground">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-muted-foreground">
                   Active
                 </span>
 
@@ -1238,10 +1239,23 @@ export function ExaminationsHub({
             TABLE
         =================================================== */}
 
-        <div className="overflow-x-auto">
+        {/* Phones and tablets: one card per exam */}
+        <ExamCardList
+          className="lg:hidden"
+          items={items}
+          statusTab={statusTab}
+          onSigned={() => {
+            loadExaminations();
+            notifyDatabaseChanged();
+          }}
+          onResetFilters={handleResetFilters}
+        />
+
+        {/* Desktop: full table */}
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[1060px] text-left">
             <thead className="border-b border-[#E8EBF2] bg-[#FBFCFE]">
-              <tr className="text-[9px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              <tr className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
                 <th className="px-5 py-3.5">
                   Accession
                 </th>
@@ -1347,7 +1361,7 @@ export function ExaminationsHub({
                       </span>
 
                       {item.isCarryOver && (
-                        <span className="rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2 py-0.5 text-[9px] font-extrabold text-qc-blue">
+                        <span className="rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2 py-0.5 text-[10px] font-extrabold text-qc-blue">
                           Carry-over
                         </span>
                       )}
@@ -1408,7 +1422,7 @@ export function ExaminationsHub({
                           </span>
 
                           {item.isBreached && (
-                            <span className="mt-0.5 text-[9px] font-extrabold text-qc-red">
+                            <span className="mt-0.5 text-[10px] font-extrabold text-qc-red">
                               Breached
                             </span>
                           )}
@@ -1508,13 +1522,13 @@ export function ExaminationsHub({
 
                       <td className="px-5 py-4 text-center">
                         {item.isBreached ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[9px] font-extrabold text-qc-red">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-extrabold text-qc-red">
                             <AlertTriangle className="h-3 w-3" />
 
                             Breached
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-[9px] font-extrabold text-qc-blue">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-[10px] font-extrabold text-qc-blue">
                             <CheckCircle2 className="h-3 w-3" />
 
                             Met SLA
@@ -1533,7 +1547,7 @@ export function ExaminationsHub({
                     <>
                       <td className="px-5 py-4">
                         <span
-                          className={`inline-flex rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${getStatusBadgeClass(
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${getStatusBadgeClass(
                             item.isFinalized,
                           )}`}
                         >

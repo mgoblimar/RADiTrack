@@ -45,7 +45,7 @@ export function TatChartTooltip({
         <p className="font-extrabold text-qc-navy">
           {point.name || point.modality}
         </p>
-        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
+        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
           {patientCategoryLabel}
         </span>
       </div>

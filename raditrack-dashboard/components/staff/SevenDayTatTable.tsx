@@ -382,13 +382,55 @@ export function SevenDayTatTable({
       totalEmergency,
     ];
 
+    const tatTone = isPrior ? "text-qc-blue" : "text-qc-navy";
+
     return (
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <>
+      {/* Phones and tablets: one card per day, totals last */}
+      <ol className="space-y-2 lg:hidden">
+        {rows.map((row) => (
+          <li key={row.isoDate} className="rounded-2xl border border-border bg-card p-3.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-sm font-extrabold text-qc-navy">{row.formattedDate}</p>
+              <p className={`font-mono text-sm font-extrabold ${row.finalizedCount > 0 ? tatTone : "text-muted-foreground"}`}>
+                {row.finalizedCount > 0 ? `${row.avgTatHours} hrs` : "—"}
+              </p>
+            </div>
+            <dl className="mt-2 grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
+              {[
+                ["Exams", row.totalExams],
+                ["OPD", row.opdCount],
+                ["IN", row.inCount],
+                ["ER", row.erCount],
+                ["Signed", row.finalizedCount],
+                ["Pending", row.pendingCount],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl bg-background px-2 py-1.5">
+                  <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">{label}</dt>
+                  <dd className={`font-mono text-sm font-extrabold ${label === "Pending" && Number(value) > 0 ? "text-qc-orange" : "text-qc-navy"}`}>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </li>
+        ))}
+        <li className="rounded-2xl border border-qc-navy/15 bg-qc-navy/[0.04] p-3.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm font-extrabold text-qc-navy">7-day total</p>
+            <p className={`font-mono text-sm font-extrabold ${tatTone}`}>{weightedTat > 0 ? `${weightedTatHours} hrs` : "—"}</p>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {totalVolume} exams · OPD {totalOutpatient} · IN {totalInpatient} · ER {totalEmergency} · {totalFinalized} signed · {totalPending} pending
+          </p>
+        </li>
+      </ol>
+
+      {/* Desktop: full table */}
+      <div className="hidden overflow-hidden rounded-2xl border border-border bg-card lg:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px] text-left">
             <thead>
               {/* Main header */}
-              <tr className="border-b border-border bg-background/70 text-[9px] font-extrabold uppercase tracking-[0.09em] text-muted-foreground">
+              <tr className="border-b border-border bg-background/70 text-[10px] font-extrabold uppercase tracking-[0.09em] text-muted-foreground">
                 <th
                   rowSpan={2}
                   className="whitespace-nowrap px-4 py-3 align-middle"
@@ -636,6 +678,7 @@ export function SevenDayTatTable({
           </table>
         </div>
       </div>
+      </>
     );
   };
 
@@ -679,7 +722,7 @@ export function SevenDayTatTable({
       <div className="space-y-4 p-4">
         {/* Time mode */}
         <div>
-          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
             Time mode
           </p>
 

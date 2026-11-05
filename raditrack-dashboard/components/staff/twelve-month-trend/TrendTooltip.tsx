@@ -142,7 +142,7 @@ export function TrendTooltip({
 
           {point.byModality && (
             <div className="mt-2.5 border-t border-border pt-2">
-              <p className="mb-1.5 flex justify-between text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 flex justify-between text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
                 <span>Modality (this month)</span>
                 <span>Previous month</span>
               </p>

@@ -366,7 +366,7 @@ export function TwelveMonthTrendChart({
 
       <div className="flex items-center justify-between gap-3 border-b border-border py-3 sm:hidden">
         <div className="min-w-0">
-          <p className="text-[9px] font-extrabold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
             {isModalitySpecific && activeModalityConfig
               ? `${activeModalityConfig.label} Average Turnaround Time`
               : "Average Turnaround Time"}

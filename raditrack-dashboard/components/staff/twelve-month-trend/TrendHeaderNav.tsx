@@ -54,14 +54,14 @@ export function TrendHeaderNav({
   hasActiveFilters,
 }: TrendHeaderNavProps) {
   return (
-    <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 border-b border-border pb-4 xl:flex-row xl:items-center xl:justify-between">
       {/* Period navigation */}
       <div className="flex min-w-0 items-center gap-1.5">
         <button
           type="button"
           onClick={() => onStepYear(-1)}
           disabled={isPending || selectedPeriod === "rolling"}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-40"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-40 lg:h-8 lg:w-8"
           title="Previous year"
           aria-label="Previous year"
         >
@@ -79,7 +79,7 @@ export function TrendHeaderNav({
           type="button"
           onClick={() => onStepYear(1)}
           disabled={isPending || selectedPeriod === "rolling"}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-40"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-40 lg:h-8 lg:w-8"
           title="Next year"
           aria-label="Next year"
         >
@@ -93,9 +93,9 @@ export function TrendHeaderNav({
 
       {/* Summary + options */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="hidden items-center gap-3 rounded-xl bg-background px-3 py-2 sm:flex">
+        <div className="hidden shrink-0 items-center gap-3 whitespace-nowrap rounded-xl bg-background px-3 py-2 sm:flex">
           <div>
-            <span className="text-[9px] font-extrabold uppercase tracking-wide text-muted-foreground">
+            <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
               {isModalitySpecific && activeModalityLabel ? `${activeModalityLabel} Avg` : "Avg TAT"}
             </span>
             <span className="ml-1.5 text-xs font-extrabold text-qc-navy">
@@ -135,7 +135,7 @@ export function TrendHeaderNav({
         <button
           type="button"
           onClick={onToggleComparePriorYear}
-          className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
+          className={`inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 text-xs font-extrabold transition-all lg:h-9 ${
             comparePriorYear
               ? "border-[#7652B8]/40 bg-[#7652B8]/10 text-[#7652B8] shadow-sm"
               : "border-white/80 bg-white/75 text-muted-foreground hover:bg-white hover:text-qc-navy"
@@ -166,7 +166,7 @@ export function TrendHeaderNav({
           ref={settingsButtonRef}
           type="button"
           onClick={onToggleSettings}
-          className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
+          className={`inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 text-xs font-extrabold transition-all lg:h-9 ${
             isSettingsOpen || hasActiveFilters
               ? "border-qc-navy bg-qc-navy text-white shadow-[0_6px_14px_rgba(5,14,64,0.12)]"
               : "border-white/80 bg-white/75 text-qc-navy shadow-sm hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
