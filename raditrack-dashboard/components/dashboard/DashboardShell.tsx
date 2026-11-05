@@ -37,6 +37,7 @@ import {
 import {
   ModalityCode,
   MODALITY_CONFIG,
+  MODALITY_ORDER,
   TriageLevel,
   TRIAGE_CONFIG,
 } from "@/lib/enums";
@@ -255,7 +256,8 @@ export function DashboardShell({
     const rangeStartMs = kpiRange.start.getTime();
     const rangeEndMs = kpiRange.end.getTime();
 
-    const scoped = all.filter((e) => {
+    // Window + patient category (what the per-modality breakdowns use).
+    const inWindowAndCategory = all.filter((e) => {
       if (!kpiRange.isAllTime) {
         const studyMs = new Date(e.studyDate).getTime();
         if (studyMs < rangeStartMs || studyMs > rangeEndMs) {
@@ -263,22 +265,31 @@ export function DashboardShell({
         }
       }
 
-      if (
-        selectedModality !== "ALL" &&
-        e.modalityCode !== selectedModality
-      ) {
-        return false;
-      }
-
-      if (
-        selectedTriage !== "ALL" &&
-        e.triageLevel !== selectedTriage
-      ) {
-        return false;
-      }
-
-      return true;
+      return (
+        selectedTriage === "ALL" ||
+        e.triageLevel === selectedTriage
+      );
     });
+
+    const scoped = inWindowAndCategory.filter(
+      (e) =>
+        selectedModality === "ALL" ||
+        e.modalityCode === selectedModality,
+    );
+
+    const countByModality = (
+      rows: typeof inWindowAndCategory,
+    ): Record<string, number> => {
+      const counts: Record<string, number> = Object.fromEntries(
+        MODALITY_ORDER.map((code) => [code, 0]),
+      );
+      for (const row of rows) {
+        if (counts[row.modalityCode] !== undefined) {
+          counts[row.modalityCode] += 1;
+        }
+      }
+      return counts;
+    };
 
     const finalized = scoped.filter(
       (e) => e.isFinalized,
@@ -348,8 +359,14 @@ export function DashboardShell({
       pctOnTime: pct,
       tatDeltaPercent: null,
       volumeDeltaPercent: null,
-      volumeByModality: null,
-      pendingByModality: null,
+      volumeByModality: countByModality(inWindowAndCategory),
+      pendingByModality: countByModality(
+        inWindowAndCategory.filter(
+          (e) =>
+            !e.isFinalized &&
+            e.statusCode !== "CANCELLED",
+        ),
+      ),
       modalityOverview: null,
     };
   }, [
@@ -403,6 +420,7 @@ export function DashboardShell({
     useMemo(() => {
       return (
         kpiData?.volumeByModality ??
+        liveKpiMetrics?.volumeByModality ??
         data?.volumeByModality ?? {
           XRAY: 0,
           US: 0,
@@ -411,12 +429,13 @@ export function DashboardShell({
           MAMMO: 0,
         }
       );
-    }, [kpiData, data]);
+    }, [kpiData, liveKpiMetrics, data]);
 
   const activePendingByModality: Record<string, number> =
     useMemo(() => {
       return (
         kpiData?.pendingByModality ??
+        liveKpiMetrics?.pendingByModality ??
         data?.pendingByModality ?? {
           XRAY: 0,
           US: 0,
@@ -425,7 +444,7 @@ export function DashboardShell({
           MAMMO: 0,
         }
       );
-    }, [kpiData, data]);
+    }, [kpiData, liveKpiMetrics, data]);
 
   const filterScopeSubtitle = useMemo(() => {
     const parts: string[] = [];

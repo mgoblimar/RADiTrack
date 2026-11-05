@@ -4,6 +4,7 @@ import {
   fetchModalityTatDataAction,
   getSevenDayStaffAnalytics,
   getTwelveMonthTatTrend,
+  getDatasetStatusAction,
 } from "@/app/actions";
 import { parseReportParams, resolveReportRange } from "@/lib/report-params";
 import { PrintToolbar } from "@/components/report/PrintToolbar";
@@ -24,7 +25,7 @@ export default async function ReportPage({
   const range = resolveReportRange(config);
   const wants = (id: (typeof config.sections)[number]) => config.sections.includes(id);
 
-  const [kpi, modalityTat, daily, trend] = await Promise.all([
+  const [kpi, modalityTat, daily, trend, datasetStatus] = await Promise.all([
     wants("kpi")
       ? fetchFilteredExecutiveKpiAction({
           preset: config.preset,
@@ -47,6 +48,7 @@ export default async function ReportPage({
     wants("trend")
       ? getTwelveMonthTatTrend("rolling", config.triage, range.endIso)
       : null,
+    getDatasetStatusAction(),
   ]);
 
   return (
@@ -60,6 +62,7 @@ export default async function ReportPage({
         modalityTat={modalityTat}
         daily={daily}
         trend={trend}
+        isTestData={datasetStatus.isTestActive}
       />
     </main>
   );
