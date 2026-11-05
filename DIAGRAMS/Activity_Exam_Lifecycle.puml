@@ -1,0 +1,70 @@
+@startuml raditrack_activity_exam_lifecycle
+!theme plain
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ActivityBackgroundColor #F8FAFC
+skinparam ActivityBorderColor #334155
+
+title RADiTrack — Activity Diagram: Examination Lifecycle & TAT Calculation
+
+' ==============================================================================
+' SWIMLANES
+' ==============================================================================
+
+|Radiologic Technologist|
+start
+:Complete the imaging examination;
+:Log the completed exam\n(accession no., modality, patient category);
+note right
+  From the RIS (via the sync agent),
+  Import exams, or RIS Simulator →
+  Log Completed Scan
+end note
+
+|RADiTrack|
+:Validate the exam\n(known modality & category, valid times);
+if (Valid?) then (no)
+  :Show the problem and\nreject the entry;
+  stop
+else (yes)
+endif
+:Save exam with status "Exam completed"\nand completion time **T1**;
+:Add exam to the reading backlog;
+fork
+  :Refresh dashboard KPIs\n(backlog count, scans);
+fork again
+  :Refresh Patient TV queue\n(no patient details);
+end fork
+
+|Radiologist|
+:Open Examinations → Backlog;
+:Review exams with waiting time;
+if (Waiting time > SLA target?) then (yes)
+  |RADiTrack|
+  :Flag exam as\n"Past SLA, still unsigned";
+  |Radiologist|
+else (no)
+endif
+:Interpret images and\nsign off the report;
+
+|RADiTrack|
+:Record sign-off time **T2**;
+:Calculate **TAT = T2 − T1**;
+:Look up SLA target for the exam's\nmodality + patient category;
+if (TAT > SLA target?) then (yes)
+  :Mark report as\n**SLA breached** (signed late);
+else (no)
+  :Mark report as\n**within SLA** (met target);
+endif
+:Set status "Completed / signed off"\nand remove from backlog;
+fork
+  :Update dashboard KPIs, charts\nand 7-day / 12-month views;
+fork again
+  :Update Patient TV queue;
+fork again
+  :Notify other open RADiTrack tabs;
+end fork
+stop
+
+@enduml

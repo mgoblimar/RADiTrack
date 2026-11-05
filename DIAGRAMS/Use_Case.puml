@@ -1,0 +1,143 @@
+@startuml raditrack_use_case
+!theme plain
+left to right direction
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam nodesep 18
+skinparam ranksep 70
+skinparam usecase {
+    BackgroundColor #F8FAFC
+    BorderColor #334155
+}
+
+title RADiTrack — Use Case Diagram (Zero-PII Radiology Turnaround Time Tracking)
+
+' ==============================================================================
+' PRIMARY ACTORS (left) — declared in the same order as their packages
+' ==============================================================================
+
+actor "Radiologic Technologist\n(RadTech)" as RadTech
+actor "Radiologist\n(Doctor)" as Radiologist
+actor "Department Head /\nRadiology Staff" as Manager
+actor "RADiTrack\nAdministrator" as Admin
+actor "Hospital IT" as HospitalIT
+actor "RIS Sync Agent\n<<system>>" as SyncAgent
+actor "Patient / Public\n(Waiting Area)" as Public
+
+' ==============================================================================
+' SYSTEM BOUNDARY
+' ==============================================================================
+
+rectangle "RADiTrack" {
+
+    package "Examination Workflow" {
+        usecase "Log Completed Examination" as UC_Log
+        usecase "Edit / Delete Examination" as UC_Edit
+        usecase "Search & Filter Examinations" as UC_Search
+        usecase "View Reading Backlog\n(Waiting Time & Past-SLA Exams)" as UC_Backlog
+        usecase "Sign Off Report" as UC_Sign
+        usecase "Calculate TAT &\nSLA Breach" as UC_Tat
+    }
+
+    package "Monitoring & Analytics" {
+        usecase "View Dashboard KPIs\n(Scans, Avg TAT, SLA %, Backlog)" as UC_Kpi
+        usecase "View TAT by Modality" as UC_ByModality
+        usecase "View 7-Day TAT Table" as UC_SevenDay
+        usecase "Compare Previous 7 Days" as UC_ComparePrev
+        usecase "View 12-Month Trend\n(Previous Month & Last Year)" as UC_Trend
+        usecase "Filter by Time Window,\nModality & Patient Category" as UC_Filter
+        usecase "Generate PDF Report" as UC_Report
+        usecase "Read RADiTrack Guide" as UC_Guide
+    }
+
+    package "Configuration & Data Management" {
+        usecase "Manage SLA Targets" as UC_Sla
+        usecase "Manage Modality Rooms & Status" as UC_Rooms
+        usecase "Import Exams (.xlsx / .csv)" as UC_Import
+        usecase "Export Examinations (CSV)" as UC_Export
+        usecase "Load Validation Test Dataset" as UC_LoadTest
+        usecase "Back Up Real Data" as UC_Backup
+        usecase "Verify Calculations\n(Expected vs RADiTrack)" as UC_Verify
+        usecase "Restore Real Data" as UC_Restore
+    }
+
+    package "RIS Integration" {
+        usecase "Provide Read-Only RIS View\n& Login" as UC_View
+        usecase "Sync Exams from RIS View\n(every 5 minutes)" as UC_Sync
+    }
+
+    package "Public Display" {
+        usecase "View Live Queue Status\n(Patient TV, No PII)" as UC_Tv
+    }
+}
+
+' ==============================================================================
+' SECONDARY ACTOR (right)
+' ==============================================================================
+
+actor "Radiology Information\nSystem (RIS)\n<<system>>" as RIS
+
+' ==============================================================================
+' ACTOR ↔ USE CASE
+' ==============================================================================
+
+RadTech --> UC_Log
+RadTech --> UC_Edit
+RadTech --> UC_Search
+
+Radiologist --> UC_Backlog
+Radiologist --> UC_Sign
+Radiologist --> UC_Search
+
+Manager --> UC_Kpi
+Manager --> UC_ByModality
+Manager --> UC_SevenDay
+Manager --> UC_Trend
+Manager --> UC_Report
+Manager --> UC_Guide
+Manager --> UC_Backlog
+
+Admin --> UC_Sla
+Admin --> UC_Rooms
+Admin --> UC_Import
+Admin --> UC_Export
+Admin --> UC_LoadTest
+Admin --> UC_Verify
+Admin --> UC_Restore
+
+HospitalIT --> UC_View
+SyncAgent --> UC_Sync
+Public --> UC_Tv
+
+UC_View --> RIS
+UC_Sync --> RIS
+
+' An administrator can also do everything the department staff can do
+Manager <|-- Admin
+
+' ==============================================================================
+' INCLUDE / EXTEND RELATIONSHIPS
+' ==============================================================================
+
+UC_Sign ..> UC_Tat : <<include>>
+UC_Sync ..> UC_Tat : <<include>>
+UC_Import ..> UC_Tat : <<include>>
+UC_LoadTest ..> UC_Backup : <<include>>
+
+UC_Kpi ..> UC_Filter : <<include>>
+UC_ByModality ..> UC_Filter : <<include>>
+UC_SevenDay ..> UC_Filter : <<include>>
+UC_Trend ..> UC_Filter : <<include>>
+UC_ComparePrev ..> UC_SevenDay : <<extend>>
+
+legend bottom
+  **Calculate TAT & SLA Breach:** TAT = Report signed − Exam completed; a breach is TAT **>** the SLA target
+  for the exam's modality and patient category (exactly on target is within SLA).
+  **Sync Exams from RIS View:** reads only the read-only view //raditrack.vw_exams// (no patient names or IDs),
+  matches exams by accession number, and is skipped while test data is loaded.
+endlegend
+
+@enduml

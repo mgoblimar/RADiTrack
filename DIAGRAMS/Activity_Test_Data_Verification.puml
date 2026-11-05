@@ -1,0 +1,63 @@
+@startuml raditrack_activity_test_data_verification
+!theme plain
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ActivityBackgroundColor #F8FAFC
+skinparam ActivityBorderColor #334155
+
+title RADiTrack — Activity Diagram: Verifying Calculations with the Validation Dataset
+
+' ==============================================================================
+' SWIMLANES
+' ==============================================================================
+
+|Administrator|
+start
+:Open RIS Simulator →\n**Load 100-exam test dataset**;
+:Confirm;
+
+|RADiTrack|
+:Turn the 100 test exams' relative dates\n(today / week start / month start)\ninto real timestamps;
+if (Any test exam invalid\n(e.g. loaded before 00:30)?) then (yes)
+  :Show the problem; nothing changes;
+  stop
+else (no)
+endif
+if (Real data already backed up?) then (no)
+  :Back up real exams and reports\n(backup tables);
+else (yes)
+endif
+:In one transaction: replace exams\nwith the test dataset;
+:Show "TEST DATA ACTIVE" banner\non every staff screen;
+
+|Administrator|
+fork
+  :Open the test workbook in Excel;
+  :Read the Expected sheets\n(recalculated from TODAY());
+  :Compare with the dashboard;
+fork again
+  :Run **npm run test-data:verify**;
+
+  |RADiTrack|
+  :Recompute expected values from\nraw timestamps (reference calculator);
+  :Call the same functions the dashboard\nand PDF report use;
+  :Write Expected vs RADiTrack with\nPASS/FAIL per value to the\nVerification sheet;
+
+  |Administrator|
+  :Review the verification report;
+end fork
+
+if (All values match?) then (yes)
+  :Keep the report as evidence;
+else (no)
+  :Investigate the failing values;
+endif
+:Open RIS Simulator →\n**Restore real data**;
+
+|RADiTrack|
+:In one transaction: remove test data,\nrestore exams and reports from backup,\ndrop backup tables;
+:Hide the test-data banner;
+stop
+
+@enduml

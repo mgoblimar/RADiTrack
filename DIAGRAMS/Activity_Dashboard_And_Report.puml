@@ -1,0 +1,74 @@
+@startuml raditrack_activity_dashboard_and_report
+!theme plain
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ActivityBackgroundColor #F8FAFC
+skinparam ActivityBorderColor #334155
+
+title RADiTrack — Activity Diagram: Reviewing Turnaround Time & Generating a PDF Report
+
+' ==============================================================================
+' SWIMLANES
+' ==============================================================================
+
+|Department Head / Staff|
+start
+:Open the staff dashboard;
+
+|RADiTrack|
+:Load default view\n(Rolling 7 days, all modalities,\nall patient categories);
+
+|Department Head / Staff|
+repeat
+  :Choose time window, modality\nand/or patient category\nin the filter bar;
+
+  |RADiTrack|
+  :Show instant estimate for the\nselected window;
+  :Fetch exact figures from the server\n(same date rules as the estimate);
+  fork
+    :Update KPI cards\n(scans, avg & median TAT,\nSLA %, backlog, vs prior period);
+  fork again
+    :Update TAT by modality\n(highlight selected modality;\nSLA targets when a category is chosen);
+  fork again
+    :Update 7-day table\n(7 days ending on window end);
+  fork again
+    :Update 12-month trend\n(ending on window end month);
+  end fork
+
+  |Department Head / Staff|
+  :Review the figures;
+  if (Compare with the previous 7 days?) then (yes)
+    |RADiTrack|
+    :Show previous 7 days beside\nthe current table;
+    |Department Head / Staff|
+  else (no)
+  endif
+repeat while (Look at another period or filter?) is (yes)
+->no;
+
+if (Need a printable report?) then (yes)
+  :Click **Generate report**;
+  repeat
+    |Department Head / Staff|
+    :Set time frame, modality, category,\nsections, title, prepared by, notes;
+    :Click **Preview report**;
+    |RADiTrack|
+    :Check settings\n(at least one section;\ncustom start ≤ end);
+  repeat while (Settings invalid?) is (yes: show what to fix)
+  ->no;
+  :Open the report page in a new tab;
+  :Validate settings and fetch only\nthe chosen sections;
+  if (Test data loaded?) then (yes)
+    :Add "Test data" notice;
+  else (no)
+  endif
+  :Render A4 report\n(KPIs, TAT by modality, SLA compliance,\ndaily breakdown, 12-month trend);
+
+  |Department Head / Staff|
+  :Click **Download PDF**\n(Save as PDF);
+else (no)
+endif
+stop
+
+@enduml

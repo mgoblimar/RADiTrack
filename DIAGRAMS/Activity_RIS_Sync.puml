@@ -1,0 +1,60 @@
+@startuml raditrack_activity_ris_sync
+!theme plain
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ActivityBackgroundColor #F8FAFC
+skinparam ActivityBorderColor #334155
+
+title RADiTrack — Activity Diagram: RIS Sync Agent (Read-Only SQL Server View)
+
+' ==============================================================================
+' SWIMLANES
+' ==============================================================================
+
+|Hospital IT|
+start
+:Create view **raditrack.vw_exams**\n(accession, modality, patient class,\nstudy / completed / signed times,\nstatus, last_updated);
+:Create login with SELECT\non that view only;
+:Share connection details privately;
+
+|RIS Sync Agent|
+:Save settings in .env\non a PC inside the hospital network;
+:Run **--check**\n(connect read-only, count rows,\nverify columns, validate a sample);
+:Start **--watch** (every 5 minutes);
+
+repeat
+  |RIS Sync Agent|
+  if (Test data loaded in RADiTrack?) then (yes)
+    :Skip this round;
+  else (no)
+    |RIS SQL Server|
+    :Return rows with last_updated after\nthe saved position − 10 minutes\n(first run: about 14 months back);
+
+    |RIS Sync Agent|
+    while (More rows?) is (yes)
+      :Take the next batch (2,000 rows);
+      :Map RIS codes to RADiTrack\n(DX/CR → X-ray, MG → Mammogram,\nMR → MRI; O/I/E → OPD/IN/ER);
+      :Validate rows; log and skip invalid ones;
+
+      |RADiTrack Database|
+      :Look up existing exams\nby accession number;
+
+      |RIS Sync Agent|
+      :Plan changes: add new, update changed\n(signed later, category corrected,\ncancelled, sign-off removed), skip unchanged;
+
+      |RADiTrack Database|
+      :Apply the batch in one transaction;
+      :Calculate TAT and SLA breach\nfor signed reports;
+    endwhile (no)
+
+    |RIS Sync Agent|
+    :Save the newest last_updated\nas the new position;
+    :Log added / updated / unchanged / skipped;
+  endif
+  :Wait 5 minutes;
+repeat while (Agent still running?) is (yes)
+->no (Ctrl+C);
+stop
+
+@enduml

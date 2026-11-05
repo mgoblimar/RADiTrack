@@ -1,0 +1,65 @@
+@startuml raditrack_activity_import_exams
+!theme plain
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ActivityBackgroundColor #F8FAFC
+skinparam ActivityBorderColor #334155
+
+title RADiTrack — Activity Diagram: Importing Examinations (.xlsx / .csv)
+
+' ==============================================================================
+' SWIMLANES
+' ==============================================================================
+
+|Administrator|
+start
+:Open Examinations → **Import exams**;
+:Choose an .xlsx (sheet "Exams")\nor .csv file;
+
+|RADiTrack|
+if (File type and size OK\n(.xlsx/.csv, ≤ 5 MB)?) then (no)
+  :Show "upload an .xlsx or .csv";
+  stop
+else (yes)
+endif
+:Read rows (first row = column headers);
+:Validate every row\n(accession, modality, category,\ntimes in the right order, not in the future);
+:Check which accessions already exist;
+:Show preview: rows in file,\nready to import, problems by row number;
+
+|Administrator|
+:Choose how to import;
+if (Mode?) then (Add to current data)
+  |RADiTrack|
+  if (Any row problems or\nexisting accessions?) then (yes)
+    :Block import and list\nthe rows to fix;
+    |Administrator|
+    :Fix the file and upload again;
+    stop
+  else (no)
+  endif
+  :In one transaction: insert exams\nand signed reports;
+else (Load as test data)
+  |Administrator|
+  :Confirm replacing all exams;
+  |RADiTrack|
+  if (Any row problems?) then (yes)
+    :Block import and list\nthe rows to fix;
+    stop
+  else (no)
+  endif
+  if (Real data already backed up?) then (no)
+    :Back up real exams and reports;
+  else (yes)
+  endif
+  :In one transaction: clear exams and\ninsert the file's exams;
+endif
+:Calculate TAT and SLA breach for\nsigned reports (current SLA targets);
+:Refresh dashboard and other open tabs;
+
+|Administrator|
+:See "Imported N exams";
+stop
+
+@enduml
