@@ -78,18 +78,20 @@ function pick(row: RawRow, key: keyof typeof COLUMN_ALIASES): RawValue {
 
 const text = (value: RawValue) => (value === undefined || value === null ? "" : String(value).trim());
 
+// Includes standard DICOM modality codes (CR/DX/XR, MG, US, CT, MR) used by RIS/PACS.
 const MODALITY_ALIASES: Record<string, ModalityCode> = {
-  XRAY: ModalityCode.XRAY, XR: ModalityCode.XRAY, "X-RAY": ModalityCode.XRAY,
-  MAMMO: ModalityCode.MAMMO, MAMMOGRAPHY: ModalityCode.MAMMO, MAMMOGRAM: ModalityCode.MAMMO,
+  XRAY: ModalityCode.XRAY, XR: ModalityCode.XRAY, "X-RAY": ModalityCode.XRAY, CR: ModalityCode.XRAY, DX: ModalityCode.XRAY,
+  MAMMO: ModalityCode.MAMMO, MAMMOGRAPHY: ModalityCode.MAMMO, MAMMOGRAM: ModalityCode.MAMMO, MG: ModalityCode.MAMMO,
   US: ModalityCode.US, ULTRASOUND: ModalityCode.US,
   CT: ModalityCode.CT, "CT-SCAN": ModalityCode.CT,
-  MRI: ModalityCode.MRI,
+  MRI: ModalityCode.MRI, MR: ModalityCode.MRI,
 };
 
+// Includes HL7 patient classes (O = outpatient, I = inpatient, E = emergency).
 const CATEGORY_ALIASES: Record<string, TriageLevel> = {
-  OPD: TriageLevel.OPD, OUTPATIENT: TriageLevel.OPD,
-  IN: TriageLevel.IN, INPATIENT: TriageLevel.IN,
-  ER: TriageLevel.ER, EMERGENCY: TriageLevel.ER,
+  OPD: TriageLevel.OPD, OUTPATIENT: TriageLevel.OPD, O: TriageLevel.OPD,
+  IN: TriageLevel.IN, INPATIENT: TriageLevel.IN, I: TriageLevel.IN, IPD: TriageLevel.IN,
+  ER: TriageLevel.ER, EMERGENCY: TriageLevel.ER, E: TriageLevel.ER,
 };
 
 /** Start of the anchor day in local time. `monthOffset` shifts MONTH_START by whole months. */

@@ -9,7 +9,6 @@
 
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
 import { ExaminationStatusCode } from "@/lib/enums";
 import {
   parseExamRows,
@@ -18,6 +17,7 @@ import {
 } from "@/lib/exam-import";
 import { readSpreadsheetRows } from "@/lib/spreadsheet-rows";
 import { testDatasetRows } from "@/data/test-dataset";
+import { insertRecords, type Tx } from "@/lib/exam-writer";
 
 const EXAMS_TABLE = "examinations";
 const REPORTS_TABLE = "radiology_reports";
@@ -25,7 +25,6 @@ const EXAMS_BACKUP = "examinations_backup";
 const REPORTS_BACKUP = "radiology_reports_backup";
 const TX_OPTIONS = { maxWait: 15_000, timeout: 120_000 };
 
-type Tx = Prisma.TransactionClient;
 
 export interface DatasetStatus {
   isTestActive: boolean;
@@ -76,40 +75,6 @@ async function restoreTable(tx: Tx, table: string, backup: string): Promise<void
   const list = columns.map((c) => `"${c.column_name.replace(/"/g, '""')}"`).join(", ");
   // Table names are fixed constants above; column names come from the catalog and are quoted.
   await tx.$executeRawUnsafe(`INSERT INTO "${table}" (${list}) SELECT ${list} FROM "${backup}"`);
-}
-
-/** Inserts exams (and signed reports) computing TAT and SLA breach exactly like sign-off does. */
-async function insertRecords(tx: Tx, records: ExamImportRecord[]): Promise<void> {
-  const slaConfigs = await tx.slaConfiguration.findMany();
-  const targetFor = (modality: string, triage: string) =>
-    slaConfigs.find((s) => s.modalityCode === modality && s.triageLevel === triage)?.targetTatMinutes;
-
-  const exams = records.map((r) => ({
-    examId: crypto.randomUUID(),
-    examinationIdentifier: r.examinationIdentifier,
-    modalityCode: r.modalityCode,
-    statusCode: r.statusCode,
-    triageLevel: r.triageLevel,
-    studyDate: new Date(r.studyDate),
-    examCompletedAt: r.examCompletedAt ? new Date(r.examCompletedAt) : null,
-    notes: r.notes,
-  }));
-  await tx.examination.createMany({ data: exams });
-
-  const reports = records.flatMap((r, i) => {
-    if (!r.reportSignedAt || !r.examCompletedAt) return [];
-    const signed = new Date(r.reportSignedAt);
-    const tatMinutes = Number(((signed.getTime() - new Date(r.examCompletedAt).getTime()) / 60_000).toFixed(2));
-    const target = targetFor(r.modalityCode, r.triageLevel);
-    return [{
-      examId: exams[i].examId,
-      reportSignedAt: signed,
-      reportStatus: "FINALIZED",
-      tatExamToSignMinutes: tatMinutes,
-      isSlaBreached: target !== undefined ? tatMinutes > target : false,
-    }];
-  });
-  if (reports.length > 0) await tx.radiologyReport.createMany({ data: reports });
 }
 
 /** Backs up real data (first time only), then replaces all exams with `records`. */

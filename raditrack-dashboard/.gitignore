@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 /generated/prisma
+
+# RIS sync agent position (local to the machine running it)
+.ris-sync-state.json

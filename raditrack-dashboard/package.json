@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test-data:workbook": "tsx scripts/build-test-workbook.ts",
     "test-data:verify": "tsx scripts/verify-test-data.ts",
-    "docs:computations": "tsx scripts/build-computations-docx.ts"
+    "docs:computations": "tsx scripts/build-computations-docx.ts",
+    "ris:sync": "tsx scripts/ris-sync.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -23,6 +24,7 @@
     "dotenv": "^18.0.4",
     "exceljs": "^4.4.0",
     "lucide-react": "^1.48.0",
+    "mssql": "^12.7.14",
     "next": "16.3.5",
     "pg": "^8.23.1",
     "react": "19.2.8",
@@ -35,6 +37,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^9.6.0",
+    "@types/mssql": "^12.3.0",
     "@types/node": "20.19.43",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
