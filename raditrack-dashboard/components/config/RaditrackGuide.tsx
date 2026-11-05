@@ -185,7 +185,7 @@ function AverageTatUseCase() {
 
         {/* Sample KPI card */}
         <div aria-hidden className="rounded-2xl bg-white px-5 py-4 text-center text-qc-navy shadow-[0_8px_20px_rgba(0,0,0,0.25)] sm:min-w-[190px]">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Average turnaround time</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Average turnaround time</p>
           <p className="mt-1 text-3xl font-black tracking-tight">
             26.4<span className="ml-1 text-sm font-extrabold text-slate-400">hrs</span>
           </p>
@@ -361,7 +361,7 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
                   <dl className="mt-2 grid grid-cols-3 gap-2">
                     {CATEGORIES.map((c) => (
                       <div key={c.code} className={`rounded-xl border px-2 py-1.5 text-center ${c.chip}`}>
-                        <dt className="text-[9px] font-extrabold uppercase">{c.label}</dt>
+                        <dt className="text-[10px] font-extrabold uppercase">{c.label}</dt>
                         <dd className="font-mono text-sm font-black">{targetHours(code, c.code)}</dd>
                       </div>
                     ))}

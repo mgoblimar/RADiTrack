@@ -517,6 +517,16 @@ export function ConfigurationsHub({
     }, 4000);
   };
 
+  /** Switches a modality between online and under maintenance. */
+  const handleToggleModality = (m: ModalityConfigItem) => {
+    startTransition(async () => {
+      const res = await toggleModalityStatusAction(m.modalityCode, !m.isActive);
+      if (res.success) {
+        showFeedback(`${m.modalityCode} status updated to ${!m.isActive ? "Online" : "Under Maintenance"}`);
+      }
+    });
+  };
+
   // =========================================================
   // Duration formatter
   // =========================================================
@@ -534,7 +544,7 @@ export function ConfigurationsHub({
     "w-full rounded-2xl border border-slate-200/80 bg-white/80 px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-all placeholder:text-slate-400 focus:border-qc-blue/30 focus:bg-white focus:ring-2 focus:ring-qc-blue/10";
 
   const tabButtonBase =
-    "inline-flex shrink-0 items-center gap-2 rounded-2xl px-3.5 py-2.5 text-sm font-bold transition-all duration-150";
+    "inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-center text-xs font-bold leading-tight transition-all duration-150 [&>svg]:hidden sm:justify-start sm:gap-2 sm:px-3.5 sm:py-2.5 sm:text-sm sm:[&>svg]:block";
 
   return (
     <div className="space-y-4">
@@ -543,8 +553,8 @@ export function ConfigurationsHub({
           ========================================================= */}
 
       <div className={panelBase + " p-2"}>
-        <div className="overflow-x-auto">
-          <div className="flex min-w-max items-center gap-1.5">
+        <div>
+          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center">
             <button
               type="button"
               onClick={() => setActiveTab("slas")}
@@ -815,7 +825,7 @@ export function ConfigurationsHub({
                                   2880,
                               })
                             }
-                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
+                            className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all lg:h-8 lg:w-8 hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
                             title="Edit target benchmark"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -861,7 +871,7 @@ export function ConfigurationsHub({
                                   4320,
                               })
                             }
-                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
+                            className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all lg:h-8 lg:w-8 hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
                             title="Edit target benchmark"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -907,7 +917,7 @@ export function ConfigurationsHub({
                                   2880,
                               })
                             }
-                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
+                            className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-500 transition-all lg:h-8 lg:w-8 hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
                             title="Edit target benchmark"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -949,7 +959,54 @@ export function ConfigurationsHub({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Phones and tablets: one card per modality */}
+          <ul className="divide-y divide-slate-200/70 lg:hidden">
+            {modalities.map((m) => (
+              <li key={m.modalityCode} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-lg bg-qc-navy px-2 py-1 font-mono text-[11px] font-extrabold text-qc-yellow">{m.modalityCode}</span>
+                      <span className="truncate text-sm font-bold text-qc-navy">{m.modalityName}</span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-slate-500">
+                      {m.departmentRoom ?? <span className="italic text-slate-400">No room assigned</span>} · {m.totalExams} scans
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold ${
+                      m.isActive ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue" : "border-orange-200 bg-orange-50 text-qc-orange"
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${m.isActive ? "bg-qc-blue" : "bg-qc-orange"}`} />
+                    {m.isActive ? "Online" : "Maintenance"}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingModality(m)}
+                    className="h-11 rounded-xl border border-slate-200 bg-white text-sm font-bold text-qc-navy hover:border-qc-blue/20 hover:text-qc-blue"
+                  >
+                    Edit room
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleToggleModality(m)}
+                    className={`h-11 rounded-xl border text-sm font-bold disabled:opacity-50 ${
+                      m.isActive ? "border-orange-200 bg-orange-50/80 text-qc-orange" : "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
+                    }`}
+                  >
+                    {m.isActive ? "Set maintenance" : "Set online"}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop: full table */}
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[850px] text-left">
               <thead className="border-b border-slate-200/80 bg-white/[0.46]">
                 <tr className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500">
@@ -1052,27 +1109,7 @@ export function ConfigurationsHub({
                         <button
                           type="button"
                           disabled={isPending}
-                          onClick={() => {
-                            startTransition(
-                              async () => {
-                                const res =
-                                  await toggleModalityStatusAction(
-                                    m.modalityCode,
-                                    !m.isActive,
-                                  );
-
-                                if (res.success) {
-                                  showFeedback(
-                                    `${m.modalityCode} status updated to ${
-                                      !m.isActive
-                                        ? "Online"
-                                        : "Under Maintenance"
-                                    }`,
-                                  );
-                                }
-                              },
-                            );
-                          }}
+                          onClick={() => handleToggleModality(m)}
                           className={`rounded-xl border px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                             m.isActive
                               ? "border-orange-200 bg-orange-50/80 text-qc-orange hover:bg-orange-100"

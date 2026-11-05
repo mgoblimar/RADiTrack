@@ -361,7 +361,7 @@ export function Sidebar({
           />
 
           {!isCollapsed && (
-            <p className="mb-3 px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/25">
+            <p className="mb-3 px-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/25">
               Tools
             </p>
           )}
@@ -414,7 +414,7 @@ export function Sidebar({
 
               {!isCollapsed && (
                 <span className="flex items-center gap-2">
-                  <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-white/25 transition-colors group-hover:text-white/40">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25 transition-colors group-hover:text-white/40">
                     Live
                   </span>
 
@@ -534,7 +534,7 @@ export function Sidebar({
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-qc-yellow" />
 
-                  <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-white/30">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/30">
                     Online
                   </span>
                 </div>

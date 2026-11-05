@@ -799,7 +799,7 @@ export function DashboardShell({
                                   isSelected ? "ALL" : m.code,
                                 );
                               }}
-                              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-white/15 ${
+                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors lg:min-h-0 hover:bg-white/15 ${
                                 isSelected
                                   ? "bg-white/20 font-bold ring-1 ring-qc-yellow"
                                   : "bg-white/5"
@@ -1006,7 +1006,7 @@ export function DashboardShell({
                                   isSelected ? "ALL" : m.code,
                                 );
                               }}
-                              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-muted ${
+                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors lg:min-h-0 hover:bg-muted ${
                                 isSelected
                                   ? "bg-orange-500/15 font-bold text-qc-orange ring-1 ring-qc-orange"
                                   : "bg-muted/40"
@@ -1193,7 +1193,7 @@ export function DashboardShell({
                     <button
                       type="button"
                       onClick={() => setActiveTab("examinations")}
-                      className="group inline-flex w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[11px] font-extrabold text-qc-blue shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
+                      className="group inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[11px] font-extrabold text-qc-blue lg:min-h-0 shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
                     >
                       Open examinations
 

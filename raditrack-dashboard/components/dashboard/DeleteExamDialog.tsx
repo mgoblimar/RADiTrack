@@ -28,7 +28,7 @@ export function DeleteExamDialog({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all duration-150 hover:bg-red-50 hover:text-qc-red"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#E4E8F1] text-muted-foreground transition-all duration-150 hover:bg-red-50 hover:text-qc-red lg:h-8 lg:w-8 lg:border-0"
         title="Cancel or Delete Examination"
         aria-label="Cancel or delete examination"
       >

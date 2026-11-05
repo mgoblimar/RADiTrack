@@ -28,7 +28,7 @@ export function TrendModalityBar({
         <button
           type="button"
           onClick={() => onSelectModality("ALL")}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all ${
+          className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all lg:min-h-0 lg:px-2.5 ${
             selectedModality === "ALL"
               ? "bg-qc-navy text-white shadow-sm ring-1 ring-qc-navy"
               : "border border-border/80 bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
@@ -46,7 +46,7 @@ export function TrendModalityBar({
         <button
           type="button"
           onClick={() => onSelectModality("MULTI")}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all ${
+          className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all lg:min-h-0 lg:px-2.5 ${
             selectedModality === "MULTI"
               ? "bg-qc-navy text-white shadow-sm ring-1 ring-qc-navy"
               : "border border-border/80 bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
@@ -64,7 +64,7 @@ export function TrendModalityBar({
               key={m.code}
               type="button"
               onClick={() => onSelectModality(m.code)}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all ${
+              className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all lg:min-h-0 lg:px-2.5 ${
                 isSelected
                   ? "text-white shadow-sm ring-1 ring-black/10"
                   : "border border-border/80 bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"

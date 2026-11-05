@@ -35,7 +35,7 @@ export function EditExamDialog({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all duration-150 hover:bg-qc-blue/10 hover:text-qc-blue"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#E4E8F1] text-muted-foreground transition-all duration-150 hover:bg-qc-blue/10 hover:text-qc-blue lg:h-8 lg:w-8 lg:border-0"
         title="Edit Examination Details"
         aria-label="Edit examination details"
       >

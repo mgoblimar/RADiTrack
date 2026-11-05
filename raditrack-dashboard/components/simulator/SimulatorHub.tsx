@@ -242,7 +242,7 @@ export function SimulatorHub({
           <div className="flex shrink-0 items-center gap-2">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-xl border border-qc-blue/10 bg-white/70 px-3.5 py-2 text-xs font-extrabold text-qc-navy transition-colors hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-qc-blue/10 bg-white/70 px-3.5 py-2 text-xs font-extrabold text-qc-navy transition-colors hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Dashboard
@@ -252,7 +252,7 @@ export function SimulatorHub({
               href="/patient"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-qc-blue/10 bg-white/70 px-3.5 py-2 text-xs font-extrabold text-qc-navy transition-colors hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-qc-blue/10 bg-white/70 px-3.5 py-2 text-xs font-extrabold text-qc-navy transition-colors hover:border-qc-blue/20 hover:bg-white hover:text-qc-blue"
             >
               <Tv className="h-3.5 w-3.5" />
               Patient TV
@@ -282,7 +282,7 @@ export function SimulatorHub({
               <button
                 type="button"
                 onClick={generateNextId}
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-qc-blue/10 bg-white px-3 py-2 text-xs font-extrabold text-qc-blue transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5"
+                className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-qc-blue/10 bg-white px-3 py-2 text-xs font-extrabold text-qc-blue transition-colors hover:border-qc-blue/20 hover:bg-qc-blue/5"
               >
                 Generate ID
               </button>
@@ -444,7 +444,7 @@ export function SimulatorHub({
                   </div>
 
                   <span
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${styles.badge}`}
+                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${styles.badge}`}
                   >
                     + {scenario.badge}
                   </span>
@@ -485,7 +485,7 @@ export function SimulatorHub({
                 Current Reading Queue
               </h2>
 
-              <span className="rounded-full bg-qc-orange/10 px-2.5 py-1 text-[9px] font-extrabold text-qc-orange">
+              <span className="rounded-full bg-qc-orange/10 px-2.5 py-1 text-[10px] font-extrabold text-qc-orange">
                 {initialQueue.length} active
               </span>
             </div>
@@ -500,7 +500,60 @@ export function SimulatorHub({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Phones and tablets: one card per queued exam */}
+        <ul className="divide-y divide-slate-200 lg:hidden">
+          {initialQueue.map((item) => (
+            <li key={item.examId} className={`p-4 ${item.isBreached ? "bg-red-50/30" : ""}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-sm font-extrabold text-qc-navy">{item.identifier}</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <span className="rounded-lg bg-qc-navy px-2 py-0.5 text-[11px] font-extrabold text-qc-yellow">
+                      {MODALITY_CONFIG[item.modalityCode as ModalityCode]?.shortName ?? item.modalityCode}
+                    </span>
+                    <span className={`rounded-lg border px-2 py-0.5 text-[11px] font-extrabold ${getTriageClass(item.triageLevel)}`}>
+                      {item.triageLevel}
+                    </span>
+                    {item.isCarryOver && (
+                      <span className="rounded-lg bg-qc-blue/5 px-2 py-0.5 text-[11px] font-bold text-qc-blue">Carry-over</span>
+                    )}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className={`font-mono text-sm font-extrabold ${item.isBreached ? "text-qc-red" : "text-qc-orange"}`}>{item.dwellHours} hrs</p>
+                  <p className="text-[11px] font-semibold text-slate-500">
+                    Target {item.targetTat ? `${Math.round(item.targetTat / 60)} hrs` : "—"}
+                  </p>
+                </div>
+              </div>
+              <form
+                className="mt-3"
+                action={async (formData: FormData) => {
+                  await signOffReportAction(formData);
+                  notifyDatabaseChanged();
+                }}
+              >
+                <input type="hidden" name="examId" value={item.examId} />
+                <button
+                  type="submit"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-qc-yellow text-sm font-extrabold text-qc-navy hover:bg-[#eac13d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-navy"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Sign off
+                </button>
+              </form>
+            </li>
+          ))}
+          {initialQueue.length === 0 && (
+            <li className="px-6 py-12 text-center">
+              <h3 className="text-sm font-extrabold text-qc-navy">Reading queue is clear</h3>
+              <p className="mt-1 text-xs text-slate-400">Add a study above to populate the simulated reading workflow.</p>
+            </li>
+          )}
+        </ul>
+
+        {/* Desktop: full table */}
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[1000px] text-left">
             <thead className="border-b border-slate-200 bg-[#FAFBFD]">
               <tr className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-qc-blue">
@@ -529,7 +582,7 @@ export function SimulatorHub({
                       </span>
 
                       {item.isCarryOver && (
-                        <span className="rounded-full bg-qc-blue/5 px-2 py-0.5 text-[9px] font-bold text-qc-blue">
+                        <span className="rounded-full bg-qc-blue/5 px-2 py-0.5 text-[10px] font-bold text-qc-blue">
                           Carry-over
                         </span>
                       )}
@@ -546,7 +599,7 @@ export function SimulatorHub({
 
                   <td className="px-5 py-4">
                     <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${getTriageClass(
+                      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${getTriageClass(
                         item.triageLevel,
                       )}`}
                     >
@@ -556,7 +609,7 @@ export function SimulatorHub({
 
                   {/*<td className="px-5 py-4">
                     <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${getUrgencyClass(
+                      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${getUrgencyClass(
                         item.urgencyLevel,
                       )}`}
                     >
@@ -580,7 +633,7 @@ export function SimulatorHub({
                         </p>
 
                         {item.isBreached && (
-                          <p className="mt-0.5 flex items-center gap-1 text-[9px] font-bold text-qc-red">
+                          <p className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-qc-red">
                             <AlertTriangle className="h-3 w-3" />
                             Breached
                           </p>

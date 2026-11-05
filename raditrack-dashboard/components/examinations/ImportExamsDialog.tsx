@@ -189,7 +189,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: "ok
   const color = tone === "ok" ? "text-emerald-700" : tone === "error" ? "text-red-700" : "text-qc-navy";
   return (
     <div className="rounded-xl border border-border bg-background px-3 py-2">
-      <p className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`text-lg font-extrabold ${color}`}>{value}</p>
     </div>
   );
