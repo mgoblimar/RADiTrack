@@ -87,3 +87,15 @@ export {
   simulateScenarioAction,
   autoSignOldestBacklogAction,
 } from "./actions/simulator";
+
+// 9. Test-data switch and examination import
+export {
+  getDatasetStatusAction,
+  previewExamImportAction,
+  commitExamImportAction,
+  loadTestDatasetAction,
+  restoreRealDataAction,
+  type DatasetStatus,
+  type ImportPreview,
+  type ImportMode,
+} from "./actions/dataset";

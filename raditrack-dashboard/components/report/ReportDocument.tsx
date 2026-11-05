@@ -23,6 +23,8 @@ interface ReportDocumentProps {
   modalityTat: ModalityTatOverviewItem[] | null;
   daily: SevenDayAnalyticsData | null;
   trend: TwelveMonthTrendResult | null;
+  /** True while the validation dataset replaces real data. */
+  isTestData: boolean;
 }
 
 const hours = (minutes: number) => Number((minutes / 60).toFixed(1));
@@ -212,7 +214,7 @@ function TrendSection({ trend, config }: { trend: TwelveMonthTrendResult; config
   );
 }
 
-export function ReportDocument({ config, rangeLabel, generatedAt, kpi, modalityTat, daily, trend }: ReportDocumentProps) {
+export function ReportDocument({ config, rangeLabel, generatedAt, kpi, modalityTat, daily, trend, isTestData }: ReportDocumentProps) {
   const has = (id: ReportConfig["sections"][number]) => config.sections.includes(id);
   const scope = [
     config.modality === "ALL" ? "All modalities" : modalityLabel(config.modality),
@@ -232,6 +234,12 @@ export function ReportDocument({ config, rangeLabel, generatedAt, kpi, modalityT
           {config.preparedBy && <p className="mt-0.5">Prepared by <strong className="text-qc-navy">{config.preparedBy}</strong></p>}
         </div>
       </header>
+
+      {isTestData && (
+        <p className="mt-4 rounded-lg border-2 border-amber-500 bg-amber-50 px-3 py-2 text-center text-xs font-extrabold uppercase tracking-wide text-amber-900">
+          Test data: generated from the RADiTrack validation dataset, not real hospital records
+        </p>
+      )}
 
       {config.notes && (
         <p className="mt-4 whitespace-pre-line rounded-lg border-l-4 border-qc-blue bg-slate-50 px-3 py-2 text-[11px] text-slate-700">{config.notes}</p>

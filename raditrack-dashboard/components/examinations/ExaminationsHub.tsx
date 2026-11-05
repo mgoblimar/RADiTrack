@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { ExportCsvButton } from "@/components/staff/ExportCsvButton";
+import { ImportExamsButton } from "@/components/examinations/ImportExamsDialog";
 import { EditExamDialog } from "@/components/dashboard/EditExamDialog";
 import { DeleteExamDialog } from "@/components/dashboard/DeleteExamDialog";
 
@@ -900,8 +901,9 @@ export function ExaminationsHub({
                   )}
                 </div>
 
-                {/* Export */}
-                <div className="sm:w-auto">
+                {/* Import / Export */}
+                <div className="flex flex-wrap items-center gap-2 sm:w-auto">
+                  <ImportExamsButton />
                   <ExportCsvButton />
                 </div>
               </div>
