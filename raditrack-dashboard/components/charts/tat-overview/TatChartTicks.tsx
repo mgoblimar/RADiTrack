@@ -38,7 +38,7 @@ export const createModalityTickRenderer = (highlightCode: string | null) =>
         textAnchor="middle"
         dominantBaseline="hanging"
         fill="#050E40"
-        fontSize={isHighlighted ? 13 : 12}
+        fontSize={isHighlighted ? 14 : 13}
         fontWeight={isHighlighted ? 900 : 800}
         textDecoration={isHighlighted ? "underline" : undefined}
         className="select-none tracking-tight"
@@ -86,7 +86,7 @@ export const createActualTatLabelRenderer = (
           textAnchor="middle"
           dominantBaseline="central"
           fill={isBreach ? "#FFFFFF" : "#050E40"}
-          fontSize={10}
+          fontSize={12}
           fontWeight={800}
         >
           {value} hrs

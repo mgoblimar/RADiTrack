@@ -658,7 +658,7 @@ export function DateRangeFilter({
           >
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors focus-within:border-qc-blue/25">
-                <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
+                <span className="shrink-0 text-[13px] font-bold text-muted-foreground">
                   From
                 </span>
 
@@ -675,7 +675,7 @@ export function DateRangeFilter({
               </label>
 
               <label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors focus-within:border-qc-blue/25">
-                <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
+                <span className="shrink-0 text-[13px] font-bold text-muted-foreground">
                   To
                 </span>
 
@@ -694,7 +694,7 @@ export function DateRangeFilter({
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                <span className="mr-1 text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
                   Quick
                 </span>
 
@@ -710,7 +710,7 @@ export function DateRangeFilter({
                     onClick={() =>
                       handleQuickPastDays(range.days)
                     }
-                    className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[10px] font-extrabold text-qc-navy transition-colors hover:border-qc-blue/15 hover:bg-qc-blue/5 hover:text-qc-blue"
+                    className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-extrabold text-qc-navy transition-colors hover:border-qc-blue/15 hover:bg-qc-blue/5 hover:text-qc-blue"
                   >
                     {range.label}
                   </button>
@@ -759,7 +759,7 @@ export function DateRangeFilter({
       }}
       className="animate-in fade-in-0 zoom-in-95 duration-100 overflow-hidden rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-[0_20px_50px_rgba(5,14,64,0.18)] backdrop-blur-xl"
     >
-      <div className="mb-1 border-b border-border/60 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+      <div className="mb-1 border-b border-border/60 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
         Select Modality
       </div>
 
@@ -821,7 +821,7 @@ export function DateRangeFilter({
       }}
       className="animate-in fade-in-0 zoom-in-95 duration-100 overflow-hidden rounded-2xl border border-border bg-card p-1.5 text-foreground shadow-[0_20px_50px_rgba(5,14,64,0.18)] backdrop-blur-xl"
     >
-      <div className="mb-1 border-b border-border/60 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+      <div className="mb-1 border-b border-border/60 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
         Select Patient Category
       </div>
 

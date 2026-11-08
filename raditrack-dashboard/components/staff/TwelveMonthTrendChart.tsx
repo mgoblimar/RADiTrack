@@ -250,7 +250,7 @@ export function TwelveMonthTrendChart({
 
       <div className="flex items-center justify-between gap-3 border-b border-border py-3 sm:hidden">
         <div className="min-w-0">
-          <p className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
             {isModalitySpecific && activeModalityConfig
               ? `${activeModalityConfig.label} Average Turnaround Time`
               : "Average Turnaround Time"}
@@ -263,7 +263,7 @@ export function TwelveMonthTrendChart({
 
         {hasPriorComparison && (
           <span
-            className={`shrink-0 text-[10px] font-extrabold ${
+            className={`shrink-0 text-xs font-extrabold ${
               isFaster
                 ? "text-qc-blue"
                 : isSlower

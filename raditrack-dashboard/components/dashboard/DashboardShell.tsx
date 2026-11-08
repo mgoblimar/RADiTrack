@@ -1102,19 +1102,19 @@ export function DashboardShell({
                     </h2>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-white/75 px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-white/75 px-2.5 py-1.5 text-[13px] font-semibold text-muted-foreground">
                         <CalendarDays className="h-3.5 w-3.5 text-qc-blue" />
                         {recentDateRange}
                       </span>
 
-                      <span className="inline-flex items-center rounded-lg bg-qc-blue/[0.06] px-2.5 py-1.5 text-[11px] font-bold text-qc-blue">
+                      <span className="inline-flex items-center rounded-lg bg-qc-blue/[0.06] px-2.5 py-1.5 text-[13px] font-bold text-qc-blue">
                         For all Modalities
                       </span>
                     </div>
                   </div>
 
                   <div className="relative mt-9 text-center">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                    <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
                       Current average
                     </p>
 
@@ -1153,7 +1153,7 @@ export function DashboardShell({
 
                       {recentPctChange !== 0 ? (
                         <span
-                          className={`rounded-full px-3 py-1 text-[10px] font-extrabold ${
+                          className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                             recentPctChange < 0
                               ? "bg-qc-blue/10 text-qc-blue"
                               : "bg-red-50 text-qc-red"
@@ -1165,7 +1165,7 @@ export function DashboardShell({
                             : "slower"}
                         </span>
                       ) : (
-                        <span className="rounded-full bg-white/70 px-3 py-1 text-[10px] font-extrabold text-muted-foreground">
+                        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-extrabold text-muted-foreground">
                           No change
                         </span>
                       )}
@@ -1173,7 +1173,7 @@ export function DashboardShell({
                   </div>
 
                   <div className="relative mt-auto pt-6 text-center">
-                    <span className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+                    <span className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
                       Compared with previous 7 days
                     </span>
                   </div>
@@ -1202,7 +1202,7 @@ export function DashboardShell({
                     <button
                       type="button"
                       onClick={() => setActiveTab("examinations")}
-                      className="group inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[11px] font-extrabold text-qc-blue lg:min-h-0 shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
+                      className="group inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[13px] font-extrabold text-qc-blue lg:min-h-0 shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
                     >
                       Open examinations
 

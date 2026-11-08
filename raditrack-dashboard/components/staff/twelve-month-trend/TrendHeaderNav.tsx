@@ -99,7 +99,7 @@ export function TrendHeaderNav({
           <div
             id="trend-period-hint"
             role="tooltip"
-            className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-72 translate-y-1 rounded-xl border border-border bg-card p-3 text-left text-[11px] leading-relaxed text-muted-foreground opacity-0 shadow-[0_16px_40px_rgba(5,14,64,0.14)] transition-all duration-150 group-focus-within/hint:translate-y-0 group-focus-within/hint:opacity-100 group-hover/hint:translate-y-0 group-hover/hint:opacity-100"
+            className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-72 translate-y-1 rounded-xl border border-border bg-card p-3 text-left text-[13px] leading-relaxed text-muted-foreground opacity-0 shadow-[0_16px_40px_rgba(5,14,64,0.14)] transition-all duration-150 group-focus-within/hint:translate-y-0 group-focus-within/hint:opacity-100 group-hover/hint:translate-y-0 group-hover/hint:opacity-100"
           >
             <p>
               <span className="font-extrabold text-qc-navy">Calendar year:</span>{" "}
@@ -115,7 +115,7 @@ export function TrendHeaderNav({
 
         {/* Calendar year: its own stepper. Last 12 months: the span as text. */}
         {isRolling ? (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-qc-navy">
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-qc-navy">
             <CalendarDays className="h-3.5 w-3.5 text-qc-blue" />
             {rollingSpanLabel}
           </span>
@@ -157,7 +157,7 @@ export function TrendHeaderNav({
         )}
 
         {/* Patient category scope, set apart from the period controls */}
-        <span className="inline-flex items-center gap-1.5 border-l border-border pl-3 text-[11px] font-bold text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5 border-l border-border pl-3 text-[13px] font-bold text-muted-foreground">
           <Users className="h-3.5 w-3.5 text-qc-blue" />
           {triageLabel}
         </span>
@@ -171,7 +171,7 @@ export function TrendHeaderNav({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {/* Period summary: read-only text, not a pill */}
         <div className="hidden shrink-0 items-baseline gap-2 whitespace-nowrap pr-1 sm:flex">
-          <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
             {isModalitySpecific && activeModalityLabel ? `${activeModalityLabel} avg` : "Avg TAT"}
           </span>
 
@@ -183,7 +183,7 @@ export function TrendHeaderNav({
 
               {hasPriorComparison && (
                 <span
-                  className={`inline-flex items-center gap-1 self-center text-[11px] font-extrabold ${
+                  className={`inline-flex items-center gap-1 self-center text-[13px] font-extrabold ${
                     isFaster
                       ? "text-qc-blue"
                       : isSlower
@@ -204,7 +204,7 @@ export function TrendHeaderNav({
               )}
             </>
           ) : (
-            <span className="text-[11px] font-semibold text-muted-foreground">
+            <span className="text-[13px] font-semibold text-muted-foreground">
               No signed reports in this period
             </span>
           )}

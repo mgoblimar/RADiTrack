@@ -20,7 +20,7 @@ export function TrendModalityBar({
   return (
     <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-3.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+        <span className="mr-1 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
           Modality:
         </span>
 

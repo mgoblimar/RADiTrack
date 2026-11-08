@@ -305,7 +305,7 @@ export function SevenDayTatTable({
                 ["Pending", row.pendingCount],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl bg-background px-2 py-1.5">
-                  <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">{label}</dt>
+                  <dt className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{label}</dt>
                   <dd className={`font-mono text-sm font-extrabold ${label === "Pending" && Number(value) > 0 ? "text-qc-orange" : "text-qc-navy"}`}>{value}</dd>
                 </div>
               ))}
@@ -329,7 +329,7 @@ export function SevenDayTatTable({
           <table className="w-full min-w-[800px] text-left">
             <thead>
               {/* Main header */}
-              <tr className="border-b border-border bg-background/70 text-[10px] font-extrabold uppercase tracking-[0.09em] text-muted-foreground">
+              <tr className="border-b border-border bg-background/70 text-xs font-extrabold uppercase tracking-[0.09em] text-muted-foreground">
                 <th
                   rowSpan={2}
                   className="whitespace-nowrap px-4 py-3 align-middle"
@@ -348,7 +348,7 @@ export function SevenDayTatTable({
                   colSpan={3}
                   className="border-x border-border/70 px-3 py-2.5 text-center"
                 >
-                  <span className="block text-[10px] font-extrabold text-qc-navy">
+                  <span className="block text-xs font-extrabold text-qc-navy">
                     Patient Category
                   </span>
                 </th>
@@ -387,12 +387,12 @@ export function SevenDayTatTable({
                   >
                     <div className="flex flex-col items-center gap-1">
                       <span
-                        className={`flex h-6 w-7 items-center justify-center rounded-md text-[10px] font-black ${category.headerClass}`}
+                        className={`flex h-6 w-7 items-center justify-center rounded-md text-xs font-black ${category.headerClass}`}
                       >
                         {category.letter}
                       </span>
 
-                      <span className="text-[8px] font-bold normal-case tracking-normal text-muted-foreground">
+                      <span className="text-xs font-bold normal-case tracking-normal text-muted-foreground">
                         {category.shortLabel}
                       </span>
                     </div>
@@ -466,7 +466,7 @@ export function SevenDayTatTable({
                     {/* Pending */}
                     <td className="px-3 py-3 text-center">
                       {row.pendingCount > 0 ? (
-                        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-orange-50 px-1.5 py-0.5 text-[10px] font-extrabold text-qc-orange">
+                        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-orange-50 px-1.5 py-0.5 text-xs font-extrabold text-qc-orange">
                           {row.pendingCount}
                         </span>
                       ) : (
@@ -479,7 +479,7 @@ export function SevenDayTatTable({
                     {/* Average Turnaround Time */}
                     <td className="px-4 py-3 text-right">
                       {row.finalizedCount === 0 ? (
-                        <span className="text-[10px] font-medium text-muted-foreground/40">
+                        <span className="text-xs font-medium text-muted-foreground/40">
                           —
                         </span>
                       ) : (
@@ -583,7 +583,7 @@ export function SevenDayTatTable({
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex items-center gap-1.5">
               {/* Read-only date span: plain text, not a pill */}
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-extrabold text-qc-navy">
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-extrabold text-qc-navy">
                 <Calendar className="h-3.5 w-3.5 shrink-0 text-qc-blue" />
                 {firstDay} – {lastDay}
               </span>
@@ -594,7 +594,7 @@ export function SevenDayTatTable({
             </div>
 
             <span
-              className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-extrabold ${
+              className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-extrabold ${
                 activeTab === "ALL"
                   ? "border-qc-blue/10 bg-qc-blue/[0.06] text-qc-blue"
                   : "border-qc-yellow/40 bg-qc-yellow/15 text-qc-navy"
@@ -643,7 +643,7 @@ export function SevenDayTatTable({
                   Current
                 </span>
               </div>
-              <span className="text-[10px] font-semibold text-muted-foreground">
+              <span className="text-xs font-semibold text-muted-foreground">
                 {currentData.currentTotalVolume} exams
               </span>
             </div>
@@ -660,7 +660,7 @@ export function SevenDayTatTable({
                     {previousLabel}
                   </span>
                 </div>
-                <span className="text-[10px] font-semibold text-muted-foreground">
+                <span className="text-xs font-semibold text-muted-foreground">
                   {currentData.priorTotalVolume} exams
                 </span>
               </div>
@@ -695,7 +695,7 @@ function DayTag({ label }: { label: string }) {
   if (label !== "Today" && label !== "Yesterday") return null;
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
+      className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${
         label === "Today"
           ? "bg-qc-yellow text-qc-navy"
           : "bg-qc-blue/10 text-qc-blue"

@@ -94,7 +94,7 @@ export function TatOverviewChart({
           {/* Scope set by the dashboard filter bar */}
 
           <span
-            className={`inline-flex h-9 shrink-0 items-center rounded-xl border border-border/80 bg-white/90 px-3 text-[11px] font-extrabold text-qc-navy shadow-sm ${
+            className={`inline-flex h-9 shrink-0 items-center rounded-xl border border-border/80 bg-white/90 px-3 text-[13px] font-extrabold text-qc-navy shadow-sm ${
               isPending ? "opacity-60" : ""
             }`}
           >
@@ -152,7 +152,7 @@ export function TatOverviewChart({
                 <YAxis
                   tick={{
                     fill: Y_AXIS_TICK_COLOR,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 700,
                   }}
                   tickLine={false}

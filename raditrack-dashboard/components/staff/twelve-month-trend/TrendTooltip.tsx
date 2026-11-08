@@ -38,7 +38,7 @@ function ChangeRow({ label, change }: { label: string; change: number | null }) 
     change < 0 ? `${Math.abs(change)}% faster` : change > 0 ? `+${change}% longer` : "No change";
 
   return (
-    <div className="flex items-center justify-between gap-3 text-[11px]">
+    <div className="flex items-center justify-between gap-3 text-[13px]">
       <span className="text-muted-foreground">{label}</span>
       <span className={`font-extrabold ${tone}`}>{text}</span>
     </div>
@@ -75,7 +75,7 @@ function Header({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
       <p className="font-extrabold text-qc-navy">{title}</p>
-      <span className="text-[10px] font-semibold text-muted-foreground">{subtitle}</span>
+      <span className="text-xs font-semibold text-muted-foreground">{subtitle}</span>
     </div>
   );
 }
@@ -142,7 +142,7 @@ export function TrendTooltip({
 
           {point.byModality && (
             <div className="mt-2.5 border-t border-border pt-2">
-              <p className="mb-1.5 flex justify-between text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 flex justify-between text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
                 <span>Modality (this month)</span>
                 <span>Previous month</span>
               </p>
@@ -151,16 +151,16 @@ export function TrendTooltip({
                   const stats = point.byModality?.[m.code];
                   if (!stats) return null;
                   return (
-                    <div key={m.code} className="flex items-center justify-between gap-3 text-[11px]">
+                    <div key={m.code} className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="flex items-center gap-1.5">
                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
                         <span className="text-muted-foreground">{m.label}</span>
                         <span className="font-mono font-bold text-qc-navy">
                           {formatHours(stats.avgTatHours, stats.totalFinalized > 0)}
                         </span>
-                        <span className="text-[10px] text-muted-foreground">({stats.totalFinalized})</span>
+                        <span className="text-xs text-muted-foreground">({stats.totalFinalized})</span>
                       </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
+                      <span className="font-mono text-xs text-muted-foreground">
                         {formatHours(stats.previousMonthAvgTatHours, stats.previousMonthTotalFinalized > 0)}
                       </span>
                     </div>
@@ -181,7 +181,7 @@ export function TrendTooltip({
         <Header title={title} subtitle={`${point.totalFinalized} finalized`} />
 
         <div className="mt-2.5 space-y-1.5">
-          <div className="flex items-center justify-between border-b border-border/70 pb-1.5 text-[11px]">
+          <div className="flex items-center justify-between border-b border-border/70 pb-1.5 text-[13px]">
             <span className="flex items-center gap-1.5 font-extrabold text-qc-navy">
               <span className="h-2 w-2 rounded-full bg-qc-navy" />
               Overall Hospital Avg
@@ -195,18 +195,18 @@ export function TrendTooltip({
             const prevMonthHours = point[`prevMonth_${m.code}_avgTatHours`] ?? 0;
             const priorYearHours = point[`prior_${m.code}_avgTatHours`] ?? 0;
             return (
-              <div key={m.code} className="flex items-center justify-between gap-3 text-[11px]">
+              <div key={m.code} className="flex items-center justify-between gap-3 text-[13px]">
                 <span className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
                   <span className="font-medium text-qc-navy">{m.label}</span>
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-qc-navy">{formatHours(curHours, vol > 0)}</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground">
                     prev. month {formatHours(prevMonthHours)}
                   </span>
                   {comparePriorYear && priorYearHours > 0 && (
-                    <span className="font-mono text-[10px] text-muted-foreground">
+                    <span className="font-mono text-xs text-muted-foreground">
                       · last year {priorYearHours}h
                     </span>
                   )}
@@ -261,13 +261,13 @@ export function TrendTooltip({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-1.5 text-[11px]">
+        <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-1.5 text-[13px]">
           <span className="text-muted-foreground">Hospital Overall TAT</span>
           <span className="font-mono font-bold text-qc-navy">{overallTat}h</span>
         </div>
 
         {diffFromOverall !== null && (
-          <div className="text-[10px] text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             {diffFromOverall === 0
               ? "Equal to hospital average"
               : diffFromOverall > 0

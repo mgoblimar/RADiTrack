@@ -45,7 +45,7 @@ export function TatChartTooltip({
         <p className="font-extrabold text-qc-navy">
           {point.name || point.modality}
         </p>
-        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+        <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-bold text-muted-foreground">
           {patientCategoryLabel}
         </span>
       </div>
@@ -104,7 +104,7 @@ export function TatChartTooltip({
               point.volume === 0
                 ? "font-bold text-muted-foreground"
                 : !hasTargetSla
-                  ? "font-semibold text-muted-foreground text-[10px]"
+                  ? "font-semibold text-muted-foreground text-xs"
                   : isBreach
                     ? "font-extrabold text-[#C53030]"
                     : "font-extrabold text-qc-blue"

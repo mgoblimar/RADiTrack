@@ -6,7 +6,7 @@ interface TatChartLegendProps {
 
 export function TatChartLegend({ hasTargetSla }: TatChartLegendProps) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border px-4 py-3 text-[11px] font-semibold text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border px-4 py-3 text-[13px] font-semibold text-muted-foreground">
       {hasTargetSla ? (
         <>
           <span className="flex items-center gap-2">
