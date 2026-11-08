@@ -3,11 +3,9 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   useTransition,
 } from "react";
-import { createPortal } from "react-dom";
 
 import { ModalityCode } from "@/lib/enums";
 import { fetchSevenDayAnalyticsAction } from "@/app/actions";
@@ -17,11 +15,7 @@ import { toIsoDate } from "@/lib/kpi-range";
 import {
   Calendar,
   Columns2,
-  ChevronDown,
-  Filter,
   Layers,
-  Settings2,
-  X,
 } from "lucide-react";
 
 interface DayRow {
@@ -59,11 +53,20 @@ interface Props {
     all: ModalityAnalytics;
     byModality: Record<string, ModalityAnalytics>;
   };
-  /** Dashboard filter bar: modality and the window's end date. */
+  /** Dashboard filter bar: only the modality applies (the window is always the latest 7 days). */
   filters: DashboardFilters;
 }
 
 type AnalyticsMode = "rolling" | "static";
+
+const WINDOW_MODES: ReadonlyArray<{
+  value: AnalyticsMode;
+  label: string;
+  hint: string;
+}> = [
+  { value: "rolling", label: "Last 7 days", hint: "Today and the 6 days before it" },
+  { value: "static", label: "Mon–Sun week", hint: "This calendar week, Monday to Sunday" },
+];
 
 const MODALITY_TABS = [
   { key: "ALL", label: "All" },
@@ -121,30 +124,14 @@ export function SevenDayTatTable({
   // Off by default; shows the previous 7 days next to the current table.
   const [showPrevious, setShowPrevious] = useState(false);
 
-  const [isOptionsOpen, setIsOptionsOpen] =
-    useState(false);
-
-  const optionsButtonRef =
-    useRef<HTMLButtonElement>(null);
-
-  const optionsPopoverRef =
-    useRef<HTMLDivElement>(null);
-
-  const [optionsPosition, setOptionsPosition] =
-    useState({
-      top: 0,
-      left: 0,
-      width: 360,
-    });
-
   /* =========================================================
-     Analytics: the 7 days ending on the filter bar's end date
+     Analytics: always the latest 7 days (ending today), the same
+     window as Recent pulse. The date filter does not move it.
   ========================================================= */
 
   const todayIso = useMemo(() => toIsoDate(new Date()), []);
-  const anchorDate = filters.isAllTime ? todayIso : filters.rangeEnd;
-  const requestKey = `${anchorDate}|${mode}`;
-  const isInitialRequest = requestKey === `${todayIso}|rolling`;
+  const requestKey = `${todayIso}|${mode}`;
+  const isInitialRequest = mode === "rolling";
 
   const [fetched, setFetched] = useState<{
     key: string;
@@ -159,7 +146,7 @@ export function SevenDayTatTable({
     let isCancelled = false;
     startTransition(async () => {
       try {
-        const result = await fetchSevenDayAnalyticsAction(anchorDate, mode);
+        const result = await fetchSevenDayAnalyticsAction(todayIso, mode);
         if (!isCancelled) setFetched({ key: requestKey, data: result });
       } catch (error) {
         console.error(
@@ -172,7 +159,7 @@ export function SevenDayTatTable({
     return () => {
       isCancelled = true;
     };
-  }, [initialAnalytics, isInitialRequest, anchorDate, mode, requestKey]);
+  }, [isInitialRequest, todayIso, mode, requestKey]);
 
   // Keep showing the last result while a new window loads.
   const analytics = isInitialRequest
@@ -199,8 +186,7 @@ export function SevenDayTatTable({
       ? "For all Modalities"
       : `${currentTabLabel} only`;
 
-  const modeLabel =
-    mode === "rolling" ? "Rolling 7 days" : "Monday–Sunday";
+  const windowLabel = mode === "rolling" ? "Last 7 days" : "This week";
 
   /* =========================================================
      Date labels
@@ -213,100 +199,6 @@ export function SevenDayTatTable({
 
   const lastDay =
     currentData.dayRows[0]?.formattedDate ?? "";
-
-  /* =========================================================
-     Position options popover
-  ========================================================= */
-
-  const updateOptionsPosition = () => {
-    if (!optionsButtonRef.current) return;
-
-    const rect =
-      optionsButtonRef.current.getBoundingClientRect();
-
-    const padding = 12;
-    const width = Math.min(
-      360,
-      window.innerWidth - padding * 2,
-    );
-
-    const left = Math.max(
-      padding,
-      Math.min(
-        rect.right - width,
-        window.innerWidth - width - padding,
-      ),
-    );
-
-    setOptionsPosition({
-      top: rect.bottom + 8,
-      left,
-      width,
-    });
-  };
-
-  /* =========================================================
-     Options popover listeners
-  ========================================================= */
-
-  useEffect(() => {
-    if (!isOptionsOpen) return;
-
-    updateOptionsPosition();
-
-    const handleResize = () => updateOptionsPosition();
-    const handleScroll = () => updateOptionsPosition();
-
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleScroll, true);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener(
-        "scroll",
-        handleScroll,
-        true,
-      );
-    };
-  }, [isOptionsOpen]);
-
-  useEffect(() => {
-    if (!isOptionsOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-
-      if (optionsButtonRef.current?.contains(target)) {
-        return;
-      }
-
-      if (optionsPopoverRef.current?.contains(target)) {
-        return;
-      }
-
-      setIsOptionsOpen(false);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOptionsOpen(false);
-      }
-    };
-
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside,
-    );
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside,
-      );
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOptionsOpen]);
 
   /* =========================================================
      Format Turnaround Time
@@ -391,7 +283,10 @@ export function SevenDayTatTable({
         {rows.map((row) => (
           <li key={row.isoDate} className="rounded-2xl border border-border bg-card p-3.5">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="text-sm font-extrabold text-qc-navy">{row.formattedDate}</p>
+              <p className="flex items-center gap-2 text-sm font-extrabold text-qc-navy">
+                {row.formattedDate}
+                <DayTag label={row.dayLabel} />
+              </p>
               <p className={`font-mono text-sm font-extrabold ${row.finalizedCount > 0 ? tatTone : "text-muted-foreground"}`}>
                 {row.finalizedCount > 0 ? `${row.avgTatHours} hrs` : "—"}
               </p>
@@ -525,24 +420,13 @@ export function SevenDayTatTable({
                         : "hover:bg-qc-blue/[0.025]"
                     }`}
                   >
-                    {/* Day */}
+                    {/* Day: weekday and date, tagged Today / Yesterday */}
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <div>
-                          <div className="text-xs font-extrabold text-qc-navy">
-                            {row.dayLabel}
-                          </div>
-
-                          <div className="mt-0.5 text-[10px] font-medium text-muted-foreground">
-                            {row.formattedDate}
-                          </div>
-                        </div>
-
-                        {isToday && (
-                          <span className="rounded-full bg-qc-yellow px-2 py-0.5 text-[8px] font-extrabold text-qc-navy">
-                            Today
-                          </span>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <span className="whitespace-nowrap text-xs font-extrabold text-qc-navy">
+                          {row.formattedDate}
+                        </span>
+                        <DayTag label={row.dayLabel} />
                       </div>
                     </td>
 
@@ -683,86 +567,6 @@ export function SevenDayTatTable({
   };
 
   /* =========================================================
-     Options popover
-  ========================================================= */
-
-  const optionsPopover = isOptionsOpen ? (
-    <div
-      ref={optionsPopoverRef}
-      role="dialog"
-      aria-label="Table options"
-      style={{
-        position: "fixed",
-        top: optionsPosition.top,
-        left: optionsPosition.left,
-        width: optionsPosition.width,
-        zIndex: 9999,
-      }}
-      className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_50px_rgba(5,14,64,0.14)]"
-    >
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Settings2 className="h-3.5 w-3.5 text-qc-blue" />
-
-          <span className="text-sm font-extrabold text-qc-navy">
-            Options
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsOptionsOpen(false)}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-qc-navy"
-          aria-label="Close options"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <div className="space-y-4 p-4">
-        {/* Time mode */}
-        <div>
-          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-            Time mode
-          </p>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                setMode("rolling");
-                setIsOptionsOpen(false);
-              }}
-              className={`rounded-xl px-2.5 py-2.5 text-[10px] font-bold transition-colors ${
-                mode === "rolling"
-                  ? "bg-qc-blue text-white"
-                  : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-              }`}
-            >
-              Rolling 7 days
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMode("static");
-                setIsOptionsOpen(false);
-              }}
-              className={`rounded-xl px-2.5 py-2.5 text-[10px] font-bold transition-colors ${
-                mode === "static"
-                  ? "bg-qc-blue text-white"
-                  : "border border-border bg-background text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-              }`}
-            >
-              Monday–Sunday
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : null;
-
-  /* =========================================================
      Return
   ========================================================= */
 
@@ -778,6 +582,7 @@ export function SevenDayTatTable({
                 <Calendar className="h-3.5 w-3.5 shrink-0 text-qc-blue" />
 
                 <span className="whitespace-nowrap text-[11px] font-extrabold text-qc-navy">
+                  <span className="text-muted-foreground">{windowLabel} · </span>
                   {firstDay} – {lastDay}
                 </span>
               </div>
@@ -819,45 +624,35 @@ export function SevenDayTatTable({
             {showPrevious ? "Hide previous 7 days" : "Compare previous 7 days"}
           </button>
 
-          {/* Options */}
-          <button
-            ref={optionsButtonRef}
-            type="button"
-            onClick={() =>
-              setIsOptionsOpen((previous) => !previous)
-            }
-            className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
-              isOptionsOpen
-                ? "border-qc-navy bg-qc-navy text-white"
-                : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
-            }`}
-            aria-expanded={isOptionsOpen}
-            aria-haspopup="dialog"
+          {/* Window type: a two-button toggle */}
+          <div
+            role="group"
+            aria-label="Seven-day window"
+            className="inline-flex h-9 items-center rounded-xl border border-border bg-background p-0.5"
           >
-            <Filter
-              className={`h-3.5 w-3.5 ${
-                isOptionsOpen
-                  ? "text-qc-yellow"
-                  : "text-qc-blue"
-              }`}
-            />
-
-            <span>{modeLabel}</span>
-
-            <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${
-                isOptionsOpen ? "rotate-180" : ""
-              }`}
-            />
-          </button>
+            {WINDOW_MODES.map((option) => {
+              const isActive = mode === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setMode(option.value)}
+                  aria-pressed={isActive}
+                  title={option.hint}
+                  className={`inline-flex h-full items-center rounded-[10px] px-3 text-xs font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-blue/40 ${
+                    isActive
+                      ? "bg-qc-navy text-white shadow-sm"
+                      : "text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
           </div>
         </div>
       </div>
-
-      {/* Options menu portal */}
-      {typeof document !== "undefined" &&
-        isOptionsOpen &&
-        createPortal(optionsPopover, document.body)}
 
       {/* Current table, optionally beside the previous 7 days */}
       <div className="px-4 pb-5 pt-4 sm:px-5">
@@ -919,5 +714,20 @@ export function SevenDayTatTable({
         </div>
       </div>
     </div>
+  );
+}
+/** Small "Today" / "Yesterday" pill next to a day's date; nothing otherwise. */
+function DayTag({ label }: { label: string }) {
+  if (label !== "Today" && label !== "Yesterday") return null;
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
+        label === "Today"
+          ? "bg-qc-yellow text-qc-navy"
+          : "bg-qc-blue/10 text-qc-blue"
+      }`}
+    >
+      {label}
+    </span>
   );
 }

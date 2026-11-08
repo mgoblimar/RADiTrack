@@ -76,6 +76,14 @@ export async function getSevenDayStaffAnalytics(options?: SevenDayAnalyticsOptio
     }
   }
 
+  const toLocalIso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const todayIso = toLocalIso(today);
+  const yesterdayIso = toLocalIso(yesterday);
+
   // Find min and max dates across both 7-day windows for query
   const allDays = [...currentDays, ...priorDays];
   const queryStart = new Date(Math.min(...allDays.map((d) => d.getTime())));
@@ -102,8 +110,8 @@ export async function getSevenDayStaffAnalytics(options?: SevenDayAnalyticsOptio
       ? all14DayExams.filter((e) => e.modalityCode === filterCode)
       : all14DayExams;
 
-    const buildDayRows = (dayList: Date[], isPrior = false) =>
-      dayList.map((dayDate, index) => {
+    const buildDayRows = (dayList: Date[]) =>
+      dayList.map((dayDate) => {
         const nextDay = new Date(dayDate);
         nextDay.setDate(nextDay.getDate() + 1);
 
@@ -131,19 +139,12 @@ export async function getSevenDayStaffAnalytics(options?: SevenDayAnalyticsOptio
             ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
             : 0;
 
-        const y = dayDate.getFullYear();
-        const m = String(dayDate.getMonth() + 1).padStart(2, "0");
-        const dStr = String(dayDate.getDate()).padStart(2, "0");
-        const isoDate = `${y}-${m}-${dStr}`;
+        const isoDate = toLocalIso(dayDate);
 
-        let dayLabel = "";
-        if (mode === "static") {
-          dayLabel = dayDate.toLocaleDateString("en-US", { weekday: "short" });
-        } else if (!isPrior) {
-          dayLabel = index === 0 ? "Anchor" : index === 1 ? "Day -1" : `Day -${index}`;
-        } else {
-          dayLabel = index === 0 ? "Prior -7" : `Day -${index + 7}`;
-        }
+        // Plain-language tag for the two most recent days; other rows are
+        // identified by their weekday and date alone.
+        const dayLabel =
+          isoDate === todayIso ? "Today" : isoDate === yesterdayIso ? "Yesterday" : "";
 
         return {
           dayLabel,
@@ -164,8 +165,8 @@ export async function getSevenDayStaffAnalytics(options?: SevenDayAnalyticsOptio
         };
       });
 
-    const dayRows = buildDayRows(currentDays, false);
-    const priorDayRows = buildDayRows(priorDays, true);
+    const dayRows = buildDayRows(currentDays);
+    const priorDayRows = buildDayRows(priorDays);
 
     // Current window totals
     const curMin = new Date(Math.min(...currentDays.map((d) => d.getTime())));

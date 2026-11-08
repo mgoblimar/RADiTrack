@@ -1,12 +1,10 @@
 "use client";
 
 import {
-  Calendar,
-  CalendarDays,
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Info,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -15,8 +13,15 @@ import { QC_PURPLE } from "./types";
 interface TrendHeaderNavProps {
   onStepYear: (step: number) => void;
   isPending: boolean;
+  /** "rolling" or a calendar year such as "2026". */
   selectedPeriod: string;
-  periodLabel: string;
+  /** Year shown in the calendar-year button (kept while "Last 12 months" is on). */
+  calendarYear: number;
+  availableYears: number[];
+  onSelectCalendarYear: (year: number) => void;
+  onSelectRolling: () => void;
+  /** Example span for the hint, e.g. "Dec 2025 – Nov 2026". */
+  rollingSpanLabel: string;
   triageLabel: string;
   isModalitySpecific: boolean;
   activeModalityLabel?: string;
@@ -27,17 +32,17 @@ interface TrendHeaderNavProps {
   displayPctChange: number;
   comparePriorYear: boolean;
   onToggleComparePriorYear: () => void;
-  settingsButtonRef: React.RefObject<HTMLButtonElement | null>;
-  isSettingsOpen: boolean;
-  onToggleSettings: () => void;
-  hasActiveFilters: boolean;
 }
 
 export function TrendHeaderNav({
   onStepYear,
   isPending,
   selectedPeriod,
-  periodLabel,
+  calendarYear,
+  availableYears,
+  onSelectCalendarYear,
+  onSelectRolling,
+  rollingSpanLabel,
   triageLabel,
   isModalitySpecific,
   activeModalityLabel,
@@ -48,46 +53,105 @@ export function TrendHeaderNav({
   displayPctChange,
   comparePriorYear,
   onToggleComparePriorYear,
-  settingsButtonRef,
-  isSettingsOpen,
-  onToggleSettings,
-  hasActiveFilters,
 }: TrendHeaderNavProps) {
+  const isRolling = selectedPeriod === "rolling";
+  const segmentClass = (isActive: boolean) =>
+    `inline-flex h-full items-center gap-1 rounded-[10px] text-xs font-extrabold transition-colors ${
+      isActive
+        ? "bg-qc-navy text-white shadow-sm"
+        : "text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
+    }`;
+
   return (
     <div className="flex flex-col gap-3 border-b border-border pb-4 xl:flex-row xl:items-center xl:justify-between">
-      {/* Period navigation */}
-      <div className="flex min-w-0 items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => onStepYear(-1)}
-          disabled={isPending || selectedPeriod === "rolling"}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-40 lg:h-8 lg:w-8"
-          title="Previous year"
-          aria-label="Previous year"
+      {/* Period: calendar year first, then the last 12 months */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div
+          role="group"
+          aria-label="Trend period"
+          className="inline-flex h-10 items-center gap-0.5 rounded-xl border border-border bg-background p-0.5 lg:h-9"
         >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
+          <div className={`${segmentClass(!isRolling)} pr-1`}>
+            <button
+              type="button"
+              onClick={() => onStepYear(-1)}
+              disabled={isPending}
+              className="flex h-full w-7 items-center justify-center rounded-lg disabled:opacity-40"
+              title="Previous year"
+              aria-label="Previous year"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <select
+              value={String(calendarYear)}
+              onChange={(event) => onSelectCalendarYear(Number(event.target.value))}
+              onClick={() => {
+                if (isRolling) onSelectCalendarYear(calendarYear);
+              }}
+              aria-label="Calendar year"
+              className="h-full cursor-pointer appearance-none bg-transparent px-1 text-center text-xs font-extrabold outline-none [&>option]:text-qc-navy"
+            >
+              {availableYears.map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => onStepYear(1)}
+              disabled={isPending}
+              className="flex h-full w-7 items-center justify-center rounded-lg disabled:opacity-40"
+              title="Next year"
+              aria-label="Next year"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
-        <div className="flex items-center gap-2 rounded-xl bg-background px-3 py-2">
-          <Calendar className="h-3.5 w-3.5 text-qc-blue" />
-          <span className="max-w-[260px] truncate text-[11px] font-extrabold text-qc-navy">
-            {periodLabel} • {triageLabel}
-          </span>
+          <button
+            type="button"
+            onClick={onSelectRolling}
+            aria-pressed={isRolling}
+            className={`${segmentClass(isRolling)} px-3`}
+          >
+            Last 12 months
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onStepYear(1)}
-          disabled={isPending || selectedPeriod === "rolling"}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-40 lg:h-8 lg:w-8"
-          title="Next year"
-          aria-label="Next year"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        {/* What the two periods mean */}
+        <div className="group/hint relative">
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-blue/40"
+            aria-label="What do the periods mean?"
+            aria-describedby="trend-period-hint"
+          >
+            <Info className="h-4 w-4" />
+          </button>
+          <div
+            id="trend-period-hint"
+            role="tooltip"
+            className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-72 translate-y-1 rounded-xl border border-border bg-card p-3 text-left text-[11px] leading-relaxed text-muted-foreground opacity-0 shadow-[0_16px_40px_rgba(5,14,64,0.14)] transition-all duration-150 group-focus-within/hint:translate-y-0 group-focus-within/hint:opacity-100 group-hover/hint:translate-y-0 group-hover/hint:opacity-100"
+          >
+            <p>
+              <span className="font-extrabold text-qc-navy">Calendar year:</span>{" "}
+              January to December of the year you pick.
+            </p>
+            <p className="mt-1.5">
+              <span className="font-extrabold text-qc-navy">Last 12 months:</span>{" "}
+              the month your date filter ends in plus the 11 months before it, e.g.{" "}
+              {rollingSpanLabel}. It crosses into the previous year.
+            </p>
+          </div>
+        </div>
+
+        <span className="text-[11px] font-bold text-muted-foreground">
+          {triageLabel}
+        </span>
 
         {isPending && (
-          <span className="ml-1 h-2 w-2 animate-pulse rounded-full bg-qc-yellow" />
+          <span className="h-2 w-2 animate-pulse rounded-full bg-qc-yellow" />
         )}
       </div>
 
@@ -148,7 +212,7 @@ export function TrendHeaderNav({
             style={{ borderColor: comparePriorYear ? QC_PURPLE : "#94A3B8" }}
           />
           <span>
-            {selectedPeriod === "rolling" ? "Compare Prior 12 Months" : "Compare Prior Year"}
+            {isRolling ? "Compare Prior 12 Months" : "Compare Prior Year"}
           </span>
           <span
             className="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
@@ -161,33 +225,6 @@ export function TrendHeaderNav({
           </span>
         </button>
 
-        {/* View Options Popover Trigger */}
-        <button
-          ref={settingsButtonRef}
-          type="button"
-          onClick={onToggleSettings}
-          className={`inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 text-xs font-extrabold transition-all lg:h-9 ${
-            isSettingsOpen || hasActiveFilters
-              ? "border-qc-navy bg-qc-navy text-white shadow-[0_6px_14px_rgba(5,14,64,0.12)]"
-              : "border-white/80 bg-white/75 text-qc-navy shadow-sm hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
-          }`}
-          aria-expanded={isSettingsOpen}
-          aria-haspopup="dialog"
-        >
-          <CalendarDays
-            className={`h-3.5 w-3.5 ${
-              isSettingsOpen || hasActiveFilters
-                ? "text-qc-yellow"
-                : "text-qc-blue"
-            }`}
-          />
-          <span>View</span>
-          <ChevronDown
-            className={`h-3.5 w-3.5 transition-transform ${
-              isSettingsOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
       </div>
     </div>
   );

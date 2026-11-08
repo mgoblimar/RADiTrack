@@ -179,7 +179,7 @@ function DailySection({ daily, config }: { daily: SevenDayAnalyticsData; config:
       <Table
         head={["Day", "Exams", "OPD", "Inpatient", "Emergency", "Finalized", "Pending", "Average TAT"]}
         rows={days.map((d) => [
-          `${d.dayLabel} ${d.formattedDate}`, d.totalExams, d.opdCount, d.inCount, d.erCount, d.finalizedCount, d.pendingCount, fmtHours(d.avgTatHours),
+          [d.formattedDate, d.dayLabel && `(${d.dayLabel})`].filter(Boolean).join(" "), d.totalExams, d.opdCount, d.inCount, d.erCount, d.finalizedCount, d.pendingCount, fmtHours(d.avgTatHours),
         ])}
       />
     </Section>

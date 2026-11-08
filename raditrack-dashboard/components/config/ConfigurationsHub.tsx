@@ -428,17 +428,18 @@ interface ConfigurationsHubProps {
   initialData?: ConfigurationsData;
 }
 
+// "governance" is the RADiTrack Guide tab: shown first and opened by default.
 type ConfigTab =
+  | "governance"
   | "slas"
   | "rooms"
-  | "radiologists"
-  | "governance";
+  | "radiologists";
 
 export function ConfigurationsHub({
   initialData,
 }: ConfigurationsHubProps) {
   const [activeTab, setActiveTab] =
-    useState<ConfigTab>("slas");
+    useState<ConfigTab>("governance");
 
   const [isPending, startTransition] =
     useTransition();
@@ -557,6 +558,21 @@ export function ConfigurationsHub({
           <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center">
             <button
               type="button"
+              onClick={() =>
+                setActiveTab("governance")
+              }
+              className={`${tabButtonBase} ${
+                activeTab === "governance"
+                  ? "bg-qc-yellow text-qc-navy shadow-sm"
+                  : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
+              }`}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              RADiTrack Guide
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab("slas")}
               className={`${tabButtonBase} ${
                 activeTab === "slas"
@@ -615,21 +631,6 @@ export function ConfigurationsHub({
                 {radiologists.length}
               </span>
             </button>*/}
-
-            <button
-              type="button"
-              onClick={() =>
-                setActiveTab("governance")
-              }
-              className={`${tabButtonBase} ${
-                activeTab === "governance"
-                  ? "bg-qc-yellow text-qc-navy shadow-sm"
-                  : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
-              }`}
-            >
-              <ShieldCheck className="h-4 w-4" />
-              RADiTrack Guide
-            </button>
           </div>
         </div>
       </div>

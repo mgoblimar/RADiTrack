@@ -397,7 +397,7 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-slate-500">The 7-day table and the 12-month trend end on the window&apos;s last day, never later than today.</p>
+            <p className="mt-3 text-xs text-slate-500">The 7-day table always shows the latest 7 days, whatever the window. The 12-month trend&apos;s &ldquo;Last 12 months&rdquo; view ends in the window&apos;s last month, never later than today.</p>
           </Section>
 
           <Section id="guide-privacy" index={7} title="Data & privacy">

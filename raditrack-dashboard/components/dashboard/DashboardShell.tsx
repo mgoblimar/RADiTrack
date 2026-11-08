@@ -446,6 +446,13 @@ export function DashboardShell({
       );
     }, [kpiData, liveKpiMetrics, data]);
 
+  // Hover breakdowns list every modality (within the date range and patient
+  // category), so their percentages use these totals, not the picked modality's.
+  const sumCounts = (counts: Record<string, number>) =>
+    Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const volumeBreakdownTotal = sumCounts(activeVolumeByModality);
+  const pendingBreakdownTotal = sumCounts(activePendingByModality);
+
   const filterScopeSubtitle = useMemo(() => {
     const parts: string[] = [];
 
@@ -504,17 +511,7 @@ export function DashboardShell({
 
   const displayVolumeForCard = displayVolume;
   
-  const volumeSubtitle = useMemo(() => {
-    if (filterScopeSubtitle && dateRangeLabel) {
-      return `${dateRangeLabel} · ${filterScopeSubtitle}`;
-    }
-    return dateRangeLabel || filterScopeSubtitle || "All time";
-  }, [filterScopeSubtitle, dateRangeLabel]);
-
   const displayPendingForCard = displayPending;
-  const pendingSubtitle = filterScopeSubtitle
-    ? `${filterScopeSubtitle} · Awaiting sign-off`
-    : "Awaiting sign-off";
 
   /* =========================================================
      Recent analytics and date range
@@ -754,9 +751,11 @@ export function DashboardShell({
                     </div>
 
                     {/* Displays covered date range (e.g. "Oct 18 – Oct 24") */}
-                    <p className="mt-2 text-[11px] font-medium text-white/60">
-                      {volumeSubtitle}
-                    </p>
+                    <KpiScope
+                      dateLabel={dateRangeLabel}
+                      scopeLabel={filterScopeSubtitle}
+                      tone="dark"
+                    />
                   </div>
 
                   {/* Scan breakdown popover */}
@@ -769,7 +768,7 @@ export function DashboardShell({
                         </span>
 
                         <span className="text-[11px] font-extrabold text-qc-yellow">
-                          {displayVolume} Total
+                          {volumeBreakdownTotal} Total
                         </span>
                       </div>
 
@@ -778,10 +777,12 @@ export function DashboardShell({
                           const count =
                             activeVolumeByModality[m.code] ?? 0;
 
+                          // Share of every scan in this range and
+                          // patient category, so the rows add up to 100%.
                           const pct =
-                            displayVolume > 0
+                            volumeBreakdownTotal > 0
                               ? Math.round(
-                                  (count / displayVolume) * 100,
+                                  (count / volumeBreakdownTotal) * 100,
                                 )
                               : 0;
 
@@ -880,9 +881,10 @@ export function DashboardShell({
                       </span>
                     </p>
 
-                    <p className="mt-1 max-w-[200px] truncate text-[10px] font-medium text-muted-foreground/80">
-                      {volumeSubtitle}
-                    </p>
+                    <KpiScope
+                      dateLabel={dateRangeLabel}
+                      scopeLabel={filterScopeSubtitle}
+                    />
                   </div>
                 </div>
 
@@ -909,9 +911,10 @@ export function DashboardShell({
                       finalized
                     </p>
 
-                    <p className="mt-1 max-w-[200px] truncate text-[10px] font-medium text-muted-foreground/80">
-                      {volumeSubtitle}
-                    </p>
+                    <KpiScope
+                      dateLabel={dateRangeLabel}
+                      scopeLabel={filterScopeSubtitle}
+                    />
                   </div>
                 </div>
 
@@ -962,8 +965,13 @@ export function DashboardShell({
                           : "text-qc-blue"
                       }`}
                     >
-                      {pendingSubtitle}
+                      Awaiting sign-off
                     </p>
+                    {filterScopeSubtitle && (
+                      <p className="mt-0.5 max-w-full break-words text-[10px] font-medium leading-snug text-muted-foreground/80">
+                        {filterScopeSubtitle}
+                      </p>
+                    )}
                   </div>
 
                   {/* Pending breakdown popover */}
@@ -976,7 +984,7 @@ export function DashboardShell({
                         </span>
 
                         <span className="text-[11px] font-extrabold text-qc-orange">
-                          {displayPending} Pending
+                          {pendingBreakdownTotal} Pending
                         </span>
                       </div>
 
@@ -986,9 +994,9 @@ export function DashboardShell({
                             activePendingByModality[m.code] ?? 0;
 
                           const pct =
-                            displayPending > 0
+                            pendingBreakdownTotal > 0
                               ? Math.round(
-                                  (count / displayPending) * 100,
+                                  (count / pendingBreakdownTotal) * 100,
                                 )
                               : 0;
 
@@ -1268,6 +1276,33 @@ export function DashboardShell({
           )}
         </main>
       </div>
+    </div>
+  );
+}
+
+/**
+ * A KPI card's scope: the date range on one line and any modality / patient
+ * category filters on the next. Both wrap instead of being cut off.
+ */
+function KpiScope({
+  dateLabel,
+  scopeLabel,
+  tone = "light",
+}: {
+  dateLabel: string;
+  scopeLabel: string;
+  tone?: "light" | "dark";
+}) {
+  const textClass =
+    tone === "dark" ? "text-white/60" : "text-muted-foreground/80";
+  return (
+    <div className={`mt-2 max-w-full space-y-0.5 text-[10px] font-medium leading-snug ${textClass}`}>
+      <p className="break-words">{dateLabel || "All time"}</p>
+      {scopeLabel && (
+        <p className={`break-words font-bold ${tone === "dark" ? "text-qc-yellow/90" : "text-qc-navy/70"}`}>
+          {scopeLabel}
+        </p>
+      )}
     </div>
   );
 }
