@@ -2,11 +2,30 @@ import React from "react";
 import type { LabelProps, XAxisTickContentProps } from "recharts";
 import type { ModalityTatDisplayItem } from "./types";
 
+/** Friendly modality names, shared by the axis and the tooltip. */
+const MODALITY_LABELS: Record<string, string> = {
+  CT: "CT-Scan",
+  XRAY: "X-ray",
+  XR: "X-ray",
+  US: "Ultrasound",
+  MRI: "MRI",
+  MAMMO: "Mammogram",
+  MAMMOGRAPHY: "Mammogram",
+};
+
+export function modalityLabel(code: string): string {
+  return MODALITY_LABELS[code.toUpperCase()] ?? code;
+}
+
 /* =========================================================
    Custom Modality X-Axis Tick (Shows friendly modality name)
 ========================================================= */
 /** X-axis tick showing the friendly modality name; the highlighted one is emphasised. */
-export const createModalityTickRenderer = (highlightCode: string | null) =>
+export const createModalityTickRenderer = (
+  highlightCode: string | null,
+  /** Modalities with no finalized scans: marked "No scans" under the name. */
+  emptyCodes: ReadonlySet<string>,
+) =>
   function renderModalityTick(props: XAxisTickContentProps) {
   const { payload } = props;
   const x = Number(props.x);
@@ -15,20 +34,9 @@ export const createModalityTickRenderer = (highlightCode: string | null) =>
 
   const raw = String(payload.value);
   const code = raw.toUpperCase();
-
-  // Map modality code to clean friendly display name
-  const labels: Record<string, string> = {
-    CT: "CT-Scan",
-    XRAY: "X-ray",
-    XR: "X-ray",
-    US: "Ultrasound",
-    MRI: "MRI",
-    MAMMO: "Mammogram",
-    MAMMOGRAPHY: "Mammogram",
-  };
-
-  const label = labels[code] || raw;
+  const label = modalityLabel(raw);
   const isHighlighted = highlightCode !== null && code === highlightCode;
+  const isEmpty = emptyCodes.has(code);
 
   return (
     <g transform={`translate(${x}, ${y + 8})`}>
@@ -45,6 +53,20 @@ export const createModalityTickRenderer = (highlightCode: string | null) =>
       >
         {label}
       </text>
+      {isEmpty && (
+        <text
+          x={0}
+          y={18}
+          textAnchor="middle"
+          dominantBaseline="hanging"
+          fill="#64748B"
+          fontSize={12}
+          fontWeight={600}
+          className="select-none"
+        >
+          No scans
+        </text>
+      )}
     </g>
   );
 };
@@ -56,13 +78,16 @@ export const createActualTatLabelRenderer = (
   displayData: ModalityTatDisplayItem[],
   hasTargetSla: boolean,
 ) => {
+  // The LabelList's dataKey is "modality", so `value` is the modality code.
+  // Recharts drops zero-height bars before labelling, so the label `index`
+  // does not line up with displayData; look items up by code instead.
+  const byModality = new Map(displayData.map((item) => [item.modality, item]));
+
   return function renderActualTatLabel(props: LabelProps) {
-    const { value, index } = props;
     const x = Number(props.x);
     const y = Number(props.y);
     const width = Number(props.width);
-    if (value === undefined || value === null) return null;
-    const item = index === undefined ? undefined : displayData[index];
+    const item = byModality.get(String(props.value));
     if (!item || item.volume === 0) return null;
 
     const isBreach = hasTargetSla && item.target !== null && item.avgTat > item.target;
@@ -89,7 +114,7 @@ export const createActualTatLabelRenderer = (
           fontSize={12}
           fontWeight={800}
         >
-          {value} hrs
+          {item.avgTat} hrs
         </text>
       </g>
     );

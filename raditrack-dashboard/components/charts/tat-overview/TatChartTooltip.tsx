@@ -1,6 +1,7 @@
 "use client";
 
 import type { ModalityTatDisplayItem, PatientCategoryFilter } from "./types";
+import { modalityLabel } from "./TatChartTicks";
 
 interface TatChartTooltipProps {
   active?: boolean;
@@ -43,7 +44,7 @@ export function TatChartTooltip({
     <div className="min-w-[190px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_14px_35px_rgba(5,14,64,0.14)]">
       <div className="flex items-center justify-between gap-2">
         <p className="font-extrabold text-qc-navy">
-          {point.name || point.modality}
+          {modalityLabel(point.modality)}
         </p>
         <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-bold text-muted-foreground">
           {patientCategoryLabel}
@@ -85,7 +86,7 @@ export function TatChartTooltip({
                   : "text-qc-navy"
             }
           >
-            {point.avgTat} hrs
+            {point.volume === 0 ? "—" : `${point.avgTat} hrs`}
           </strong>
         </div>
 

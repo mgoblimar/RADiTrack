@@ -54,9 +54,19 @@ export function TatOverviewChart({
     [displayData, hasTargetSla],
   );
 
+  const emptyModalityCodes = useMemo(
+    () =>
+      new Set(
+        displayData
+          .filter((item) => item.volume === 0)
+          .map((item) => item.modality.toUpperCase()),
+      ),
+    [displayData],
+  );
+
   const renderModalityTick = useMemo(
-    () => createModalityTickRenderer(highlightModality),
-    [highlightModality],
+    () => createModalityTickRenderer(highlightModality, emptyModalityCodes),
+    [highlightModality, emptyModalityCodes],
   );
 
   return (
@@ -227,7 +237,7 @@ export function TatOverviewChart({
                   })}
 
                   <LabelList
-                    dataKey="avgTat"
+                    dataKey="modality"
                     content={renderActualTatLabel}
                   />
                 </Bar>
