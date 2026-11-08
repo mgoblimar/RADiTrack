@@ -46,8 +46,9 @@ export function TwelveMonthTrendChart({
   // Patient category and modality come from the dashboard filter bar.
   const selectedTriage = filters.triage;
 
+  // Off by default; the dashed prior-period line appears only when asked for.
   const [comparePriorYear, setComparePriorYear] =
-    useState(true);
+    useState(false);
 
   // View when no single modality is filtered: overall line or one line per modality.
   const [viewMode, setViewMode] =
