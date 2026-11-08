@@ -11,6 +11,7 @@ import { ModalityCode } from "@/lib/enums";
 import { fetchSevenDayAnalyticsAction } from "@/app/actions";
 import type { DashboardFilters } from "@/lib/dashboard-types";
 import { toIsoDate } from "@/lib/kpi-range";
+import { SegmentedToggle } from "@/components/common/SegmentedToggle";
 
 import {
   Calendar,
@@ -185,8 +186,6 @@ export function SevenDayTatTable({
     activeTab === "ALL"
       ? "For all Modalities"
       : `${currentTabLabel} only`;
-
-  const windowLabel = mode === "rolling" ? "Last 7 days" : "This week";
 
   /* =========================================================
      Date labels
@@ -578,14 +577,11 @@ export function SevenDayTatTable({
           {/* Date navigation and selected modality */}
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex items-center gap-1.5">
-              <div className="flex min-w-0 items-center gap-2 rounded-xl bg-background px-3 py-2">
+              {/* Read-only date span: plain text, not a pill */}
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-extrabold text-qc-navy">
                 <Calendar className="h-3.5 w-3.5 shrink-0 text-qc-blue" />
-
-                <span className="whitespace-nowrap text-[11px] font-extrabold text-qc-navy">
-                  <span className="text-muted-foreground">{windowLabel} · </span>
-                  {firstDay} – {lastDay}
-                </span>
-              </div>
+                {firstDay} – {lastDay}
+              </span>
 
               {isPending && (
                 <span className="ml-1 h-2 w-2 shrink-0 animate-pulse rounded-full bg-qc-yellow" />
@@ -610,10 +606,10 @@ export function SevenDayTatTable({
             type="button"
             onClick={() => setShowPrevious((previous) => !previous)}
             aria-pressed={showPrevious}
-            className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all ${
+            className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold shadow-sm transition-all lg:h-9 ${
               showPrevious
-                ? "border-qc-blue bg-qc-blue text-white"
-                : "border-border bg-background text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
+                ? "border-qc-navy bg-qc-navy text-white"
+                : "border-border bg-white text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
             }`}
           >
             <Columns2
@@ -624,32 +620,13 @@ export function SevenDayTatTable({
             {showPrevious ? "Hide previous 7 days" : "Compare previous 7 days"}
           </button>
 
-          {/* Window type: a two-button toggle */}
-          <div
-            role="group"
-            aria-label="Seven-day window"
-            className="inline-flex h-9 items-center rounded-xl border border-border bg-background p-0.5"
-          >
-            {WINDOW_MODES.map((option) => {
-              const isActive = mode === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setMode(option.value)}
-                  aria-pressed={isActive}
-                  title={option.hint}
-                  className={`inline-flex h-full items-center rounded-[10px] px-3 text-xs font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-blue/40 ${
-                    isActive
-                      ? "bg-qc-navy text-white shadow-sm"
-                      : "text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* Window type */}
+          <SegmentedToggle
+            label="Seven-day window"
+            options={WINDOW_MODES}
+            value={mode}
+            onChange={setMode}
+          />
           </div>
         </div>
       </div>

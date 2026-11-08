@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarDays,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -9,18 +10,24 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { QC_PURPLE } from "./types";
+import { SegmentedToggle } from "@/components/common/SegmentedToggle";
+
+const PERIOD_MODES = [
+  { value: "year", label: "Calendar year", hint: "January to December of the year you pick" },
+  { value: "rolling", label: "Last 12 months", hint: "This month and the 11 months before it" },
+] as const;
 
 interface TrendHeaderNavProps {
   onStepYear: (step: number) => void;
   isPending: boolean;
   /** "rolling" or a calendar year such as "2026". */
   selectedPeriod: string;
-  /** Year shown in the calendar-year button (kept while "Last 12 months" is on). */
+  /** Year in the stepper (remembered while "Last 12 months" is on). */
   calendarYear: number;
   availableYears: number[];
   onSelectCalendarYear: (year: number) => void;
   onSelectRolling: () => void;
-  /** Example span for the hint, e.g. "Dec 2025 – Nov 2026". */
+  /** The Last 12 months span, e.g. "Dec 2025 – Nov 2026". */
   rollingSpanLabel: string;
   triageLabel: string;
   isModalitySpecific: boolean;
@@ -55,41 +62,45 @@ export function TrendHeaderNav({
   onToggleComparePriorYear,
 }: TrendHeaderNavProps) {
   const isRolling = selectedPeriod === "rolling";
-  const segmentClass = (isActive: boolean) =>
-    `inline-flex h-full items-center gap-1 rounded-[10px] text-xs font-extrabold transition-colors ${
-      isActive
-        ? "bg-qc-navy text-white shadow-sm"
-        : "text-muted-foreground hover:bg-qc-blue/5 hover:text-qc-navy"
-    }`;
+  const stepButtonClass =
+    "flex h-full w-8 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-qc-blue/5 hover:text-qc-navy disabled:opacity-40";
 
   return (
     <div className="flex flex-col gap-3 border-b border-border pb-4 xl:flex-row xl:items-center xl:justify-between">
       {/* Period: calendar year first, then the last 12 months */}
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <div
-          role="group"
-          aria-label="Trend period"
-          className="inline-flex h-10 items-center gap-0.5 rounded-xl border border-border bg-background p-0.5 lg:h-9"
-        >
-          <div className={`${segmentClass(!isRolling)} pr-1`}>
+        <SegmentedToggle
+          label="Trend period"
+          options={PERIOD_MODES}
+          value={isRolling ? "rolling" : "year"}
+          onChange={(mode) =>
+            mode === "rolling" ? onSelectRolling() : onSelectCalendarYear(calendarYear)
+          }
+        />
+
+        {/* Calendar year: its own stepper. Last 12 months: the span as text. */}
+        {isRolling ? (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-qc-navy">
+            <CalendarDays className="h-3.5 w-3.5 text-qc-blue" />
+            {rollingSpanLabel}
+          </span>
+        ) : (
+          <div className="inline-flex h-10 items-center rounded-xl border border-border bg-white p-0.5 shadow-sm lg:h-9">
             <button
               type="button"
               onClick={() => onStepYear(-1)}
               disabled={isPending}
-              className="flex h-full w-7 items-center justify-center rounded-lg disabled:opacity-40"
+              className={stepButtonClass}
               title="Previous year"
               aria-label="Previous year"
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-4 w-4" />
             </button>
             <select
               value={String(calendarYear)}
               onChange={(event) => onSelectCalendarYear(Number(event.target.value))}
-              onClick={() => {
-                if (isRolling) onSelectCalendarYear(calendarYear);
-              }}
               aria-label="Calendar year"
-              className="h-full cursor-pointer appearance-none bg-transparent px-1 text-center text-xs font-extrabold outline-none [&>option]:text-qc-navy"
+              className="h-full cursor-pointer appearance-none bg-transparent px-1.5 text-center text-xs font-extrabold text-qc-navy outline-none focus-visible:ring-2 focus-visible:ring-qc-blue/40"
             >
               {availableYears.map((year) => (
                 <option key={year} value={String(year)}>
@@ -101,23 +112,14 @@ export function TrendHeaderNav({
               type="button"
               onClick={() => onStepYear(1)}
               disabled={isPending}
-              className="flex h-full w-7 items-center justify-center rounded-lg disabled:opacity-40"
+              className={stepButtonClass}
               title="Next year"
               aria-label="Next year"
             >
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={onSelectRolling}
-            aria-pressed={isRolling}
-            className={`${segmentClass(isRolling)} px-3`}
-          >
-            Last 12 months
-          </button>
-        </div>
+        )}
 
         {/* What the two periods mean */}
         <div className="group/hint relative">
@@ -140,8 +142,8 @@ export function TrendHeaderNav({
             </p>
             <p className="mt-1.5">
               <span className="font-extrabold text-qc-navy">Last 12 months:</span>{" "}
-              the month your date filter ends in plus the 11 months before it, e.g.{" "}
-              {rollingSpanLabel}. It crosses into the previous year.
+              the month your date filter ends in plus the 11 months before it
+              (now {rollingSpanLabel}), so it crosses into the previous year.
             </p>
           </div>
         </div>
