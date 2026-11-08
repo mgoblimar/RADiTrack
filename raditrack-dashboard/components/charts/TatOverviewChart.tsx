@@ -208,6 +208,11 @@ export function TatOverviewChart({
                   name="Actual Turnaround Time"
                   radius={[4, 4, 0, 0]}
                   barSize={hasTargetSla ? 22 : 32}
+                  // A modality with scans but ~0 hrs TAT still gets a sliver
+                  // (and its label); Recharts drops zero-height bars.
+                  minPointSize={(_value, index) =>
+                    (displayData[index]?.volume ?? 0) > 0 ? 3 : 0
+                  }
                   zIndex={350}
                 >
                   {displayData.map((item, index) => {

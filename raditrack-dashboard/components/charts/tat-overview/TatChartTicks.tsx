@@ -91,13 +91,16 @@ export const createActualTatLabelRenderer = (
     if (!item || item.volume === 0) return null;
 
     const isBreach = hasTargetSla && item.target !== null && item.avgTat > item.target;
+    const text = `${item.avgTat} hrs`;
+    // Sized to its text (about 7px per character at 12px bold, plus padding).
+    const boxWidth = Math.max(40, text.length * 7 + 14);
 
     return (
       <g transform={`translate(${x + width / 2}, ${y - 10})`}>
         <rect
-          x={-19}
+          x={-boxWidth / 2}
           y={-14}
-          width={38}
+          width={boxWidth}
           height={18}
           rx={5}
           fill={isBreach ? "#A60808" : "#FFFFFF"}
@@ -114,7 +117,7 @@ export const createActualTatLabelRenderer = (
           fontSize={12}
           fontWeight={800}
         >
-          {item.avgTat} hrs
+          {text}
         </text>
       </g>
     );
