@@ -12,10 +12,10 @@ import { fetchSevenDayAnalyticsAction } from "@/app/actions";
 import type { DashboardFilters } from "@/lib/dashboard-types";
 import { toIsoDate } from "@/lib/kpi-range";
 import { SegmentedToggle } from "@/components/common/SegmentedToggle";
+import { CompareToggle } from "@/components/common/CompareToggle";
 
 import {
   Calendar,
-  Columns2,
   Layers,
 } from "lucide-react";
 
@@ -59,6 +59,9 @@ interface Props {
 }
 
 type AnalyticsMode = "rolling" | "static";
+
+// Same blue as the "previous" table's dot and figures.
+const QC_BLUE = "#18298C";
 
 const WINDOW_MODES: ReadonlyArray<{
   value: AnalyticsMode;
@@ -186,6 +189,8 @@ export function SevenDayTatTable({
     activeTab === "ALL"
       ? "For all Modalities"
       : `${currentTabLabel} only`;
+
+  const previousLabel = mode === "rolling" ? "Previous 7 days" : "Previous week";
 
   /* =========================================================
      Date labels
@@ -601,31 +606,23 @@ export function SevenDayTatTable({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
-          {/* Compare with the previous 7 days */}
-          <button
-            type="button"
-            onClick={() => setShowPrevious((previous) => !previous)}
-            aria-pressed={showPrevious}
-            className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold shadow-sm transition-all lg:h-9 ${
-              showPrevious
-                ? "border-qc-navy bg-qc-navy text-white"
-                : "border-border bg-white text-qc-navy hover:border-qc-blue/20 hover:bg-qc-blue/5"
-            }`}
-          >
-            <Columns2
-              className={`h-3.5 w-3.5 ${
-                showPrevious ? "text-qc-yellow" : "text-qc-blue"
-              }`}
-            />
-            {showPrevious ? "Hide previous 7 days" : "Compare previous 7 days"}
-          </button>
-
-          {/* Window type */}
+          {/* Window type first: it decides which days are shown */}
           <SegmentedToggle
             label="Seven-day window"
             options={WINDOW_MODES}
             value={mode}
             onChange={setMode}
+          />
+
+          <span aria-hidden className="hidden h-6 w-px bg-border sm:block" />
+
+          {/* Show the period before beside the current table */}
+          <CompareToggle
+            label={`Compare ${previousLabel.toLowerCase()}`}
+            checked={showPrevious}
+            onChange={() => setShowPrevious((previous) => !previous)}
+            accentColor={QC_BLUE}
+            swatch={<span className="h-2 w-2 rounded-full bg-qc-blue" />}
           />
           </div>
         </div>
@@ -660,7 +657,7 @@ export function SevenDayTatTable({
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-qc-blue" />
                   <span className="text-sm font-extrabold text-qc-navy">
-                    Previous 7 days
+                    {previousLabel}
                   </span>
                 </div>
                 <span className="text-[10px] font-semibold text-muted-foreground">

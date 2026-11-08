@@ -2,7 +2,6 @@
 
 import {
   CalendarDays,
-  Check,
   ChevronLeft,
   ChevronRight,
   Info,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { QC_PURPLE } from "./types";
 import { SegmentedToggle } from "@/components/common/SegmentedToggle";
+import { CompareToggle } from "@/components/common/CompareToggle";
 
 const PERIOD_MODES = [
   { value: "year", label: "Calendar year", hint: "January to December of the year you pick" },
@@ -210,35 +210,20 @@ export function TrendHeaderNav({
           )}
         </div>
 
-        {/* Quick toggle for prior 12-month comparison */}
-        <button
-          type="button"
-          onClick={onToggleComparePriorYear}
-          className={`inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 text-xs font-extrabold transition-all lg:h-9 ${
-            comparePriorYear
-              ? "border-[#7652B8]/40 bg-[#7652B8]/10 text-[#7652B8] shadow-sm"
-              : "border-white/80 bg-white/75 text-muted-foreground hover:bg-white hover:text-qc-navy"
-          }`}
-          title="Toggle dashed line comparison with prior 12-month period"
-          aria-pressed={comparePriorYear}
-        >
-          <span
-            className="h-0 w-4 border-t-2 border-dashed"
-            style={{ borderColor: comparePriorYear ? QC_PURPLE : "#94A3B8" }}
-          />
-          <span>
-            {isRolling ? "Compare Prior 12 Months" : "Compare Prior Year"}
-          </span>
-          <span
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
-            style={{
-              backgroundColor: comparePriorYear ? QC_PURPLE : "#FFFFFF",
-              borderColor: comparePriorYear ? QC_PURPLE : "#94A3B8",
-            }}
-          >
-            {comparePriorYear && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-          </span>
-        </button>
+        {/* Dashed prior-period line on the chart */}
+        <CompareToggle
+          label={isRolling ? "Compare prior 12 months" : `Compare ${calendarYear - 1}`}
+          checked={comparePriorYear}
+          onChange={onToggleComparePriorYear}
+          accentColor={QC_PURPLE}
+          title="Show the prior period as a dashed line"
+          swatch={
+            <span
+              className="h-0 w-4 border-t-2 border-dashed"
+              style={{ borderColor: QC_PURPLE }}
+            />
+          }
+        />
 
       </div>
     </div>
