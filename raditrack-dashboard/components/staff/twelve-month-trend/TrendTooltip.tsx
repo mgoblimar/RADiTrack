@@ -19,13 +19,16 @@ interface TrendTooltipProps {
 // One layout for every view: header, one big number, one line per
 // comparison, then an optional modality grid.
 const CARD_CLASS =
-  "w-[260px] rounded-xl border border-border bg-white p-3.5 text-[13px] shadow-[0_18px_45px_rgba(5,14,64,0.14)]";
+  "w-[330px] rounded-xl border border-border bg-white p-3.5 text-[13px] shadow-[0_18px_45px_rgba(5,14,64,0.14)]";
 
 /** % change from `previous` to `current`, or null when either is missing. */
 function percentChange(current: number, previous: number): number | null {
   if (current <= 0 || previous <= 0) return null;
   return Math.round(((current - previous) / previous) * 100);
 }
+
+/** "Nov '26" -> "Nov" for the narrow grid headers. */
+const shortMonth = (label: string) => label.split(" ")[0] || label;
 
 const hrs = (hours: number, hasData = hours > 0) => (hasData ? `${hours} hrs` : "—");
 
@@ -108,23 +111,37 @@ interface ModalityRow {
   color: string;
   hours: number;
   hasData: boolean;
+  previousHours: number;
+  hasPrevious: boolean;
   change: number | null;
 }
 
-/** Modality | this month | change vs previous month, in aligned columns. */
-function ModalityGrid({ rows, previousLabel }: { rows: ModalityRow[]; previousLabel: string }) {
+/** Compact hours for the grid, e.g. "20.5h"; the header carries the unit. */
+const shortHrs = (hours: number, hasData: boolean) => (hasData ? `${hours}h` : "—");
+
+const GRID = "grid grid-cols-[1fr_3.25rem_3.25rem_3rem] items-center gap-x-2";
+
+/** Modality | this month | previous month | change, in aligned columns. */
+function ModalityGrid({
+  rows,
+  monthLabel,
+  previousLabel,
+}: {
+  rows: ModalityRow[];
+  monthLabel: string;
+  previousLabel: string;
+}) {
   return (
     <div className="mt-3 border-t border-border pt-2.5">
-      <div className="mb-1 grid grid-cols-[1fr_auto_3rem] gap-x-2 text-xs font-bold text-muted-foreground">
+      <div className={`${GRID} mb-1 text-xs font-bold text-muted-foreground`}>
         <span>By modality</span>
-        <span className="text-right">This month</span>
-        <span className="text-right" title={`Change vs ${previousLabel}`}>
-          vs prev.
-        </span>
+        <span className="text-right">{monthLabel}</span>
+        <span className="text-right">{previousLabel}</span>
+        <span className="text-right">Change</span>
       </div>
       <div className="space-y-1">
         {rows.map((row) => (
-          <div key={row.code} className="grid grid-cols-[1fr_auto_3rem] items-center gap-x-2">
+          <div key={row.code} className={GRID}>
             <span className="flex min-w-0 items-center gap-1.5 text-qc-navy">
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
               <span className="truncate">{row.label}</span>
@@ -134,7 +151,10 @@ function ModalityGrid({ rows, previousLabel }: { rows: ModalityRow[]; previousLa
                 row.hasData ? "text-qc-navy" : "text-muted-foreground"
               }`}
             >
-              {hrs(row.hours, row.hasData)}
+              {shortHrs(row.hours, row.hasData)}
+            </span>
+            <span className="text-right font-mono text-muted-foreground">
+              {shortHrs(row.previousHours, row.hasPrevious)}
             </span>
             <ChangeChip change={row.change} />
           </div>
@@ -170,13 +190,18 @@ export function TrendTooltip({
       const count = fromBreakdown?.totalFinalized ?? point[`${m.code}_totalFinalized`] ?? 0;
       const previous =
         fromBreakdown?.previousMonthAvgTatHours ?? point[`prevMonth_${m.code}_avgTatHours`] ?? 0;
+      const hasPrevious = fromBreakdown
+        ? fromBreakdown.previousMonthTotalFinalized > 0
+        : previous > 0;
       return {
         code: m.code,
         label: m.label,
         color: m.color,
         hours,
         hasData: count > 0,
-        change: count > 0 ? percentChange(hours, previous) : null,
+        previousHours: previous,
+        hasPrevious,
+        change: count > 0 && hasPrevious ? percentChange(hours, previous) : null,
       };
     });
 
@@ -206,7 +231,11 @@ export function TrendTooltip({
           )}
         </div>
 
-        <ModalityGrid rows={rows} previousLabel={previousMonthLabel} />
+        <ModalityGrid
+          rows={rows}
+          monthLabel={shortMonth(title)}
+          previousLabel={shortMonth(previousMonthLabel)}
+        />
       </div>
     );
   }
