@@ -108,7 +108,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
           <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-border bg-background px-4 py-6 text-center hover:border-qc-blue/30">
             <Upload className="h-5 w-5 text-qc-blue" />
             <span className="text-sm font-extrabold text-qc-navy">{isPending ? "Reading file…" : "Choose a file"}</span>
-            <span className="text-[11px] text-muted-foreground">.xlsx or .csv, up to 5 MB</span>
+            <span className="text-[13px] text-muted-foreground">.xlsx or .csv, up to 5 MB</span>
             <input type="file" accept=".xlsx,.csv" className="sr-only" onChange={handleFile} disabled={isPending} />
           </label>
 
@@ -121,7 +121,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
               </div>
 
               <fieldset className="grid gap-2 sm:grid-cols-2">
-                <legend className="mb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">How to import</legend>
+                <legend className="mb-1.5 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">How to import</legend>
                 <ModeOption checked={mode === "append"} onChange={() => setMode("append")} title="Add to current data" text="Keeps all existing exams. Accessions must be new." />
                 <ModeOption checked={mode === "test"} onChange={() => setMode("test")} title="Load as test data" text="Backs up real exams, replaces them with this file. Restore later from RIS Simulator." />
               </fieldset>
@@ -136,7 +136,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
               )}
 
               <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full text-[11px]">
+                <table className="w-full text-[13px]">
                   <thead className="bg-background text-left text-muted-foreground">
                     <tr>{["Accession", "Modality", "Category", "Study", "Completed", "Signed"].map((h) => <th key={h} className="px-2.5 py-1.5 font-bold">{h}</th>)}</tr>
                   </thead>
@@ -154,7 +154,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
                   </tbody>
                 </table>
                 {preview.records.length > PREVIEW_ROWS && (
-                  <p className="border-t border-border px-2.5 py-1.5 text-[10px] text-muted-foreground">…and {preview.records.length - PREVIEW_ROWS} more</p>
+                  <p className="border-t border-border px-2.5 py-1.5 text-xs text-muted-foreground">…and {preview.records.length - PREVIEW_ROWS} more</p>
                 )}
               </div>
             </>
@@ -189,7 +189,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: "ok
   const color = tone === "ok" ? "text-emerald-700" : tone === "error" ? "text-red-700" : "text-qc-navy";
   return (
     <div className="rounded-xl border border-border bg-background px-3 py-2">
-      <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`text-lg font-extrabold ${color}`}>{value}</p>
     </div>
   );
@@ -201,7 +201,7 @@ function ModeOption({ checked, onChange, title, text }: { checked: boolean; onCh
       <input type="radio" name="import-mode" checked={checked} onChange={onChange} className="mt-0.5 accent-[#18298C]" />
       <span>
         <span className="block text-xs font-extrabold text-qc-navy">{title}</span>
-        <span className="block text-[11px] text-muted-foreground">{text}</span>
+        <span className="block text-[13px] text-muted-foreground">{text}</span>
       </span>
     </label>
   );

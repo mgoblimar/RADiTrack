@@ -157,7 +157,7 @@ export function DeleteExamDialog({
                     </p>
                   </div>
 
-                  <span className="shrink-0 rounded-full bg-qc-yellow/25 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-qc-navy">
+                  <span className="shrink-0 rounded-full bg-qc-yellow/25 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide text-qc-navy">
                     Void
                   </span>
                 </button>
@@ -208,7 +208,7 @@ export function DeleteExamDialog({
                     </p>
                   </div>
 
-                  <span className="shrink-0 rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-qc-red">
+                  <span className="shrink-0 rounded-full bg-red-100 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide text-qc-red">
                     Delete
                   </span>
                 </button>

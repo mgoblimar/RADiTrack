@@ -32,7 +32,7 @@ const hours = (h: number | null | undefined, minutes: number | null | undefined)
 function Fact({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{label}</dt>
       <dd className={`mt-0.5 truncate font-mono text-xs font-bold ${tone ?? "text-qc-navy"}`}>{value}</dd>
     </div>
   );
@@ -79,18 +79,18 @@ function ExamCard({ item, statusTab, onSigned }: { item: FilteredExaminationItem
         <div className="min-w-0">
           <p className="truncate font-mono text-sm font-extrabold text-qc-navy">{item.identifier}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            <span className="rounded-lg border border-[#E1E5EE] bg-[#FAFBFD] px-2 py-0.5 text-[11px] font-extrabold text-qc-navy">
+            <span className="rounded-lg border border-[#E1E5EE] bg-[#FAFBFD] px-2 py-0.5 text-[13px] font-extrabold text-qc-navy">
               {MODALITY_CONFIG[item.modalityCode as ModalityCode]?.shortName ?? item.modalityCode}
             </span>
-            <span className={`rounded-lg border px-2 py-0.5 text-[11px] font-extrabold ${CATEGORY_CHIP[item.triageLevel] ?? CATEGORY_CHIP.OPD}`}>
+            <span className={`rounded-lg border px-2 py-0.5 text-[13px] font-extrabold ${CATEGORY_CHIP[item.triageLevel] ?? CATEGORY_CHIP.OPD}`}>
               {TRIAGE_CONFIG[item.triageLevel as TriageLevel]?.label ?? item.triageLevel}
             </span>
             {item.isCarryOver && (
-              <span className="rounded-lg border border-qc-blue/15 bg-qc-blue/5 px-2 py-0.5 text-[11px] font-extrabold text-qc-blue">Carry-over</span>
+              <span className="rounded-lg border border-qc-blue/15 bg-qc-blue/5 px-2 py-0.5 text-[13px] font-extrabold text-qc-blue">Carry-over</span>
             )}
           </div>
         </div>
-        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-extrabold ${status.cls}`}>
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-extrabold ${status.cls}`}>
           {StatusIcon && <StatusIcon className="h-3.5 w-3.5" />}
           {status.text}
         </span>
