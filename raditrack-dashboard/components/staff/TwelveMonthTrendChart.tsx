@@ -194,8 +194,12 @@ export function TwelveMonthTrendChart({
     ? activeModalitySummary?.priorAnnualTotalFinalized ?? 0
     : data.priorAnnualTotalFinalized;
 
+  // Nothing signed this period: show that instead of a misleading "0 hrs".
+  const hasCurrentData = displayAnnualFinalized > 0;
+
+  // Compare only when both periods have signed reports.
   const hasPriorComparison =
-    comparePriorYear && displayPriorFinalized > 0;
+    comparePriorYear && hasCurrentData && displayPriorFinalized > 0;
 
   const isFaster = displayPctChange < 0;
   const isSlower = displayPctChange > 0;
@@ -221,6 +225,7 @@ export function TwelveMonthTrendChart({
         isModalitySpecific={isModalitySpecific}
         activeModalityLabel={activeModalityConfig?.label}
         displayAnnualAvgHours={displayAnnualAvgHours}
+        hasCurrentData={hasCurrentData}
         hasPriorComparison={hasPriorComparison}
         isFaster={isFaster}
         isSlower={isSlower}
@@ -251,7 +256,7 @@ export function TwelveMonthTrendChart({
           </p>
 
           <p className="mt-1 text-xs font-extrabold text-qc-navy">
-            {displayAnnualAvgHours} hrs
+            {hasCurrentData ? `${displayAnnualAvgHours} hrs` : "No signed reports"}
           </p>
         </div>
 

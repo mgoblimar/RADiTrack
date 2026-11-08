@@ -33,6 +33,9 @@ interface TrendHeaderNavProps {
   isModalitySpecific: boolean;
   activeModalityLabel?: string;
   displayAnnualAvgHours: number;
+  /** False when nothing was signed in the period (so the average is not 0 hrs). */
+  hasCurrentData: boolean;
+  /** Both periods have signed reports and the comparison is switched on. */
   hasPriorComparison: boolean;
   isFaster: boolean;
   isSlower: boolean;
@@ -54,6 +57,7 @@ export function TrendHeaderNav({
   isModalitySpecific,
   activeModalityLabel,
   displayAnnualAvgHours,
+  hasCurrentData,
   hasPriorComparison,
   isFaster,
   isSlower,
@@ -62,6 +66,9 @@ export function TrendHeaderNav({
   onToggleComparePriorYear,
 }: TrendHeaderNavProps) {
   const isRolling = selectedPeriod === "rolling";
+  const comparisonLabel = isRolling
+    ? "prior 12 months"
+    : String(calendarYear - 1);
   const stepButtonClass =
     "flex h-full w-8 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-qc-blue/5 hover:text-qc-navy disabled:opacity-40";
 
@@ -159,28 +166,21 @@ export function TrendHeaderNav({
 
       {/* Summary + options */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="hidden shrink-0 items-center gap-3 whitespace-nowrap rounded-xl bg-background px-3 py-2 sm:flex">
-          <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
-              {isModalitySpecific && activeModalityLabel ? `${activeModalityLabel} Avg` : "Avg TAT"}
-            </span>
-            <span className="ml-1.5 text-xs font-extrabold text-qc-navy">
-              {displayAnnualAvgHours} hrs
-            </span>
-          </div>
+        {/* Period summary: read-only text, not a pill */}
+        <div className="hidden shrink-0 items-baseline gap-2 whitespace-nowrap pr-1 sm:flex">
+          <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+            {isModalitySpecific && activeModalityLabel ? `${activeModalityLabel} avg` : "Avg TAT"}
+          </span>
 
-          {hasPriorComparison && (
+          {hasCurrentData ? (
             <>
-              <span className="h-3.5 w-px bg-border" />
-              <div className="flex items-center gap-1.5">
-                {isFaster ? (
-                  <TrendingDown className="h-3 w-3 text-qc-blue" />
-                ) : isSlower ? (
-                  <TrendingUp className="h-3 w-3 text-qc-red" />
-                ) : null}
+              <span className="text-sm font-extrabold text-qc-navy">
+                {displayAnnualAvgHours} hrs
+              </span>
 
+              {hasPriorComparison && (
                 <span
-                  className={`text-xs font-extrabold ${
+                  className={`inline-flex items-center gap-1 self-center text-[11px] font-extrabold ${
                     isFaster
                       ? "text-qc-blue"
                       : isSlower
@@ -188,12 +188,22 @@ export function TrendHeaderNav({
                         : "text-muted-foreground"
                   }`}
                 >
+                  {isFaster ? (
+                    <TrendingDown className="h-3 w-3" />
+                  ) : isSlower ? (
+                    <TrendingUp className="h-3 w-3" />
+                  ) : null}
                   {displayPctChange === 0
-                    ? "No change"
-                    : `${Math.abs(displayPctChange)}% ${isFaster ? "faster" : "longer"}`}
+                    ? "Same as"
+                    : `${Math.abs(displayPctChange)}% ${isFaster ? "faster than" : "longer than"}`}{" "}
+                  {comparisonLabel}
                 </span>
-              </div>
+              )}
             </>
+          ) : (
+            <span className="text-[11px] font-semibold text-muted-foreground">
+              No signed reports in this period
+            </span>
           )}
         </div>
 
