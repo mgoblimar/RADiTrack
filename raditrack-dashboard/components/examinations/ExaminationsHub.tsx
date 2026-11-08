@@ -459,7 +459,7 @@ export function ExaminationsHub({
                     </span>
 
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                      className={`rounded-full px-1.5 py-0.5 text-xs ${
                         statusTab ===
                         "backlog"
                           ? "bg-white/10 text-white"
@@ -499,7 +499,7 @@ export function ExaminationsHub({
                     </span>
 
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                      className={`rounded-full px-1.5 py-0.5 text-xs ${
                         statusTab ===
                         "finalized"
                           ? "bg-white/10 text-white"
@@ -534,7 +534,7 @@ export function ExaminationsHub({
                     <span>All</span>
 
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                      className={`rounded-full px-1.5 py-0.5 text-xs ${
                         statusTab ===
                         "all"
                           ? "bg-white/10 text-white"
@@ -565,7 +565,7 @@ export function ExaminationsHub({
                         event.target.value,
                       )
                     }
-                    className="h-10 w-full rounded-2xl border border-[#DDE3F2] bg-white pl-10 pr-4 text-xs font-semibold text-qc-navy outline-none transition-all placeholder:text-muted-foreground/70 focus:border-qc-blue/30 focus:ring-4 focus:ring-qc-blue/[0.07]"
+                    className="h-10 w-full rounded-2xl border border-[#DDE3F2] bg-white pl-10 pr-4 text-xs font-semibold text-qc-navy outline-none transition-all placeholder:text-muted-foreground focus:border-qc-blue/30 focus:ring-4 focus:ring-qc-blue/[0.07]"
                   />
                 </div>
 
@@ -600,7 +600,7 @@ export function ExaminationsHub({
                     </span>
 
                     {activeFilterCount > 0 && (
-                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-qc-orange px-1 text-[10px] font-black text-white">
+                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-qc-orange px-1 text-xs font-black text-white">
                         {activeFilterCount}
                       </span>
                     )}
@@ -634,7 +634,7 @@ export function ExaminationsHub({
                                 Refine results
                               </p>
 
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="text-xs text-muted-foreground">
                                 Filter by modality, patient category & date
                               </p>
                             </div>
@@ -661,7 +661,7 @@ export function ExaminationsHub({
                           <div className="mb-2 flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5 text-qc-blue" />
 
-                            <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                            <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
                               Date Range
                             </span>
                           </div>
@@ -679,7 +679,7 @@ export function ExaminationsHub({
                                       preset.id,
                                     )
                                   }
-                                  className={`rounded-xl border px-2.5 py-2 text-[11px] font-bold transition-all ${
+                                  className={`rounded-xl border px-2.5 py-2 text-[13px] font-bold transition-all ${
                                     datePreset ===
                                     preset.id
                                       ? "border-qc-blue bg-qc-blue text-white shadow-sm"
@@ -701,12 +701,12 @@ export function ExaminationsHub({
                             <div className="flex items-center gap-1.5">
                               <Layers className="h-3.5 w-3.5 text-qc-blue" />
 
-                              <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                              <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
                                 Modalities
                               </span>
                             </div>
 
-                            <span className="text-[10px] font-semibold text-muted-foreground">
+                            <span className="text-xs font-semibold text-muted-foreground">
                               {selectedModalities.length}/{ALL_MODALITIES.length} selected
                             </span>
                           </div>
@@ -726,7 +726,7 @@ export function ExaminationsHub({
                               className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
                             />
                             <span className="flex-1">All modalities</span>
-                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-xs font-bold text-slate-500">
                               ALL
                             </span>
                           </label>
@@ -743,7 +743,7 @@ export function ExaminationsHub({
                                   className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
                                     isChecked
                                       ? "border-qc-blue/25 bg-qc-blue/[0.04] text-qc-navy shadow-xs"
-                                      : "border-border/80 bg-[#FAFBFD] text-slate-400 hover:border-qc-blue/15 hover:bg-qc-blue/[0.02]"
+                                      : "border-border/80 bg-[#FAFBFD] text-slate-500 hover:border-qc-blue/15 hover:bg-qc-blue/[0.02]"
                                   }`}
                                 >
                                   <input
@@ -755,7 +755,7 @@ export function ExaminationsHub({
                                   <span className="flex-1 font-bold">
                                     {config?.name ?? code}
                                   </span>
-                                  <span className="shrink-0 rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[10px] font-mono font-extrabold text-slate-500">
+                                  <span className="shrink-0 rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-xs font-mono font-extrabold text-slate-500">
                                     {code}
                                   </span>
                                 </label>
@@ -770,12 +770,12 @@ export function ExaminationsHub({
                             <div className="flex items-center gap-1.5">
                               <UserCheck className="h-3.5 w-3.5 text-qc-blue" />
 
-                              <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                              <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
                                 Patient Category
                               </span>
                             </div>
 
-                            <span className="text-[10px] font-semibold text-muted-foreground">
+                            <span className="text-xs font-semibold text-muted-foreground">
                               {selectedCategories.length}/{ALL_CATEGORIES.length} selected
                             </span>
                           </div>
@@ -795,7 +795,7 @@ export function ExaminationsHub({
                               className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
                             />
                             <span className="flex-1">All patient categories</span>
-                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-xs font-bold text-slate-500">
                               ALL
                             </span>
                           </label>
@@ -811,7 +811,7 @@ export function ExaminationsHub({
                                   className={`flex items-center gap-2 rounded-xl border p-2 text-xs font-bold transition-all cursor-pointer ${
                                     isChecked
                                       ? "border-qc-blue/30 bg-qc-blue/5 text-qc-navy shadow-xs"
-                                      : "border-border/80 bg-[#FAFBFD] text-slate-400 hover:border-qc-blue/15 hover:bg-qc-blue/[0.02]"
+                                      : "border-border/80 bg-[#FAFBFD] text-slate-500 hover:border-qc-blue/15 hover:bg-qc-blue/[0.02]"
                                   }`}
                                 >
                                   <input
@@ -822,7 +822,7 @@ export function ExaminationsHub({
                                   />
                                   <div className="flex flex-col min-w-0">
                                     <span className="font-extrabold text-qc-navy">{cat}</span>
-                                    <span className="text-[10px] text-muted-foreground truncate">
+                                    <span className="text-xs text-muted-foreground truncate">
                                       {cat === TriageLevel.OPD
                                         ? "Outpatient"
                                         : cat === TriageLevel.ER
@@ -841,7 +841,7 @@ export function ExaminationsHub({
                           "custom" && (
                           <div className="border-t border-[#EAEFF8] pt-3.5 grid grid-cols-2 gap-2">
                             <label className="space-y-1.5">
-                              <span className="text-[10px] font-bold text-muted-foreground">
+                              <span className="text-xs font-bold text-muted-foreground">
                                 Start
                               </span>
 
@@ -859,12 +859,12 @@ export function ExaminationsHub({
                                       .value,
                                   )
                                 }
-                                className="h-9 w-full rounded-xl border border-[#DDE3F2] bg-[#FAFBFD] px-2.5 text-[11px] font-semibold text-qc-navy outline-none transition-all focus:border-qc-blue/25 focus:bg-white"
+                                className="h-9 w-full rounded-xl border border-[#DDE3F2] bg-[#FAFBFD] px-2.5 text-[13px] font-semibold text-qc-navy outline-none transition-all focus:border-qc-blue/25 focus:bg-white"
                               />
                             </label>
 
                             <label className="space-y-1.5">
-                              <span className="text-[10px] font-bold text-muted-foreground">
+                              <span className="text-xs font-bold text-muted-foreground">
                                 End
                               </span>
 
@@ -882,7 +882,7 @@ export function ExaminationsHub({
                                       .value,
                                   )
                                 }
-                                className="h-9 w-full rounded-xl border border-[#DDE3F2] bg-[#FAFBFD] px-2.5 text-[11px] font-semibold text-qc-navy outline-none transition-all focus:border-qc-blue/25 focus:bg-white"
+                                className="h-9 w-full rounded-xl border border-[#DDE3F2] bg-[#FAFBFD] px-2.5 text-[13px] font-semibold text-qc-navy outline-none transition-all focus:border-qc-blue/25 focus:bg-white"
                               />
                             </label>
 
@@ -928,12 +928,12 @@ export function ExaminationsHub({
             {/* Active filter chips */}
             {hasActiveFilters && (
               <div className="flex flex-wrap items-center gap-2 border-t border-[#E7EAF1] pt-3">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-muted-foreground">
+                <span className="text-xs font-extrabold uppercase tracking-[0.13em] text-muted-foreground">
                   Active
                 </span>
 
                 {isDateFiltered && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-[10px] font-bold text-qc-blue">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-xs font-bold text-qc-blue">
                     <span>
                       {
                         datePresets.find(
@@ -955,7 +955,7 @@ export function ExaminationsHub({
                 )}
 
                 {isModalityFiltered && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-[10px] font-bold text-qc-navy">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-xs font-bold text-qc-navy">
                     <span>
                       Modalities:{" "}
                       {selectedModalities.length === 0
@@ -967,7 +967,7 @@ export function ExaminationsHub({
                     <button
                       type="button"
                       onClick={() => setSelectedModalities(ALL_MODALITIES)}
-                      className="text-slate-400 hover:text-qc-navy"
+                      className="text-slate-500 hover:text-qc-navy"
                       title="Reset to all modalities"
                     >
                       <X className="h-3 w-3" />
@@ -976,7 +976,7 @@ export function ExaminationsHub({
                 )}
 
                 {isCategoryFiltered && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-[10px] font-bold text-qc-navy">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-xs font-bold text-qc-navy">
                     <span>
                       Patient:{" "}
                       {selectedCategories.length === 0
@@ -986,7 +986,7 @@ export function ExaminationsHub({
                     <button
                       type="button"
                       onClick={() => setSelectedCategories(ALL_CATEGORIES)}
-                      className="text-slate-400 hover:text-qc-navy"
+                      className="text-slate-500 hover:text-qc-navy"
                       title="Reset to all patient categories"
                     >
                       <X className="h-3 w-3" />
@@ -995,12 +995,12 @@ export function ExaminationsHub({
                 )}
 
                 {isSearchFiltered && (
-                  <span className="inline-flex items-center gap-1.5 max-w-[200px] truncate rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-[10px] font-bold text-qc-navy">
+                  <span className="inline-flex items-center gap-1.5 max-w-[200px] truncate rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-xs font-bold text-qc-navy">
                     <span className="truncate">“{searchTerm}”</span>
                     <button
                       type="button"
                       onClick={() => setSearchTerm("")}
-                      className="text-slate-400 hover:text-qc-navy shrink-0"
+                      className="text-slate-500 hover:text-qc-navy shrink-0"
                       title="Clear search"
                     >
                       <X className="h-3 w-3" />
@@ -1013,7 +1013,7 @@ export function ExaminationsHub({
                   onClick={
                     handleResetFilters
                   }
-                  className="ml-auto text-[10px] font-extrabold text-muted-foreground transition-colors hover:text-qc-blue"
+                  className="ml-auto text-xs font-extrabold text-muted-foreground transition-colors hover:text-qc-blue"
                 >
                   Clear all
                 </button>
@@ -1037,7 +1037,7 @@ export function ExaminationsHub({
 
           <div className="relative">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
                 Matching
               </p>
 
@@ -1051,7 +1051,7 @@ export function ExaminationsHub({
                 {items.length}
               </span>
 
-              <span className="text-[11px] font-semibold text-muted-foreground">
+              <span className="text-[13px] font-semibold text-muted-foreground">
                 studies
               </span>
             </div>
@@ -1064,7 +1064,7 @@ export function ExaminationsHub({
 
           <div className="relative">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
                 Finalized
               </p>
 
@@ -1078,7 +1078,7 @@ export function ExaminationsHub({
                 {summary.totalFinalized}
               </span>
 
-              <span className="text-[11px] font-semibold text-muted-foreground">
+              <span className="text-[13px] font-semibold text-muted-foreground">
                 signed
               </span>
             </div>
@@ -1105,7 +1105,7 @@ export function ExaminationsHub({
 
           <div className="relative">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
                 Backlog
               </p>
 
@@ -1138,7 +1138,7 @@ export function ExaminationsHub({
                 {summary.totalBacklog}
               </span>
 
-              <span className="text-[11px] font-semibold text-muted-foreground">
+              <span className="text-[13px] font-semibold text-muted-foreground">
                 pending
               </span>
             </div>
@@ -1151,7 +1151,7 @@ export function ExaminationsHub({
 
           <div className="relative">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
                 Average TAT
               </p>
 
@@ -1221,13 +1221,13 @@ export function ExaminationsHub({
             </div>
 
             {isPending && (
-              <span className="inline-flex w-fit items-center rounded-full border border-qc-blue/10 bg-white/70 px-3 py-1.5 text-[10px] font-extrabold text-qc-blue">
+              <span className="inline-flex w-fit items-center rounded-full border border-qc-blue/10 bg-white/70 px-3 py-1.5 text-xs font-extrabold text-qc-blue">
                 Updating…
               </span>
             )}
 
             {!isPending && slaAlerts.length > 0 && (
-              <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-[10px] font-extrabold text-qc-red">
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-extrabold text-qc-red">
                 <AlertTriangle className="h-3 w-3" />
                 {slaAlerts.join(" · ")}
               </span>
@@ -1255,7 +1255,7 @@ export function ExaminationsHub({
         <div className="hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[1060px] text-left">
             <thead className="border-b border-[#E8EBF2] bg-[#FBFCFE]">
-              <tr className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              <tr className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
                 <th className="px-5 py-3.5">
                   Accession
                 </th>
@@ -1361,7 +1361,7 @@ export function ExaminationsHub({
                       </span>
 
                       {item.isCarryOver && (
-                        <span className="rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2 py-0.5 text-[10px] font-extrabold text-qc-blue">
+                        <span className="rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2 py-0.5 text-xs font-extrabold text-qc-blue">
                           Carry-over
                         </span>
                       )}
@@ -1370,7 +1370,7 @@ export function ExaminationsHub({
 
                   {/* Modality */}
                   <td className="px-5 py-4">
-                    <span className="inline-flex rounded-xl border border-[#E1E5EE] bg-[#FAFBFD] px-2.5 py-1 text-[10px] font-extrabold text-qc-navy transition-colors group-hover:border-qc-blue/10">
+                    <span className="inline-flex rounded-xl border border-[#E1E5EE] bg-[#FAFBFD] px-2.5 py-1 text-xs font-extrabold text-qc-navy transition-colors group-hover:border-qc-blue/10">
                       {MODALITY_CONFIG[
                         item.modalityCode as ModalityCode
                       ]?.shortName ??
@@ -1381,7 +1381,7 @@ export function ExaminationsHub({
                   {/* Triage */}
                   <td className="px-5 py-4">
                     <span
-                      className={`inline-flex rounded-xl border px-2.5 py-1 text-[10px] font-extrabold ${getTriageBadgeClass(
+                      className={`inline-flex rounded-xl border px-2.5 py-1 text-xs font-extrabold ${getTriageBadgeClass(
                         item.triageLevel,
                       )}`}
                     >
@@ -1393,7 +1393,7 @@ export function ExaminationsHub({
 
                   {/* Study date */}
                   <td className="px-5 py-4">
-                    <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                    <span className="font-mono text-[13px] font-semibold text-muted-foreground">
                       {item.studyDateFormatted}
                     </span>
                   </td>
@@ -1422,7 +1422,7 @@ export function ExaminationsHub({
                           </span>
 
                           {item.isBreached && (
-                            <span className="mt-0.5 text-[10px] font-extrabold text-qc-red">
+                            <span className="mt-0.5 text-xs font-extrabold text-qc-red">
                               Breached
                             </span>
                           )}
@@ -1430,7 +1430,7 @@ export function ExaminationsHub({
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                        <span className="font-mono text-[13px] font-semibold text-muted-foreground">
                           {item.targetTatHours !== null && item.targetTatHours !== undefined
                             ? `${item.targetTatHours}h`
                             : item.targetTatMinutes
@@ -1477,7 +1477,7 @@ export function ExaminationsHub({
 
                             <button
                               type="submit"
-                              className="group inline-flex items-center gap-1.5 rounded-xl bg-qc-yellow px-3 py-2 text-[10px] font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.12)] transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] hover:shadow-[0_5px_12px_rgba(242,203,73,0.18)] active:translate-y-0"
+                              className="group inline-flex items-center gap-1.5 rounded-xl bg-qc-yellow px-3 py-2 text-xs font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.12)] transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] hover:shadow-[0_5px_12px_rgba(242,203,73,0.18)] active:translate-y-0"
                             >
                               <CheckCircle2 className="h-3.5 w-3.5" />
 
@@ -1497,14 +1497,14 @@ export function ExaminationsHub({
                     "finalized" && (
                     <>
                       <td className="px-5 py-4">
-                        <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                        <span className="font-mono text-[13px] font-semibold text-muted-foreground">
                           {item.examCompletedAtFormatted ||
                             "—"}
                         </span>
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                        <span className="font-mono text-[13px] font-semibold text-muted-foreground">
                           {item.reportSignedAtFormatted ||
                             "—"}
                         </span>
@@ -1522,13 +1522,13 @@ export function ExaminationsHub({
 
                       <td className="px-5 py-4 text-center">
                         {item.isBreached ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-extrabold text-qc-red">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-extrabold text-qc-red">
                             <AlertTriangle className="h-3 w-3" />
 
                             Breached
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-[10px] font-extrabold text-qc-blue">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-xs font-extrabold text-qc-blue">
                             <CheckCircle2 className="h-3 w-3" />
 
                             Met SLA
@@ -1547,7 +1547,7 @@ export function ExaminationsHub({
                     <>
                       <td className="px-5 py-4">
                         <span
-                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${getStatusBadgeClass(
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-extrabold ${getStatusBadgeClass(
                             item.isFinalized,
                           )}`}
                         >
@@ -1558,7 +1558,7 @@ export function ExaminationsHub({
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                        <span className="font-mono text-[13px] font-semibold text-muted-foreground">
                           {item.reportSignedAtFormatted || "—"}
                         </span>
                       </td>
@@ -1608,7 +1608,7 @@ export function ExaminationsHub({
 
                             <button
                               type="submit"
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-qc-yellow px-3 py-2 text-[10px] font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.12)] transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] hover:shadow-[0_5px_12px_rgba(242,203,73,0.18)] active:translate-y-0"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-qc-yellow px-3 py-2 text-xs font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.12)] transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] hover:shadow-[0_5px_12px_rgba(242,203,73,0.18)] active:translate-y-0"
                             >
                               <CheckCircle2 className="h-3.5 w-3.5" />
 
@@ -1655,7 +1655,7 @@ export function ExaminationsHub({
                         onClick={
                           handleResetFilters
                         }
-                        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#DDE3F2] bg-white px-3 py-2 text-[10px] font-extrabold text-qc-blue shadow-sm transition-all hover:-translate-y-0.5 hover:bg-qc-blue/[0.04]"
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#DDE3F2] bg-white px-3 py-2 text-xs font-extrabold text-qc-blue shadow-sm transition-all hover:-translate-y-0.5 hover:bg-qc-blue/[0.04]"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
 
@@ -1674,7 +1674,7 @@ export function ExaminationsHub({
         =================================================== */}
 
         <div className="flex flex-col gap-2 border-t border-[#E8EBF2] bg-[#FBFCFE] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-[10px] font-semibold text-muted-foreground">
+          <span className="text-xs font-semibold text-muted-foreground">
             {items.length}{" "}
             {items.length === 1
               ? "record"
@@ -1684,13 +1684,13 @@ export function ExaminationsHub({
 
           <div className="flex items-center gap-4">
             {slaAlerts.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold text-qc-red">
+              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-qc-red">
                 <span className="h-1.5 w-1.5 rounded-full bg-qc-red" />
                 {slaAlerts.join(" · ")}
               </span>
             )}
 
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
             </span>
           </div>
         </div>

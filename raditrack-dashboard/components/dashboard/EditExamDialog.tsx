@@ -91,7 +91,7 @@ export function EditExamDialog({
                   </p>
 
                   <div className="mt-2 inline-flex max-w-full items-center rounded-full bg-qc-blue/5 px-2.5 py-1">
-                    <span className="truncate font-mono text-[11px] font-bold text-qc-blue">
+                    <span className="truncate font-mono text-[13px] font-bold text-qc-blue">
                       {item.identifier}
                     </span>
                   </div>

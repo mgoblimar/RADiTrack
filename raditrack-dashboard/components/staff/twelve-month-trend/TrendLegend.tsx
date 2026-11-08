@@ -23,7 +23,7 @@ export function TrendLegend({
   displayAnnualFinalized,
 }: TrendLegendProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-[10px]">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-xs">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         {selectedModality === "ALL" && (
           <>

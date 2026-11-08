@@ -157,7 +157,7 @@ function EditSlaModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-qc-navy"
+          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-qc-navy"
           aria-label="Close SLA dialog"
         >
           <X className="h-4 w-4" />
@@ -223,7 +223,7 @@ function EditSlaModal({
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Configure Target By
               </label>
-              <span className="text-[11px] font-semibold text-slate-400">
+              <span className="text-[13px] font-semibold text-slate-500">
                 Up to 7 days max
               </span>
             </div>
@@ -275,7 +275,7 @@ function EditSlaModal({
                   ? "Target duration in hours"
                   : "Target duration in minutes"}
               </label>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-500">
                 Current:{" "}
                 <strong className="text-qc-navy">
                   {formatSlaDuration(editingSla.currentTargetMinutes)}
@@ -299,10 +299,10 @@ function EditSlaModal({
                     ? "e.g. 1, 8, 24, 72"
                     : "e.g. 30, 60, 1440"
                 }
-                className="w-full rounded-2xl border border-slate-200/80 bg-white/80 px-3.5 py-3 pr-20 font-mono text-sm font-semibold text-qc-navy outline-none transition-all placeholder:text-slate-400 focus:border-qc-blue/30 focus:bg-white focus:ring-2 focus:ring-qc-blue/10"
+                className="w-full rounded-2xl border border-slate-200/80 bg-white/80 px-3.5 py-3 pr-20 font-mono text-sm font-semibold text-qc-navy outline-none transition-all placeholder:text-slate-500 focus:border-qc-blue/30 focus:bg-white focus:ring-2 focus:ring-qc-blue/10"
               />
 
-              <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold capitalize text-slate-400">
+              <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold capitalize text-slate-500">
                 {unit}
               </span>
             </div>
@@ -334,7 +334,7 @@ function EditSlaModal({
 
               <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-xl border border-slate-200/60 bg-white p-2">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Minutes
                   </div>
                   <div className="mt-0.5 font-mono text-xs font-extrabold text-qc-navy">
@@ -343,7 +343,7 @@ function EditSlaModal({
                 </div>
 
                 <div className="rounded-xl border border-slate-200/60 bg-white p-2">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Hours
                   </div>
                   <div className="mt-0.5 font-mono text-xs font-extrabold text-qc-navy">
@@ -354,7 +354,7 @@ function EditSlaModal({
                 </div>
 
                 <div className="rounded-xl border border-slate-200/60 bg-white p-2">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Days
                   </div>
                   <div className="mt-0.5 font-mono text-xs font-extrabold text-qc-navy">
@@ -428,17 +428,18 @@ interface ConfigurationsHubProps {
   initialData?: ConfigurationsData;
 }
 
+// "governance" is the RADiTrack Guide tab: shown first and opened by default.
 type ConfigTab =
+  | "governance"
   | "slas"
   | "rooms"
-  | "radiologists"
-  | "governance";
+  | "radiologists";
 
 export function ConfigurationsHub({
   initialData,
 }: ConfigurationsHubProps) {
   const [activeTab, setActiveTab] =
-    useState<ConfigTab>("slas");
+    useState<ConfigTab>("governance");
 
   const [isPending, startTransition] =
     useTransition();
@@ -541,7 +542,7 @@ export function ConfigurationsHub({
     "rounded-[28px] border border-white/70 bg-white/[0.78] shadow-[0_16px_45px_rgba(5,14,64,0.07)] backdrop-blur-xl";
 
   const inputBase =
-    "w-full rounded-2xl border border-slate-200/80 bg-white/80 px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-all placeholder:text-slate-400 focus:border-qc-blue/30 focus:bg-white focus:ring-2 focus:ring-qc-blue/10";
+    "w-full rounded-2xl border border-slate-200/80 bg-white/80 px-3.5 py-3 text-sm font-semibold text-qc-navy outline-none transition-all placeholder:text-slate-500 focus:border-qc-blue/30 focus:bg-white focus:ring-2 focus:ring-qc-blue/10";
 
   const tabButtonBase =
     "inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-center text-xs font-bold leading-tight transition-all duration-150 [&>svg]:hidden sm:justify-start sm:gap-2 sm:px-3.5 sm:py-2.5 sm:text-sm sm:[&>svg]:block";
@@ -555,6 +556,21 @@ export function ConfigurationsHub({
       <div className={panelBase + " p-2"}>
         <div>
           <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center">
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTab("governance")
+              }
+              className={`${tabButtonBase} ${
+                activeTab === "governance"
+                  ? "bg-qc-yellow text-qc-navy shadow-sm"
+                  : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
+              }`}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              RADiTrack Guide
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab("slas")}
@@ -581,7 +597,7 @@ export function ConfigurationsHub({
               Modality Rooms
 
               <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${
                   activeTab === "rooms"
                     ? "bg-qc-navy/10 text-qc-navy"
                     : "bg-qc-blue/10 text-qc-blue"
@@ -606,7 +622,7 @@ export function ConfigurationsHub({
               Radiologists
 
               <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${
                   activeTab === "radiologists"
                     ? "bg-qc-navy/10 text-qc-navy"
                     : "bg-qc-blue/10 text-qc-blue"
@@ -615,21 +631,6 @@ export function ConfigurationsHub({
                 {radiologists.length}
               </span>
             </button>*/}
-
-            <button
-              type="button"
-              onClick={() =>
-                setActiveTab("governance")
-              }
-              className={`${tabButtonBase} ${
-                activeTab === "governance"
-                  ? "bg-qc-yellow text-qc-navy shadow-sm"
-                  : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
-              }`}
-            >
-              <ShieldCheck className="h-4 w-4" />
-              RADiTrack Guide
-            </button>
           </div>
         </div>
       </div>
@@ -678,7 +679,7 @@ export function ConfigurationsHub({
 
               <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
+                  <p className="text-[13px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
                     Turnaround targets
                   </p>
 
@@ -748,7 +749,7 @@ export function ConfigurationsHub({
                   {/* Modality header */}
                   <div className="flex items-center justify-between gap-3 border-b border-white/70 bg-white/[0.62] px-5 py-4">
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="rounded-xl bg-qc-navy px-2.5 py-1.5 font-mono text-[11px] font-extrabold text-qc-yellow">
+                      <span className="rounded-xl bg-qc-navy px-2.5 py-1.5 font-mono text-[13px] font-extrabold text-qc-yellow">
                         {m.modalityCode}
                       </span>
 
@@ -757,7 +758,7 @@ export function ConfigurationsHub({
                           {m.modalityName}
                         </h4>
 
-                        <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                        <p className="mt-0.5 truncate text-[13px] text-slate-500">
                           {m.departmentRoom ||
                             "Unassigned room"}{" "}
                           · {m.totalExams} scans
@@ -766,7 +767,7 @@ export function ConfigurationsHub({
                     </div>
 
                     <span
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-extrabold ${
                         m.isActive
                           ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
                           : "border-orange-200 bg-orange-50 text-qc-orange"
@@ -792,7 +793,7 @@ export function ConfigurationsHub({
                     <div className="rounded-2xl border border-red-100/90 bg-red-50/70 px-4 py-3.5">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2.5">
-                          <span className="rounded-lg bg-red-100 px-2 py-1 text-[10px] font-extrabold text-qc-red">
+                          <span className="rounded-lg bg-red-100 px-2 py-1 text-xs font-extrabold text-qc-red">
                             STAT / ER
                           </span>
 
@@ -838,7 +839,7 @@ export function ConfigurationsHub({
                     <div className="rounded-2xl border border-qc-blue/10 bg-qc-blue/5 px-4 py-3.5">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2.5">
-                          <span className="rounded-lg bg-qc-blue/10 px-2 py-1 text-[10px] font-extrabold text-qc-blue">
+                          <span className="rounded-lg bg-qc-blue/10 px-2 py-1 text-xs font-extrabold text-qc-blue">
                             OPD
                           </span>
 
@@ -884,7 +885,7 @@ export function ConfigurationsHub({
                     <div className="rounded-2xl border border-orange-100 bg-orange-50/65 px-4 py-3.5">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2.5">
-                          <span className="rounded-lg bg-orange-100 px-2 py-1 text-[10px] font-extrabold text-qc-orange">
+                          <span className="rounded-lg bg-orange-100 px-2 py-1 text-xs font-extrabold text-qc-orange">
                             INPATIENT
                           </span>
 
@@ -944,7 +945,7 @@ export function ConfigurationsHub({
           <div className="border-b border-white/70 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
+                <p className="text-[13px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
                   Imaging operations
                 </p>
 
@@ -953,7 +954,7 @@ export function ConfigurationsHub({
                 </h3>
               </div>
 
-              <span className="shrink-0 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-3 py-1.5 text-[11px] font-extrabold text-qc-blue">
+              <span className="shrink-0 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-3 py-1.5 text-[13px] font-extrabold text-qc-blue">
                 {modalities.length} modalities
               </span>
             </div>
@@ -966,15 +967,15 @@ export function ConfigurationsHub({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-lg bg-qc-navy px-2 py-1 font-mono text-[11px] font-extrabold text-qc-yellow">{m.modalityCode}</span>
+                      <span className="rounded-lg bg-qc-navy px-2 py-1 font-mono text-[13px] font-extrabold text-qc-yellow">{m.modalityCode}</span>
                       <span className="truncate text-sm font-bold text-qc-navy">{m.modalityName}</span>
                     </div>
                     <p className="mt-1.5 text-xs text-slate-500">
-                      {m.departmentRoom ?? <span className="italic text-slate-400">No room assigned</span>} · {m.totalExams} scans
+                      {m.departmentRoom ?? <span className="italic text-slate-500">No room assigned</span>} · {m.totalExams} scans
                     </p>
                   </div>
                   <span
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold ${
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-extrabold ${
                       m.isActive ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue" : "border-orange-200 bg-orange-50 text-qc-orange"
                     }`}
                   >
@@ -1009,7 +1010,7 @@ export function ConfigurationsHub({
           <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[850px] text-left">
               <thead className="border-b border-slate-200/80 bg-white/[0.46]">
-                <tr className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500">
+                <tr className="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">
                   <th className="px-5 py-3.5">
                     Modality
                   </th>
@@ -1043,7 +1044,7 @@ export function ConfigurationsHub({
                     className="transition-colors hover:bg-qc-blue/[0.025]"
                   >
                     <td className="px-5 py-4">
-                      <span className="rounded-xl bg-qc-navy px-2.5 py-1.5 font-mono text-[11px] font-extrabold text-qc-yellow">
+                      <span className="rounded-xl bg-qc-navy px-2.5 py-1.5 font-mono text-[13px] font-extrabold text-qc-yellow">
                         {m.modalityCode}
                       </span>
                     </td>
@@ -1060,7 +1061,7 @@ export function ConfigurationsHub({
                           {m.departmentRoom}
                         </span>
                       ) : (
-                        <span className="text-xs italic text-slate-400">
+                        <span className="text-xs italic text-slate-500">
                           None assigned
                         </span>
                       )}
@@ -1074,7 +1075,7 @@ export function ConfigurationsHub({
 
                     <td className="px-5 py-4">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-extrabold ${
                           m.isActive
                             ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
                             : "border-orange-200 bg-orange-50 text-qc-orange"
@@ -1141,7 +1142,7 @@ export function ConfigurationsHub({
           <div className="border-b border-white/70 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-4 sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
+                <p className="text-[13px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
                   Clinical staffing
                 </p>
 
@@ -1166,7 +1167,7 @@ export function ConfigurationsHub({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px] text-left">
               <thead className="border-b border-slate-200/80 bg-white/[0.46]">
-                <tr className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500">
+                <tr className="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">
                   <th className="px-5 py-3.5">
                     Physician
                   </th>
@@ -1208,7 +1209,7 @@ export function ConfigurationsHub({
                           {r.subspecialty}
                         </span>
                       ) : (
-                        <span className="text-xs italic text-slate-400">
+                        <span className="text-xs italic text-slate-500">
                           General Radiology
                         </span>
                       )}
@@ -1223,7 +1224,7 @@ export function ConfigurationsHub({
 
                     <td className="px-5 py-4">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-extrabold ${
                           r.isActive
                             ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
                             : "border-slate-200 bg-white/70 text-slate-500"
@@ -1335,7 +1336,7 @@ export function ConfigurationsHub({
               onClick={() =>
                 setEditingModality(null)
               }
-              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-qc-navy"
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-qc-navy"
               aria-label="Close modality dialog"
             >
               <X className="h-4 w-4" />
@@ -1469,7 +1470,7 @@ export function ConfigurationsHub({
               onClick={() =>
                 setIsAddingRadiologist(false)
               }
-              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-qc-navy"
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-qc-navy"
               aria-label="Close radiologist dialog"
             >
               <X className="h-4 w-4" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowDown, ArrowUp } from "lucide-react";
 import type { MonthTrendData } from "@/app/actions";
 import { ModalityCode } from "@/lib/enums";
 import { MODALITIES, QC_BLUE, QC_PURPLE } from "./types";
@@ -15,67 +16,150 @@ interface TrendTooltipProps {
   triageLabel: string;
 }
 
+// One layout for every view: header, one big number, one line per
+// comparison, then an optional modality grid.
 const CARD_CLASS =
-  "min-w-[250px] rounded-xl border border-border bg-white p-3 text-xs shadow-[0_18px_45px_rgba(5,14,64,0.14)]";
+  "w-[330px] rounded-xl border border-border bg-white p-3.5 text-[13px] shadow-[0_18px_45px_rgba(5,14,64,0.14)]";
 
 /** % change from `previous` to `current`, or null when either is missing. */
 function percentChange(current: number, previous: number): number | null {
   if (current <= 0 || previous <= 0) return null;
-  return Number((((current - previous) / previous) * 100).toFixed(1));
+  return Math.round(((current - previous) / previous) * 100);
 }
 
-function formatHours(hours: number, hasData = hours > 0): string {
-  return hasData ? `${hours}h` : "—";
-}
+/** "Nov '26" -> "Nov" for the narrow grid headers. */
+const shortMonth = (label: string) => label.split(" ")[0] || label;
 
-/** "12% faster" / "+8% longer" row; lower TAT is better. */
-function ChangeRow({ label, change }: { label: string; change: number | null }) {
-  if (change === null) return null;
+const hrs = (hours: number, hasData = hours > 0) => (hasData ? `${hours} hrs` : "—");
 
-  const tone =
-    change < 0 ? "text-qc-blue" : change > 0 ? "text-qc-red" : "text-muted-foreground";
-  const text =
-    change < 0 ? `${Math.abs(change)}% faster` : change > 0 ? `+${change}% longer` : "No change";
-
+/** ↓ 11% (faster, blue) / ↑ 8% (longer, red). Lower TAT is better. */
+function ChangeChip({ change }: { change: number | null }) {
+  if (change === null) return <span className="w-12" />;
+  if (change === 0) {
+    return <span className="w-12 text-right text-xs font-bold text-muted-foreground">same</span>;
+  }
+  const isFaster = change < 0;
+  const Icon = isFaster ? ArrowDown : ArrowUp;
   return (
-    <div className="flex items-center justify-between gap-3 text-[11px]">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={`font-extrabold ${tone}`}>{text}</span>
+    <span
+      className={`inline-flex w-12 items-center justify-end gap-0.5 text-xs font-extrabold ${
+        isFaster ? "text-qc-blue" : "text-qc-red"
+      }`}
+      title={isFaster ? "Faster" : "Longer"}
+    >
+      <Icon className="h-3 w-3" strokeWidth={3} />
+      {Math.abs(change)}%
+    </span>
+  );
+}
+
+function Header({ title, count }: { title: string; count: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <p className="text-sm font-extrabold text-qc-navy">{title}</p>
+      <span className="text-xs font-semibold text-muted-foreground">{count}</span>
     </div>
   );
 }
 
-function ValueRow({
+function Hero({ value, caption, color }: { value: string; caption: string; color: string }) {
+  return (
+    <div className="mt-2">
+      <p className="text-2xl font-extrabold leading-none tracking-tight" style={{ color }}>
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
+    </div>
+  );
+}
+
+/** "vs Oct '26   33.2 hrs   ↓ 11%": the compared value and the change on one line. */
+function CompareLine({
   label,
-  value,
-  color,
+  hours,
+  current,
   dashed = false,
+  color = "#94A3B8",
 }: {
   label: string;
-  value: string;
-  color?: string;
+  hours: number;
+  current: number;
   dashed?: boolean;
+  color?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="flex items-center gap-1.5 font-semibold" style={{ color }}>
+    <div className="flex items-center justify-between gap-3">
+      <span className="flex items-center gap-1.5 text-muted-foreground">
         {dashed ? (
           <span className="h-0 w-3 border-t-2 border-dashed" style={{ borderColor: color }} />
         ) : (
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
         )}
-        {label}
+        vs {label}
       </span>
-      <strong className="font-mono text-qc-navy">{value}</strong>
+      <span className="flex items-center gap-2">
+        <span className="font-mono font-bold text-qc-navy">{hrs(hours)}</span>
+        <ChangeChip change={percentChange(current, hours)} />
+      </span>
     </div>
   );
 }
 
-function Header({ title, subtitle }: { title: string; subtitle: string }) {
+interface ModalityRow {
+  code: ModalityCode;
+  label: string;
+  color: string;
+  hours: number;
+  hasData: boolean;
+  previousHours: number;
+  hasPrevious: boolean;
+  change: number | null;
+}
+
+/** Compact hours for the grid, e.g. "20.5h"; the header carries the unit. */
+const shortHrs = (hours: number, hasData: boolean) => (hasData ? `${hours}h` : "—");
+
+const GRID = "grid grid-cols-[1fr_3.25rem_3.25rem_3rem] items-center gap-x-2";
+
+/** Modality | this month | previous month | change, in aligned columns. */
+function ModalityGrid({
+  rows,
+  monthLabel,
+  previousLabel,
+}: {
+  rows: ModalityRow[];
+  monthLabel: string;
+  previousLabel: string;
+}) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
-      <p className="font-extrabold text-qc-navy">{title}</p>
-      <span className="text-[10px] font-semibold text-muted-foreground">{subtitle}</span>
+    <div className="mt-3 border-t border-border pt-2.5">
+      <div className={`${GRID} mb-1 text-xs font-bold text-muted-foreground`}>
+        <span>By modality</span>
+        <span className="text-right">{monthLabel}</span>
+        <span className="text-right">{previousLabel}</span>
+        <span className="text-right">Change</span>
+      </div>
+      <div className="space-y-1">
+        {rows.map((row) => (
+          <div key={row.code} className={GRID}>
+            <span className="flex min-w-0 items-center gap-1.5 text-qc-navy">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+              <span className="truncate">{row.label}</span>
+            </span>
+            <span
+              className={`text-right font-mono font-bold ${
+                row.hasData ? "text-qc-navy" : "text-muted-foreground"
+              }`}
+            >
+              {shortHrs(row.hours, row.hasData)}
+            </span>
+            <span className="text-right font-mono text-muted-foreground">
+              {shortHrs(row.previousHours, row.hasPrevious)}
+            </span>
+            <ChangeChip change={row.change} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -97,185 +181,113 @@ export function TrendTooltip({
   const previousMonthLabel = point.previousMonthLabel ?? "previous month";
   const priorYearMonthLabel = point.priorYearMonthLabel ?? "last year";
 
-  // 1. Overall view
-  if (selectedModality === "ALL") {
-    const currentTat = point.avgTatHours;
-    const previousMonthTat = point.previousMonthAvgTatHours ?? 0;
-    const priorYearTat = point.priorYearAvgTatHours ?? 0;
+  // Overall and multi-modality views share one layout
+  if (selectedModality === "ALL" || selectedModality === "MULTI") {
+    const current = point.avgTatHours;
+    const rows: ModalityRow[] = MODALITIES.map((m) => {
+      const fromBreakdown = point.byModality?.[m.code];
+      const hours = fromBreakdown?.avgTatHours ?? point[`${m.code}_avgTatHours`] ?? 0;
+      const count = fromBreakdown?.totalFinalized ?? point[`${m.code}_totalFinalized`] ?? 0;
+      const previous =
+        fromBreakdown?.previousMonthAvgTatHours ?? point[`prevMonth_${m.code}_avgTatHours`] ?? 0;
+      const hasPrevious = fromBreakdown
+        ? fromBreakdown.previousMonthTotalFinalized > 0
+        : previous > 0;
+      return {
+        code: m.code,
+        label: m.label,
+        color: m.color,
+        hours,
+        hasData: count > 0,
+        previousHours: previous,
+        hasPrevious,
+        change: count > 0 && hasPrevious ? percentChange(hours, previous) : null,
+      };
+    });
 
     return (
       <div className={CARD_CLASS}>
-        <Header title={title} subtitle={`${point.totalFinalized} finalized`} />
+        <Header title={title} count={`${point.totalFinalized} signed`} />
+        <Hero
+          value={hrs(current)}
+          caption={`Average TAT · ${triageLabel}`}
+          color={QC_BLUE}
+        />
 
-        <div className="mt-2.5 space-y-2">
-          <ValueRow
-            label={`Overall Avg TAT (${triageLabel})`}
-            value={formatHours(currentTat)}
-            color={QC_BLUE}
-          />
-          <ValueRow
-            label={`Previous month (${previousMonthLabel})`}
-            value={formatHours(previousMonthTat)}
-            color="#94A3B8"
+        <div className="mt-2.5 space-y-1">
+          <CompareLine
+            label={previousMonthLabel}
+            hours={point.previousMonthAvgTatHours ?? 0}
+            current={current}
           />
           {comparePriorYear && (
-            <ValueRow
-              label={`Same month last year (${priorYearMonthLabel})`}
-              value={formatHours(priorYearTat)}
+            <CompareLine
+              label={priorYearMonthLabel}
+              hours={point.priorYearAvgTatHours ?? 0}
+              current={current}
               color={QC_PURPLE}
               dashed
             />
           )}
-
-          <div className="space-y-1 border-t border-border/80 pt-1.5">
-            <ChangeRow
-              label="Change vs previous month"
-              change={percentChange(currentTat, previousMonthTat)}
-            />
-            {comparePriorYear && (
-              <ChangeRow
-                label="Change vs same month last year"
-                change={percentChange(currentTat, priorYearTat)}
-              />
-            )}
-          </div>
-
-          {point.byModality && (
-            <div className="mt-2.5 border-t border-border pt-2">
-              <p className="mb-1.5 flex justify-between text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                <span>Modality (this month)</span>
-                <span>Previous month</span>
-              </p>
-              <div className="space-y-1">
-                {MODALITIES.map((m) => {
-                  const stats = point.byModality?.[m.code];
-                  if (!stats) return null;
-                  return (
-                    <div key={m.code} className="flex items-center justify-between gap-3 text-[11px]">
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
-                        <span className="text-muted-foreground">{m.label}</span>
-                        <span className="font-mono font-bold text-qc-navy">
-                          {formatHours(stats.avgTatHours, stats.totalFinalized > 0)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">({stats.totalFinalized})</span>
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {formatHours(stats.previousMonthAvgTatHours, stats.previousMonthTotalFinalized > 0)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
+
+        <ModalityGrid
+          rows={rows}
+          monthLabel={shortMonth(title)}
+          previousLabel={shortMonth(previousMonthLabel)}
+        />
       </div>
     );
   }
 
-  // 2. Multi-modality view
-  if (selectedModality === "MULTI") {
-    return (
-      <div className={`${CARD_CLASS} min-w-[290px]`}>
-        <Header title={title} subtitle={`${point.totalFinalized} finalized`} />
-
-        <div className="mt-2.5 space-y-1.5">
-          <div className="flex items-center justify-between border-b border-border/70 pb-1.5 text-[11px]">
-            <span className="flex items-center gap-1.5 font-extrabold text-qc-navy">
-              <span className="h-2 w-2 rounded-full bg-qc-navy" />
-              Overall Hospital Avg
-            </span>
-            <strong className="font-mono text-qc-navy">{point.avgTatHours}h</strong>
-          </div>
-
-          {MODALITIES.map((m) => {
-            const curHours = point[`${m.code}_avgTatHours`] ?? 0;
-            const vol = point[`${m.code}_totalFinalized`] ?? 0;
-            const prevMonthHours = point[`prevMonth_${m.code}_avgTatHours`] ?? 0;
-            const priorYearHours = point[`prior_${m.code}_avgTatHours`] ?? 0;
-            return (
-              <div key={m.code} className="flex items-center justify-between gap-3 text-[11px]">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
-                  <span className="font-medium text-qc-navy">{m.label}</span>
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-qc-navy">{formatHours(curHours, vol > 0)}</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    prev. month {formatHours(prevMonthHours)}
-                  </span>
-                  {comparePriorYear && priorYearHours > 0 && (
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      · last year {priorYearHours}h
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // 3. Single-modality view
+  // Single-modality view
   const activeMod = MODALITIES.find((m) => m.code === selectedModality);
   const modLabel = activeMod?.label ?? selectedModality;
   const modColor = activeMod?.color ?? QC_BLUE;
-  const curTat = point[`${selectedModality}_avgTatHours`] ?? 0;
+  const current = point[`${selectedModality}_avgTatHours`] ?? 0;
   const modVol = point[`${selectedModality}_totalFinalized`] ?? 0;
-  const prevMonthTat = point[`prevMonth_${selectedModality}_avgTatHours`] ?? 0;
-  const priorYearTat = point[`prior_${selectedModality}_avgTatHours`] ?? 0;
-  const overallTat = point.avgTatHours;
+  const overall = point.avgTatHours;
   const diffFromOverall =
-    curTat > 0 && overallTat > 0 ? Number((curTat - overallTat).toFixed(1)) : null;
+    modVol > 0 && overall > 0 ? Number((current - overall).toFixed(1)) : null;
 
   return (
     <div className={CARD_CLASS}>
-      <Header title={title} subtitle={`${modVol} ${modLabel} finalized`} />
+      <Header title={title} count={`${modVol} signed`} />
+      <Hero
+        value={hrs(current, modVol > 0)}
+        caption={`${modLabel} average TAT · ${triageLabel}`}
+        color={modColor}
+      />
 
-      <div className="mt-2.5 space-y-2">
-        <ValueRow label={`${modLabel} TAT`} value={formatHours(curTat, modVol > 0)} color={modColor} />
-        <ValueRow
-          label={`Previous month (${previousMonthLabel})`}
-          value={formatHours(prevMonthTat)}
-          color="#94A3B8"
+      <div className="mt-2.5 space-y-1">
+        <CompareLine
+          label={previousMonthLabel}
+          hours={point[`prevMonth_${selectedModality}_avgTatHours`] ?? 0}
+          current={modVol > 0 ? current : 0}
         />
         {comparePriorYear && (
-          <ValueRow
-            label={`Same month last year (${priorYearMonthLabel})`}
-            value={formatHours(priorYearTat)}
+          <CompareLine
+            label={priorYearMonthLabel}
+            hours={point[`prior_${selectedModality}_avgTatHours`] ?? 0}
+            current={modVol > 0 ? current : 0}
             color={modColor}
             dashed
           />
         )}
-
-        <div className="space-y-1 border-t border-border/80 pt-1.5">
-          <ChangeRow label="Change vs previous month" change={percentChange(curTat, prevMonthTat)} />
-          {comparePriorYear && (
-            <ChangeRow
-              label="Change vs same month last year"
-              change={percentChange(curTat, priorYearTat)}
-            />
-          )}
-        </div>
-
-        <div className="flex items-center justify-between gap-3 border-t border-border/80 pt-1.5 text-[11px]">
-          <span className="text-muted-foreground">Hospital Overall TAT</span>
-          <span className="font-mono font-bold text-qc-navy">{overallTat}h</span>
-        </div>
-
-        {diffFromOverall !== null && (
-          <div className="text-[10px] text-muted-foreground">
-            {diffFromOverall === 0
-              ? "Equal to hospital average"
-              : diffFromOverall > 0
-                ? `+${diffFromOverall}h higher than hospital average`
-                : `${Math.abs(diffFromOverall)}h lower than hospital average`}
-          </div>
-        )}
       </div>
+
+      <p className="mt-3 border-t border-border pt-2.5 text-xs text-muted-foreground">
+        Hospital average{" "}
+        <span className="font-mono font-bold text-qc-navy">{hrs(overall)}</span>
+        {diffFromOverall !== null && diffFromOverall !== 0 && (
+          <>
+            {" · "}
+            <span className={diffFromOverall < 0 ? "font-bold text-qc-blue" : "font-bold text-qc-red"}>
+              {Math.abs(diffFromOverall)} hrs {diffFromOverall < 0 ? "faster" : "slower"}
+            </span>
+          </>
+        )}
+      </p>
     </div>
   );
 }

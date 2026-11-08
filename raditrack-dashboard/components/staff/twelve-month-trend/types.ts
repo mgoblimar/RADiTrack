@@ -34,7 +34,7 @@ export const MODALITIES: ModalityConfig[] = [
 ];
 
 export const TRIAGE_OPTIONS: ReadonlyArray<{ value: "ALL" | TriageLevel; label: string }> = [
-  { value: "ALL", label: "All Categories" },
+  { value: "ALL", label: "All patient categories" },
   { value: TriageLevel.OPD, label: "Outpatient (OPD)" },
   { value: TriageLevel.IN, label: "Inpatient (IN)" },
   { value: TriageLevel.ER, label: "Emergency (ER)" },

@@ -114,7 +114,7 @@ function GuideNav({ active }: { active: SectionId }) {
 
       {/* Desktop: sticky "On this page" list */}
       <nav aria-label="Guide sections" className="sticky top-6 hidden self-start lg:block">
-        <p className="mb-2 px-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">On this page</p>
+        <p className="mb-2 px-3 text-xs font-extrabold uppercase tracking-[0.16em] text-muted-foreground">On this page</p>
         <ul className="space-y-0.5 border-l-2 border-[#E4E8F1]">
           {GUIDE_SECTIONS.map(({ id, label, icon: Icon }) => (
             <li key={id}>
@@ -128,7 +128,7 @@ function GuideNav({ active }: { active: SectionId }) {
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-qc-navy"
                 }`}
               >
-                <Icon className={`h-4 w-4 shrink-0 ${active === id ? "text-qc-navy" : "text-slate-400"}`} />
+                <Icon className={`h-4 w-4 shrink-0 ${active === id ? "text-qc-navy" : "text-slate-500"}`} />
                 {label}
               </button>
             </li>
@@ -170,14 +170,14 @@ function AverageTatUseCase() {
   ];
   return (
     <figure className="rounded-[18px] border border-white/10 bg-white/[0.06] p-4 sm:p-5">
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-qc-yellow">
+      <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-qc-yellow">
         Example: &ldquo;How fast is our department this week?&rdquo;
       </p>
       <div className="mt-3 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
         <ol className="space-y-2">
           {steps.map((step, i) => (
             <li key={step} className="flex items-center gap-2.5 text-[13px] font-bold text-white/85">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 text-[11px] font-black text-white">{i + 1}</span>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 text-[13px] font-black text-white">{i + 1}</span>
               {step}
             </li>
           ))}
@@ -185,15 +185,15 @@ function AverageTatUseCase() {
 
         {/* Sample KPI card */}
         <div aria-hidden className="rounded-2xl bg-white px-5 py-4 text-center text-qc-navy shadow-[0_8px_20px_rgba(0,0,0,0.25)] sm:min-w-[190px]">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">Average turnaround time</p>
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Average turnaround time</p>
           <p className="mt-1 text-3xl font-black tracking-tight">
-            26.4<span className="ml-1 text-sm font-extrabold text-slate-400">hrs</span>
+            26.4<span className="ml-1 text-sm font-extrabold text-slate-500">hrs</span>
           </p>
-          <p className="text-[11px] font-semibold text-slate-500">Median 16.7 hrs</p>
-          <p className="mt-2 inline-flex rounded-full bg-qc-blue/10 px-2.5 py-0.5 text-[10px] font-extrabold text-qc-blue">30% faster than last week</p>
+          <p className="text-[13px] font-semibold text-slate-500">Median 16.7 hrs</p>
+          <p className="mt-2 inline-flex rounded-full bg-qc-blue/10 px-2.5 py-0.5 text-xs font-extrabold text-qc-blue">30% faster than last week</p>
         </div>
       </div>
-      <figcaption className="mt-3 text-[11px] text-white/60">
+      <figcaption className="mt-3 text-[13px] text-white/60">
         Sample numbers. Narrow it down with the modality or patient category filters, or press Generate report for a PDF.
       </figcaption>
     </figure>
@@ -235,13 +235,13 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
         <div className="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-qc-blue/40 blur-3xl" />
         <div className="relative grid items-center gap-6 lg:grid-cols-[1.1fr_1fr]">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-qc-yellow">{governance.department}</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-qc-yellow">{governance.department}</p>
             <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">How to use RADiTrack</h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/75">
               See at a glance how quickly the department turns completed scans into signed reports, for any period,
               modality or patient category, and spot delays before they pile up.
             </p>
-            <ul className="mt-4 flex flex-wrap gap-2 text-[11px] font-bold">
+            <ul className="mt-4 flex flex-wrap gap-2 text-[13px] font-bold">
               <li className="rounded-full bg-white/10 px-3 py-1.5">Average report turnaround</li>
               <li className="rounded-full bg-white/10 px-3 py-1.5">Reading backlog</li>
               <li className="rounded-full bg-qc-yellow px-3 py-1.5 text-qc-navy">Compare with last period</li>
@@ -296,7 +296,7 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {FORMULAS.map((f) => (
                 <article key={f.name} className={`${cardBase} flex flex-col p-4`}>
-                  <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-qc-blue">{f.name}</h4>
+                  <h4 className="text-[13px] font-extrabold uppercase tracking-wider text-qc-blue">{f.name}</h4>
                   <p className="mt-2.5 rounded-xl bg-qc-navy px-3 py-2.5 text-center font-mono text-[13px] font-bold leading-snug text-white">{f.formula}</p>
                   <p className="mt-2.5 text-xs leading-relaxed text-slate-500"><span className="font-extrabold text-slate-700">Example: </span>{f.example}</p>
                 </article>
@@ -310,7 +310,7 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
           <Section id="guide-terms" index={4} title="Terms">
             <label className="relative mb-4 block max-w-sm">
               <span className="sr-only">Search terms</span>
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 type="search"
                 value={query}
@@ -337,7 +337,7 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
             {/* Table on tablet/desktop */}
             <div className={`${cardBase} hidden overflow-hidden sm:block`}>
               <table className="w-full text-left text-sm">
-                <thead className="bg-[#FBFCFE] text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                <thead className="bg-[#FBFCFE] text-xs font-extrabold uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="px-4 py-3">Modality</th>
                     {CATEGORIES.map((c) => <th key={c.code} className="px-4 py-3"><span className={`rounded-full border px-2 py-0.5 ${c.chip}`}>{c.label}</span></th>)}
@@ -361,7 +361,7 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
                   <dl className="mt-2 grid grid-cols-3 gap-2">
                     {CATEGORIES.map((c) => (
                       <div key={c.code} className={`rounded-xl border px-2 py-1.5 text-center ${c.chip}`}>
-                        <dt className="text-[10px] font-extrabold uppercase">{c.label}</dt>
+                        <dt className="text-xs font-extrabold uppercase">{c.label}</dt>
                         <dd className="font-mono text-sm font-black">{targetHours(code, c.code)}</dd>
                       </div>
                     ))}
@@ -374,7 +374,7 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
           <Section id="guide-windows" index={6} title="Time windows" intro="The filter bar's time window decides which exams are counted, by study date/time. Each window is compared with the period just before it.">
             <div className={`${cardBase} hidden overflow-hidden sm:block`}>
               <table className="w-full text-left text-sm">
-                <thead className="bg-[#FBFCFE] text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                <thead className="bg-[#FBFCFE] text-xs font-extrabold uppercase tracking-wider text-slate-500">
                   <tr><th className="px-4 py-3">Window</th><th className="px-4 py-3">Includes</th><th className="px-4 py-3">Compared with</th></tr>
                 </thead>
                 <tbody>
@@ -393,11 +393,11 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
                 <div key={w.name} className={`${cardBase} p-3.5`}>
                   <p className="text-sm font-extrabold text-qc-navy">{w.name}</p>
                   <p className="mt-1 text-xs text-slate-600">{w.includes}</p>
-                  <p className="mt-1 text-[11px] text-slate-400">Compared with: {w.compared}</p>
+                  <p className="mt-1 text-[13px] text-slate-500">Compared with: {w.compared}</p>
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-slate-500">The 7-day table and the 12-month trend end on the window&apos;s last day, never later than today.</p>
+            <p className="mt-3 text-xs text-slate-500">The 7-day table always shows the latest 7 days, whatever the window. The 12-month trend&apos;s &ldquo;Last 12 months&rdquo; view ends in the window&apos;s last month, never later than today.</p>
           </Section>
 
           <Section id="guide-privacy" index={7} title="Data & privacy">

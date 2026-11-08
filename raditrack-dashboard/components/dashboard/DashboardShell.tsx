@@ -446,6 +446,13 @@ export function DashboardShell({
       );
     }, [kpiData, liveKpiMetrics, data]);
 
+  // Hover breakdowns list every modality (within the date range and patient
+  // category), so their percentages use these totals, not the picked modality's.
+  const sumCounts = (counts: Record<string, number>) =>
+    Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const volumeBreakdownTotal = sumCounts(activeVolumeByModality);
+  const pendingBreakdownTotal = sumCounts(activePendingByModality);
+
   const filterScopeSubtitle = useMemo(() => {
     const parts: string[] = [];
 
@@ -504,17 +511,7 @@ export function DashboardShell({
 
   const displayVolumeForCard = displayVolume;
   
-  const volumeSubtitle = useMemo(() => {
-    if (filterScopeSubtitle && dateRangeLabel) {
-      return `${dateRangeLabel} · ${filterScopeSubtitle}`;
-    }
-    return dateRangeLabel || filterScopeSubtitle || "All time";
-  }, [filterScopeSubtitle, dateRangeLabel]);
-
   const displayPendingForCard = displayPending;
-  const pendingSubtitle = filterScopeSubtitle
-    ? `${filterScopeSubtitle} · Awaiting sign-off`
-    : "Awaiting sign-off";
 
   /* =========================================================
      Recent analytics and date range
@@ -593,8 +590,9 @@ export function DashboardShell({
   const softCard =
     "rounded-[26px] border border-border/80 bg-card shadow-[0_2px_8px_rgba(15,23,42,0.04)]";
 
+  // KPI and card labels: 12px minimum so they stay readable.
   const compactLabel =
-    "text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground";
+    "text-xs font-extrabold uppercase tracking-[0.08em] text-muted-foreground";
 
   return (
     <div className="relative min-h-screen overflow-clip bg-[#F7F9FC] text-foreground">
@@ -744,7 +742,7 @@ export function DashboardShell({
                     <div className="mb-1.5 flex items-center justify-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_8px_rgba(242,203,73,0.55)] motion-safe:animate-pulse" />
 
-                      <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/55">
+                      <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/75">
                         Total scans
                       </p>
                     </div>
@@ -754,22 +752,24 @@ export function DashboardShell({
                     </div>
 
                     {/* Displays covered date range (e.g. "Oct 18 – Oct 24") */}
-                    <p className="mt-2 text-[11px] font-medium text-white/60">
-                      {volumeSubtitle}
-                    </p>
+                    <KpiScope
+                      dateLabel={dateRangeLabel}
+                      scopeLabel={filterScopeSubtitle}
+                      tone="dark"
+                    />
                   </div>
 
                   {/* Scan breakdown popover */}
 
-                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-80 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
                     <div className="rounded-2xl border border-white/20 bg-[#061148]/95 p-3.5 text-left text-white shadow-[0_20px_50px_rgba(5,14,64,0.40)] backdrop-blur-xl">
                       <div className="mb-2.5 flex items-center justify-between border-b border-white/10 pb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">
+                        <span className="text-[13px] font-bold uppercase tracking-wider text-white/70">
                           Scans by Modality
                         </span>
 
-                        <span className="text-[11px] font-extrabold text-qc-yellow">
-                          {displayVolume} Total
+                        <span className="text-[13px] font-extrabold text-qc-yellow">
+                          {volumeBreakdownTotal} Total
                         </span>
                       </div>
 
@@ -778,10 +778,12 @@ export function DashboardShell({
                           const count =
                             activeVolumeByModality[m.code] ?? 0;
 
+                          // Share of every scan in this range and
+                          // patient category, so the rows add up to 100%.
                           const pct =
-                            displayVolume > 0
+                            volumeBreakdownTotal > 0
                               ? Math.round(
-                                  (count / displayVolume) * 100,
+                                  (count / volumeBreakdownTotal) * 100,
                                 )
                               : 0;
 
@@ -799,7 +801,7 @@ export function DashboardShell({
                                   isSelected ? "ALL" : m.code,
                                 );
                               }}
-                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors lg:min-h-0 hover:bg-white/15 ${
+                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition-colors lg:min-h-0 hover:bg-white/15 ${
                                 isSelected
                                   ? "bg-white/20 font-bold ring-1 ring-qc-yellow"
                                   : "bg-white/5"
@@ -820,7 +822,7 @@ export function DashboardShell({
                                   {count}
                                 </span>
 
-                                <span className="w-7 text-right text-[10px] text-white/50">
+                                <span className="w-10 text-right text-xs text-white/70">
                                   {pct}%
                                 </span>
                               </div>
@@ -829,7 +831,7 @@ export function DashboardShell({
                         })}
                       </div>
 
-                      <div className="mt-2.5 flex items-center justify-between border-t border-white/10 pt-2 text-[10px] text-white/50">
+                      <div className="mt-2.5 flex items-center justify-between border-t border-white/10 pt-2 text-xs text-white/70">
                         <span>Click row to filter</span>
 
                         {selectedModality !== "ALL" && (
@@ -873,16 +875,17 @@ export function DashboardShell({
                       </span>
                     </div>
 
-                    <p className="mt-2.5 text-[11px] text-muted-foreground">
+                    <p className="mt-2.5 text-[13px] text-muted-foreground">
                       Median{" "}
                       <span className="font-extrabold text-qc-navy">
                         {displayMedianHours} hrs
                       </span>
                     </p>
 
-                    <p className="mt-1 max-w-[200px] truncate text-[10px] font-medium text-muted-foreground/80">
-                      {volumeSubtitle}
-                    </p>
+                    <KpiScope
+                      dateLabel={dateRangeLabel}
+                      scopeLabel={filterScopeSubtitle}
+                    />
                   </div>
                 </div>
 
@@ -902,16 +905,17 @@ export function DashboardShell({
                       {displayPctOnTime}%
                     </div>
 
-                    <p className="mt-2.5 text-[11px] text-muted-foreground">
+                    <p className="mt-2.5 text-[13px] text-muted-foreground">
                       <span className="font-extrabold text-qc-navy">
                         {displayFinalized}
                       </span>{" "}
                       finalized
                     </p>
 
-                    <p className="mt-1 max-w-[200px] truncate text-[10px] font-medium text-muted-foreground/80">
-                      {volumeSubtitle}
-                    </p>
+                    <KpiScope
+                      dateLabel={dateRangeLabel}
+                      scopeLabel={filterScopeSubtitle}
+                    />
                   </div>
                 </div>
 
@@ -956,27 +960,32 @@ export function DashboardShell({
                     </div>
 
                     <p
-                      className={`mt-2 text-[11px] font-semibold ${
+                      className={`mt-2 text-[13px] font-semibold ${
                         displayPendingForCard > 0
                           ? "text-qc-orange"
                           : "text-qc-blue"
                       }`}
                     >
-                      {pendingSubtitle}
+                      Awaiting sign-off
                     </p>
+                    {filterScopeSubtitle && (
+                      <p className="mt-0.5 max-w-full break-words text-xs font-medium leading-snug text-muted-foreground">
+                        {filterScopeSubtitle}
+                      </p>
+                    )}
                   </div>
 
                   {/* Pending breakdown popover */}
 
-                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-80 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
                     <div className="rounded-2xl border border-border bg-card/95 p-3.5 text-left text-foreground shadow-[0_20px_50px_rgba(15,23,42,0.18)] backdrop-blur-xl">
                       <div className="mb-2.5 flex items-center justify-between border-b border-border/80 pb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <span className="text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
                           Pending by Modality
                         </span>
 
-                        <span className="text-[11px] font-extrabold text-qc-orange">
-                          {displayPending} Pending
+                        <span className="text-[13px] font-extrabold text-qc-orange">
+                          {pendingBreakdownTotal} Pending
                         </span>
                       </div>
 
@@ -986,9 +995,9 @@ export function DashboardShell({
                             activePendingByModality[m.code] ?? 0;
 
                           const pct =
-                            displayPending > 0
+                            pendingBreakdownTotal > 0
                               ? Math.round(
-                                  (count / displayPending) * 100,
+                                  (count / pendingBreakdownTotal) * 100,
                                 )
                               : 0;
 
@@ -1006,7 +1015,7 @@ export function DashboardShell({
                                   isSelected ? "ALL" : m.code,
                                 );
                               }}
-                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors lg:min-h-0 hover:bg-muted ${
+                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition-colors lg:min-h-0 hover:bg-muted ${
                                 isSelected
                                   ? "bg-orange-500/15 font-bold text-qc-orange ring-1 ring-qc-orange"
                                   : "bg-muted/40"
@@ -1033,7 +1042,7 @@ export function DashboardShell({
                                   {count}
                                 </span>
 
-                                <span className="w-7 text-right text-[10px] text-muted-foreground">
+                                <span className="w-10 text-right text-xs text-muted-foreground">
                                   {count > 0 ? `${pct}%` : "—"}
                                 </span>
                               </div>
@@ -1042,7 +1051,7 @@ export function DashboardShell({
                         })}
                       </div>
 
-                      <div className="mt-2.5 flex items-center justify-between border-t border-border/80 pt-2 text-[10px] text-muted-foreground">
+                      <div className="mt-2.5 flex items-center justify-between border-t border-border/80 pt-2 text-xs text-muted-foreground">
                         <span>Click row to filter</span>
 
                         {selectedModality !== "ALL" && (
@@ -1093,19 +1102,19 @@ export function DashboardShell({
                     </h2>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-white/75 px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-white/75 px-2.5 py-1.5 text-[13px] font-semibold text-muted-foreground">
                         <CalendarDays className="h-3.5 w-3.5 text-qc-blue" />
                         {recentDateRange}
                       </span>
 
-                      <span className="inline-flex items-center rounded-lg bg-qc-blue/[0.06] px-2.5 py-1.5 text-[11px] font-bold text-qc-blue">
+                      <span className="inline-flex items-center rounded-lg bg-qc-blue/[0.06] px-2.5 py-1.5 text-[13px] font-bold text-qc-blue">
                         For all Modalities
                       </span>
                     </div>
                   </div>
 
                   <div className="relative mt-9 text-center">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                    <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
                       Current average
                     </p>
 
@@ -1144,7 +1153,7 @@ export function DashboardShell({
 
                       {recentPctChange !== 0 ? (
                         <span
-                          className={`rounded-full px-3 py-1 text-[10px] font-extrabold ${
+                          className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                             recentPctChange < 0
                               ? "bg-qc-blue/10 text-qc-blue"
                               : "bg-red-50 text-qc-red"
@@ -1156,7 +1165,7 @@ export function DashboardShell({
                             : "slower"}
                         </span>
                       ) : (
-                        <span className="rounded-full bg-white/70 px-3 py-1 text-[10px] font-extrabold text-muted-foreground">
+                        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-extrabold text-muted-foreground">
                           No change
                         </span>
                       )}
@@ -1164,7 +1173,7 @@ export function DashboardShell({
                   </div>
 
                   <div className="relative mt-auto pt-6 text-center">
-                    <span className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+                    <span className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
                       Compared with previous 7 days
                     </span>
                   </div>
@@ -1193,7 +1202,7 @@ export function DashboardShell({
                     <button
                       type="button"
                       onClick={() => setActiveTab("examinations")}
-                      className="group inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[11px] font-extrabold text-qc-blue lg:min-h-0 shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
+                      className="group inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[13px] font-extrabold text-qc-blue lg:min-h-0 shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
                     >
                       Open examinations
 
@@ -1268,6 +1277,33 @@ export function DashboardShell({
           )}
         </main>
       </div>
+    </div>
+  );
+}
+
+/**
+ * A KPI card's scope: the date range on one line and any modality / patient
+ * category filters on the next. Both wrap instead of being cut off.
+ */
+function KpiScope({
+  dateLabel,
+  scopeLabel,
+  tone = "light",
+}: {
+  dateLabel: string;
+  scopeLabel: string;
+  tone?: "light" | "dark";
+}) {
+  const textClass =
+    tone === "dark" ? "text-white/75" : "text-muted-foreground";
+  return (
+    <div className={`mt-2 max-w-full space-y-0.5 text-xs font-medium leading-snug ${textClass}`}>
+      <p className="break-words">{dateLabel || "All time"}</p>
+      {scopeLabel && (
+        <p className={`break-words font-bold ${tone === "dark" ? "text-qc-yellow" : "text-qc-navy/80"}`}>
+          {scopeLabel}
+        </p>
+      )}
     </div>
   );
 }

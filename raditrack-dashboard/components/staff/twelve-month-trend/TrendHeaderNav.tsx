@@ -1,120 +1,189 @@
 "use client";
 
 import {
-  Calendar,
   CalendarDays,
-  Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Info,
   TrendingDown,
   TrendingUp,
+  Users,
 } from "lucide-react";
 import { QC_PURPLE } from "./types";
+import { SegmentedToggle } from "@/components/common/SegmentedToggle";
+import { CompareToggle } from "@/components/common/CompareToggle";
+
+const PERIOD_MODES = [
+  { value: "year", label: "Calendar year", hint: "January to December of the year you pick" },
+  { value: "rolling", label: "Last 12 months", hint: "This month and the 11 months before it" },
+] as const;
 
 interface TrendHeaderNavProps {
   onStepYear: (step: number) => void;
   isPending: boolean;
+  /** "rolling" or a calendar year such as "2026". */
   selectedPeriod: string;
-  periodLabel: string;
+  /** Year in the stepper (remembered while "Last 12 months" is on). */
+  calendarYear: number;
+  availableYears: number[];
+  onSelectCalendarYear: (year: number) => void;
+  onSelectRolling: () => void;
+  /** The Last 12 months span, e.g. "Dec 2025 – Nov 2026". */
+  rollingSpanLabel: string;
   triageLabel: string;
   isModalitySpecific: boolean;
   activeModalityLabel?: string;
   displayAnnualAvgHours: number;
+  /** False when nothing was signed in the period (so the average is not 0 hrs). */
+  hasCurrentData: boolean;
+  /** Both periods have signed reports and the comparison is switched on. */
   hasPriorComparison: boolean;
   isFaster: boolean;
   isSlower: boolean;
   displayPctChange: number;
   comparePriorYear: boolean;
   onToggleComparePriorYear: () => void;
-  settingsButtonRef: React.RefObject<HTMLButtonElement | null>;
-  isSettingsOpen: boolean;
-  onToggleSettings: () => void;
-  hasActiveFilters: boolean;
 }
 
 export function TrendHeaderNav({
   onStepYear,
   isPending,
   selectedPeriod,
-  periodLabel,
+  calendarYear,
+  availableYears,
+  onSelectCalendarYear,
+  onSelectRolling,
+  rollingSpanLabel,
   triageLabel,
   isModalitySpecific,
   activeModalityLabel,
   displayAnnualAvgHours,
+  hasCurrentData,
   hasPriorComparison,
   isFaster,
   isSlower,
   displayPctChange,
   comparePriorYear,
   onToggleComparePriorYear,
-  settingsButtonRef,
-  isSettingsOpen,
-  onToggleSettings,
-  hasActiveFilters,
 }: TrendHeaderNavProps) {
-  return (
-    <div className="flex flex-col gap-3 border-b border-border pb-4 xl:flex-row xl:items-center xl:justify-between">
-      {/* Period navigation */}
-      <div className="flex min-w-0 items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => onStepYear(-1)}
-          disabled={isPending || selectedPeriod === "rolling"}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-40 lg:h-8 lg:w-8"
-          title="Previous year"
-          aria-label="Previous year"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
+  const isRolling = selectedPeriod === "rolling";
+  const comparisonLabel = isRolling
+    ? "prior 12 months"
+    : String(calendarYear - 1);
+  const stepButtonClass =
+    "flex h-full w-8 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-qc-blue/5 hover:text-qc-navy disabled:opacity-40";
 
-        <div className="flex items-center gap-2 rounded-xl bg-background px-3 py-2">
-          <Calendar className="h-3.5 w-3.5 text-qc-blue" />
-          <span className="max-w-[260px] truncate text-[11px] font-extrabold text-qc-navy">
-            {periodLabel} • {triageLabel}
-          </span>
+  return (
+    <div className="flex flex-col gap-3 border-b border-border pb-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+      {/* Period: calendar year first, then the last 12 months */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <SegmentedToggle
+          label="Trend period"
+          options={PERIOD_MODES}
+          value={isRolling ? "rolling" : "year"}
+          onChange={(mode) =>
+            mode === "rolling" ? onSelectRolling() : onSelectCalendarYear(calendarYear)
+          }
+        />
+
+        {/* Explains the toggle, so it sits right beside it */}
+        <div className="group/hint relative">
+          <button
+            type="button"
+            className="-ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-blue/40"
+            aria-label="What do the periods mean?"
+            aria-describedby="trend-period-hint"
+          >
+            <Info className="h-4 w-4" />
+          </button>
+          <div
+            id="trend-period-hint"
+            role="tooltip"
+            className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-72 translate-y-1 rounded-xl border border-border bg-card p-3 text-left text-[13px] leading-relaxed text-muted-foreground opacity-0 shadow-[0_16px_40px_rgba(5,14,64,0.14)] transition-all duration-150 group-focus-within/hint:translate-y-0 group-focus-within/hint:opacity-100 group-hover/hint:translate-y-0 group-hover/hint:opacity-100"
+          >
+            <p>
+              <span className="font-extrabold text-qc-navy">Calendar year:</span>{" "}
+              January to December of the year you pick.
+            </p>
+            <p className="mt-1.5">
+              <span className="font-extrabold text-qc-navy">Last 12 months:</span>{" "}
+              the month your date filter ends in plus the 11 months before it
+              (now {rollingSpanLabel}), so it crosses into the previous year.
+            </p>
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onStepYear(1)}
-          disabled={isPending || selectedPeriod === "rolling"}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background hover:text-qc-navy disabled:opacity-40 lg:h-8 lg:w-8"
-          title="Next year"
-          aria-label="Next year"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        {/* Calendar year: its own stepper. Last 12 months: the span as text. */}
+        {isRolling ? (
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-qc-navy">
+            <CalendarDays className="h-3.5 w-3.5 text-qc-blue" />
+            {rollingSpanLabel}
+          </span>
+        ) : (
+          <div className="inline-flex h-10 items-center rounded-xl border border-border bg-white p-0.5 shadow-sm lg:h-9">
+            <button
+              type="button"
+              onClick={() => onStepYear(-1)}
+              disabled={isPending}
+              className={stepButtonClass}
+              title="Previous year"
+              aria-label="Previous year"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <select
+              value={String(calendarYear)}
+              onChange={(event) => onSelectCalendarYear(Number(event.target.value))}
+              aria-label="Calendar year"
+              className="h-full cursor-pointer appearance-none bg-transparent px-1.5 text-center text-xs font-extrabold text-qc-navy outline-none focus-visible:ring-2 focus-visible:ring-qc-blue/40"
+            >
+              {availableYears.map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => onStepYear(1)}
+              disabled={isPending}
+              className={stepButtonClass}
+              title="Next year"
+              aria-label="Next year"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Patient category scope, set apart from the period controls */}
+        <span className="inline-flex items-center gap-1.5 border-l border-border pl-3 text-[13px] font-bold text-muted-foreground">
+          <Users className="h-3.5 w-3.5 text-qc-blue" />
+          {triageLabel}
+        </span>
 
         {isPending && (
-          <span className="ml-1 h-2 w-2 animate-pulse rounded-full bg-qc-yellow" />
+          <span className="h-2 w-2 animate-pulse rounded-full bg-qc-yellow" />
         )}
       </div>
 
       {/* Summary + options */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="hidden shrink-0 items-center gap-3 whitespace-nowrap rounded-xl bg-background px-3 py-2 sm:flex">
-          <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
-              {isModalitySpecific && activeModalityLabel ? `${activeModalityLabel} Avg` : "Avg TAT"}
-            </span>
-            <span className="ml-1.5 text-xs font-extrabold text-qc-navy">
-              {displayAnnualAvgHours} hrs
-            </span>
-          </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {/* Period summary: read-only text, not a pill */}
+        <div className="hidden shrink-0 items-baseline gap-2 whitespace-nowrap pr-1 sm:flex">
+          <span className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
+            {isModalitySpecific && activeModalityLabel ? `${activeModalityLabel} avg` : "Avg TAT"}
+          </span>
 
-          {hasPriorComparison && (
+          {hasCurrentData ? (
             <>
-              <span className="h-3.5 w-px bg-border" />
-              <div className="flex items-center gap-1.5">
-                {isFaster ? (
-                  <TrendingDown className="h-3 w-3 text-qc-blue" />
-                ) : isSlower ? (
-                  <TrendingUp className="h-3 w-3 text-qc-red" />
-                ) : null}
+              <span className="text-sm font-extrabold text-qc-navy">
+                {displayAnnualAvgHours} hrs
+              </span>
 
+              {hasPriorComparison && (
                 <span
-                  className={`text-xs font-extrabold ${
+                  className={`inline-flex items-center gap-1 self-center text-[13px] font-extrabold ${
                     isFaster
                       ? "text-qc-blue"
                       : isSlower
@@ -122,72 +191,40 @@ export function TrendHeaderNav({
                         : "text-muted-foreground"
                   }`}
                 >
+                  {isFaster ? (
+                    <TrendingDown className="h-3 w-3" />
+                  ) : isSlower ? (
+                    <TrendingUp className="h-3 w-3" />
+                  ) : null}
                   {displayPctChange === 0
-                    ? "No change"
-                    : `${Math.abs(displayPctChange)}% ${isFaster ? "faster" : "longer"}`}
+                    ? "Same as"
+                    : `${Math.abs(displayPctChange)}% ${isFaster ? "faster than" : "longer than"}`}{" "}
+                  {comparisonLabel}
                 </span>
-              </div>
+              )}
             </>
+          ) : (
+            <span className="text-[13px] font-semibold text-muted-foreground">
+              No signed reports in this period
+            </span>
           )}
         </div>
 
-        {/* Quick toggle for prior 12-month comparison */}
-        <button
-          type="button"
-          onClick={onToggleComparePriorYear}
-          className={`inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 text-xs font-extrabold transition-all lg:h-9 ${
-            comparePriorYear
-              ? "border-[#7652B8]/40 bg-[#7652B8]/10 text-[#7652B8] shadow-sm"
-              : "border-white/80 bg-white/75 text-muted-foreground hover:bg-white hover:text-qc-navy"
-          }`}
-          title="Toggle dashed line comparison with prior 12-month period"
-          aria-pressed={comparePriorYear}
-        >
-          <span
-            className="h-0 w-4 border-t-2 border-dashed"
-            style={{ borderColor: comparePriorYear ? QC_PURPLE : "#94A3B8" }}
-          />
-          <span>
-            {selectedPeriod === "rolling" ? "Compare Prior 12 Months" : "Compare Prior Year"}
-          </span>
-          <span
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
-            style={{
-              backgroundColor: comparePriorYear ? QC_PURPLE : "#FFFFFF",
-              borderColor: comparePriorYear ? QC_PURPLE : "#94A3B8",
-            }}
-          >
-            {comparePriorYear && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-          </span>
-        </button>
+        {/* Dashed prior-period line on the chart */}
+        <CompareToggle
+          label={isRolling ? "Compare prior 12 months" : `Compare ${calendarYear - 1}`}
+          checked={comparePriorYear}
+          onChange={onToggleComparePriorYear}
+          accentColor={QC_PURPLE}
+          title="Show the prior period as a dashed line"
+          swatch={
+            <span
+              className="h-0 w-4 border-t-2 border-dashed"
+              style={{ borderColor: QC_PURPLE }}
+            />
+          }
+        />
 
-        {/* View Options Popover Trigger */}
-        <button
-          ref={settingsButtonRef}
-          type="button"
-          onClick={onToggleSettings}
-          className={`inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 text-xs font-extrabold transition-all lg:h-9 ${
-            isSettingsOpen || hasActiveFilters
-              ? "border-qc-navy bg-qc-navy text-white shadow-[0_6px_14px_rgba(5,14,64,0.12)]"
-              : "border-white/80 bg-white/75 text-qc-navy shadow-sm hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
-          }`}
-          aria-expanded={isSettingsOpen}
-          aria-haspopup="dialog"
-        >
-          <CalendarDays
-            className={`h-3.5 w-3.5 ${
-              isSettingsOpen || hasActiveFilters
-                ? "text-qc-yellow"
-                : "text-qc-blue"
-            }`}
-          />
-          <span>View</span>
-          <ChevronDown
-            className={`h-3.5 w-3.5 transition-transform ${
-              isSettingsOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
       </div>
     </div>
   );

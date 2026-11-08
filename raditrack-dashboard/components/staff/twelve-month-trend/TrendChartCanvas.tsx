@@ -92,7 +92,7 @@ export function TrendChartCanvas({
           <XAxis
             dataKey="monthLabel"
             stroke={QC_MUTED}
-            fontSize={10}
+            fontSize={12}
             fontWeight={600}
             tickLine={false}
             axisLine={false}
@@ -101,7 +101,7 @@ export function TrendChartCanvas({
 
           <YAxis
             stroke={QC_MUTED}
-            fontSize={10}
+            fontSize={12}
             tickLine={false}
             axisLine={false}
             width={42}

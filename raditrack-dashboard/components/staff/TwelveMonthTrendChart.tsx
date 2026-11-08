@@ -3,7 +3,6 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   useTransition,
 } from "react";
@@ -26,7 +25,6 @@ import { TrendHeaderNav } from "./twelve-month-trend/TrendHeaderNav";
 import { TrendModalityBar } from "./twelve-month-trend/TrendModalityBar";
 import { TrendChartCanvas } from "./twelve-month-trend/TrendChartCanvas";
 import { TrendLegend } from "./twelve-month-trend/TrendLegend";
-import { TrendFilterPopover } from "./twelve-month-trend/TrendFilterPopover";
 
 export { type TwelveMonthTrendChartProps } from "./twelve-month-trend/types";
 
@@ -35,14 +33,22 @@ export function TwelveMonthTrendChart({
   filters,
   onModalityChange,
 }: TwelveMonthTrendChartProps) {
+  // Opens on the current calendar year; "rolling" = the last 12 months.
   const [selectedPeriod, setSelectedPeriod] =
-    useState<string>(initialData.selectedPeriod || "rolling");
+    useState<string>(initialData.selectedPeriod || String(new Date().getFullYear()));
+
+  // Remembered while "Last 12 months" is on, so switching back keeps the year.
+  const [calendarYear, setCalendarYear] = useState<number>(() => {
+    const parsed = Number.parseInt(initialData.selectedPeriod, 10);
+    return Number.isNaN(parsed) ? new Date().getFullYear() : parsed;
+  });
 
   // Patient category and modality come from the dashboard filter bar.
   const selectedTriage = filters.triage;
 
+  // Off by default; the dashed prior-period line appears only when asked for.
   const [comparePriorYear, setComparePriorYear] =
-    useState(true);
+    useState(false);
 
   // View when no single modality is filtered: overall line or one line per modality.
   const [viewMode, setViewMode] =
@@ -62,9 +68,6 @@ export function TwelveMonthTrendChart({
     onModalityChange(modality);
   };
 
-  const [isSettingsOpen, setIsSettingsOpen] =
-    useState(false);
-
   /* =========================================================
      Data: rolling window ends on the filter bar's end month
   ========================================================= */
@@ -75,8 +78,11 @@ export function TwelveMonthTrendChart({
   const requestKey = `${selectedPeriod}|${selectedTriage}|${
     selectedPeriod === "rolling" ? anchorMonth : ""
   }`;
+  // The server renders the current calendar year for all patient categories.
   const isInitialRequest =
-    requestKey === `rolling|ALL|${todayIso.slice(0, 7)}`;
+    requestKey === `${initialData.selectedPeriod}|ALL|${
+      initialData.selectedPeriod === "rolling" ? todayIso.slice(0, 7) : ""
+    }`;
 
   const [fetched, setFetched] = useState<{
     key: string;
@@ -127,156 +133,31 @@ export function TwelveMonthTrendChart({
     (!isInitialRequest && fetched?.key !== requestKey);
 
   /* =========================================================
-     Settings popover
-  ========================================================= */
-
-  const settingsButtonRef =
-    useRef<HTMLButtonElement>(null);
-
-  const settingsPopoverRef =
-    useRef<HTMLDivElement>(null);
-
-  const [settingsPosition, setSettingsPosition] =
-    useState({
-      top: 0,
-      left: 0,
-      maxHeight: 0,
-      openAbove: false,
-    });
-
-  /* =========================================================
-     Target year
-  ========================================================= */
-
-  const currentTargetYear = (() => {
-    if (selectedPeriod === "rolling") {
-      return new Date().getFullYear();
-    }
-
-    const parsed = Number.parseInt(selectedPeriod, 10);
-
-    return Number.isNaN(parsed)
-      ? new Date().getFullYear()
-      : parsed;
-  })();
-
-  /* =========================================================
-     Position settings popover
-  ========================================================= */
-
-  const updateSettingsPosition = () => {
-    if (!settingsButtonRef.current) return;
-
-    const rect =
-      settingsButtonRef.current.getBoundingClientRect();
-
-    const viewportPadding = 12;
-    const gap = 8;
-    const minPopoverHeight = 220;
-    const viewportHeight = window.innerHeight;
-    const width = Math.min(
-      320,
-      window.innerWidth - viewportPadding * 2,
-    );
-
-    const left = Math.max(
-      viewportPadding,
-      Math.min(
-        rect.right - width,
-        window.innerWidth - width - viewportPadding,
-      ),
-    );
-
-    const spaceBelow =
-      viewportHeight -
-      rect.bottom -
-      viewportPadding -
-      gap;
-
-    const spaceAbove =
-      rect.top -
-      viewportPadding -
-      gap;
-
-    const shouldOpenAbove =
-      spaceBelow < minPopoverHeight &&
-      spaceAbove > spaceBelow;
-
-    const availableHeight = Math.max(
-      180,
-      Math.min(
-        600,
-        shouldOpenAbove ? spaceAbove : spaceBelow,
-      ),
-    );
-
-    const top = shouldOpenAbove
-      ? Math.max(
-          viewportPadding,
-          rect.top -
-            gap -
-            Math.min(
-              availableHeight,
-              Math.max(180, spaceAbove),
-            ),
-        )
-      : rect.bottom + gap;
-
-    setSettingsPosition({
-      top,
-      left,
-      maxHeight: availableHeight,
-      openAbove: shouldOpenAbove,
-    });
-  };
-
-  useEffect(() => {
-    if (!isSettingsOpen) return;
-
-    updateSettingsPosition();
-
-    const handleResize = () => updateSettingsPosition();
-    const handleScroll = () => updateSettingsPosition();
-
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleScroll, true);
-
-    return () => {
-      window.removeEventListener(
-        "resize",
-        handleResize,
-      );
-
-      window.removeEventListener(
-        "scroll",
-        handleScroll,
-        true,
-      );
-    };
-  }, [isSettingsOpen]);
-
-  /* =========================================================
      Filter handlers
   ========================================================= */
 
-  const handleSelectPeriod = (period: string) => {
-    setSelectedPeriod(period);
+  const handleSelectCalendarYear = (year: number) => {
+    setCalendarYear(year);
+    setSelectedPeriod(String(year));
   };
 
   const handleStepYear = (step: number) => {
-    handleSelectPeriod(
-      String(currentTargetYear + step),
-    );
+    handleSelectCalendarYear(calendarYear + step);
   };
+
+  // Example span for the "Last 12 months" hint, e.g. "Dec 2025 – Nov 2026".
+  const rollingSpanLabel = useMemo(() => {
+    const [year, month] = anchorMonth.split("-").map(Number);
+    const end = new Date(year, month - 1, 1);
+    const start = new Date(year, month - 12, 1);
+    const fmt = (d: Date) =>
+      d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    return `${fmt(start)} – ${fmt(end)}`;
+  }, [anchorMonth]);
 
   /* =========================================================
      Labels and computed metrics
   ========================================================= */
-
-  const periodLabel =
-    selectedPeriod === "rolling"
-      ? "Rolling 12 months"
-      : `Calendar year ${selectedPeriod}`;
 
   const triageLabel =
     TRIAGE_OPTIONS.find(
@@ -314,8 +195,12 @@ export function TwelveMonthTrendChart({
     ? activeModalitySummary?.priorAnnualTotalFinalized ?? 0
     : data.priorAnnualTotalFinalized;
 
+  // Nothing signed this period: show that instead of a misleading "0 hrs".
+  const hasCurrentData = displayAnnualFinalized > 0;
+
+  // Compare only when both periods have signed reports.
   const hasPriorComparison =
-    comparePriorYear && displayPriorFinalized > 0;
+    comparePriorYear && hasCurrentData && displayPriorFinalized > 0;
 
   const isFaster = displayPctChange < 0;
   const isSlower = displayPctChange > 0;
@@ -332,11 +217,16 @@ export function TwelveMonthTrendChart({
         onStepYear={handleStepYear}
         isPending={isPending}
         selectedPeriod={selectedPeriod}
-        periodLabel={periodLabel}
+        calendarYear={calendarYear}
+        availableYears={data.availableYears}
+        onSelectCalendarYear={handleSelectCalendarYear}
+        onSelectRolling={() => setSelectedPeriod("rolling")}
+        rollingSpanLabel={rollingSpanLabel}
         triageLabel={triageLabel}
         isModalitySpecific={isModalitySpecific}
         activeModalityLabel={activeModalityConfig?.label}
         displayAnnualAvgHours={displayAnnualAvgHours}
+        hasCurrentData={hasCurrentData}
         hasPriorComparison={hasPriorComparison}
         isFaster={isFaster}
         isSlower={isSlower}
@@ -345,12 +235,6 @@ export function TwelveMonthTrendChart({
         onToggleComparePriorYear={() =>
           setComparePriorYear((previous) => !previous)
         }
-        settingsButtonRef={settingsButtonRef}
-        isSettingsOpen={isSettingsOpen}
-        onToggleSettings={() =>
-          setIsSettingsOpen((previous) => !previous)
-        }
-        hasActiveFilters={false}
       />
 
       {/* 2. Modality selector */}
@@ -366,20 +250,20 @@ export function TwelveMonthTrendChart({
 
       <div className="flex items-center justify-between gap-3 border-b border-border py-3 sm:hidden">
         <div className="min-w-0">
-          <p className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
             {isModalitySpecific && activeModalityConfig
               ? `${activeModalityConfig.label} Average Turnaround Time`
               : "Average Turnaround Time"}
           </p>
 
           <p className="mt-1 text-xs font-extrabold text-qc-navy">
-            {displayAnnualAvgHours} hrs
+            {hasCurrentData ? `${displayAnnualAvgHours} hrs` : "No signed reports"}
           </p>
         </div>
 
         {hasPriorComparison && (
           <span
-            className={`shrink-0 text-[10px] font-extrabold ${
+            className={`shrink-0 text-xs font-extrabold ${
               isFaster
                 ? "text-qc-blue"
                 : isSlower
@@ -423,22 +307,6 @@ export function TwelveMonthTrendChart({
         displayAnnualFinalized={displayAnnualFinalized}
       />
 
-      {/* 6. Settings and filters */}
-
-      <TrendFilterPopover
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        position={settingsPosition}
-        buttonRef={settingsButtonRef}
-        selectedPeriod={selectedPeriod}
-        onSelectPeriod={handleSelectPeriod}
-        availableYears={data.availableYears}
-        onStepYear={handleStepYear}
-        comparePriorYear={comparePriorYear}
-        onToggleComparePriorYear={() =>
-          setComparePriorYear((previous) => !previous)
-        }
-      />
     </div>
   );
 }

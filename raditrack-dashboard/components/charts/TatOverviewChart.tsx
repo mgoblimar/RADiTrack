@@ -54,9 +54,19 @@ export function TatOverviewChart({
     [displayData, hasTargetSla],
   );
 
+  const emptyModalityCodes = useMemo(
+    () =>
+      new Set(
+        displayData
+          .filter((item) => item.volume === 0)
+          .map((item) => item.modality.toUpperCase()),
+      ),
+    [displayData],
+  );
+
   const renderModalityTick = useMemo(
-    () => createModalityTickRenderer(highlightModality),
-    [highlightModality],
+    () => createModalityTickRenderer(highlightModality, emptyModalityCodes),
+    [highlightModality, emptyModalityCodes],
   );
 
   return (
@@ -94,7 +104,7 @@ export function TatOverviewChart({
           {/* Scope set by the dashboard filter bar */}
 
           <span
-            className={`inline-flex h-9 shrink-0 items-center rounded-xl border border-border/80 bg-white/90 px-3 text-[11px] font-extrabold text-qc-navy shadow-sm ${
+            className={`inline-flex h-9 shrink-0 items-center rounded-xl border border-border/80 bg-white/90 px-3 text-[13px] font-extrabold text-qc-navy shadow-sm ${
               isPending ? "opacity-60" : ""
             }`}
           >
@@ -152,7 +162,7 @@ export function TatOverviewChart({
                 <YAxis
                   tick={{
                     fill: Y_AXIS_TICK_COLOR,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 700,
                   }}
                   tickLine={false}
@@ -198,6 +208,11 @@ export function TatOverviewChart({
                   name="Actual Turnaround Time"
                   radius={[4, 4, 0, 0]}
                   barSize={hasTargetSla ? 22 : 32}
+                  // A modality with scans but ~0 hrs TAT still gets a sliver
+                  // (and its label); Recharts drops zero-height bars.
+                  minPointSize={(_value, index) =>
+                    (displayData[index]?.volume ?? 0) > 0 ? 3 : 0
+                  }
                   zIndex={350}
                 >
                   {displayData.map((item, index) => {
@@ -227,7 +242,7 @@ export function TatOverviewChart({
                   })}
 
                   <LabelList
-                    dataKey="avgTat"
+                    dataKey="modality"
                     content={renderActualTatLabel}
                   />
                 </Bar>
