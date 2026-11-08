@@ -590,8 +590,9 @@ export function DashboardShell({
   const softCard =
     "rounded-[26px] border border-border/80 bg-card shadow-[0_2px_8px_rgba(15,23,42,0.04)]";
 
+  // KPI and card labels: 12px minimum so they stay readable.
   const compactLabel =
-    "text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground";
+    "text-xs font-extrabold uppercase tracking-[0.08em] text-muted-foreground";
 
   return (
     <div className="relative min-h-screen overflow-clip bg-[#F7F9FC] text-foreground">
@@ -741,7 +742,7 @@ export function DashboardShell({
                     <div className="mb-1.5 flex items-center justify-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_8px_rgba(242,203,73,0.55)] motion-safe:animate-pulse" />
 
-                      <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/55">
+                      <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/75">
                         Total scans
                       </p>
                     </div>
@@ -760,14 +761,14 @@ export function DashboardShell({
 
                   {/* Scan breakdown popover */}
 
-                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-80 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
                     <div className="rounded-2xl border border-white/20 bg-[#061148]/95 p-3.5 text-left text-white shadow-[0_20px_50px_rgba(5,14,64,0.40)] backdrop-blur-xl">
                       <div className="mb-2.5 flex items-center justify-between border-b border-white/10 pb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">
+                        <span className="text-[13px] font-bold uppercase tracking-wider text-white/70">
                           Scans by Modality
                         </span>
 
-                        <span className="text-[11px] font-extrabold text-qc-yellow">
+                        <span className="text-[13px] font-extrabold text-qc-yellow">
                           {volumeBreakdownTotal} Total
                         </span>
                       </div>
@@ -800,7 +801,7 @@ export function DashboardShell({
                                   isSelected ? "ALL" : m.code,
                                 );
                               }}
-                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors lg:min-h-0 hover:bg-white/15 ${
+                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition-colors lg:min-h-0 hover:bg-white/15 ${
                                 isSelected
                                   ? "bg-white/20 font-bold ring-1 ring-qc-yellow"
                                   : "bg-white/5"
@@ -821,7 +822,7 @@ export function DashboardShell({
                                   {count}
                                 </span>
 
-                                <span className="w-7 text-right text-[10px] text-white/50">
+                                <span className="w-10 text-right text-xs text-white/70">
                                   {pct}%
                                 </span>
                               </div>
@@ -830,7 +831,7 @@ export function DashboardShell({
                         })}
                       </div>
 
-                      <div className="mt-2.5 flex items-center justify-between border-t border-white/10 pt-2 text-[10px] text-white/50">
+                      <div className="mt-2.5 flex items-center justify-between border-t border-white/10 pt-2 text-xs text-white/70">
                         <span>Click row to filter</span>
 
                         {selectedModality !== "ALL" && (
@@ -874,7 +875,7 @@ export function DashboardShell({
                       </span>
                     </div>
 
-                    <p className="mt-2.5 text-[11px] text-muted-foreground">
+                    <p className="mt-2.5 text-[13px] text-muted-foreground">
                       Median{" "}
                       <span className="font-extrabold text-qc-navy">
                         {displayMedianHours} hrs
@@ -904,7 +905,7 @@ export function DashboardShell({
                       {displayPctOnTime}%
                     </div>
 
-                    <p className="mt-2.5 text-[11px] text-muted-foreground">
+                    <p className="mt-2.5 text-[13px] text-muted-foreground">
                       <span className="font-extrabold text-qc-navy">
                         {displayFinalized}
                       </span>{" "}
@@ -959,7 +960,7 @@ export function DashboardShell({
                     </div>
 
                     <p
-                      className={`mt-2 text-[11px] font-semibold ${
+                      className={`mt-2 text-[13px] font-semibold ${
                         displayPendingForCard > 0
                           ? "text-qc-orange"
                           : "text-qc-blue"
@@ -968,7 +969,7 @@ export function DashboardShell({
                       Awaiting sign-off
                     </p>
                     {filterScopeSubtitle && (
-                      <p className="mt-0.5 max-w-full break-words text-[10px] font-medium leading-snug text-muted-foreground/80">
+                      <p className="mt-0.5 max-w-full break-words text-xs font-medium leading-snug text-muted-foreground">
                         {filterScopeSubtitle}
                       </p>
                     )}
@@ -976,14 +977,14 @@ export function DashboardShell({
 
                   {/* Pending breakdown popover */}
 
-                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-80 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
                     <div className="rounded-2xl border border-border bg-card/95 p-3.5 text-left text-foreground shadow-[0_20px_50px_rgba(15,23,42,0.18)] backdrop-blur-xl">
                       <div className="mb-2.5 flex items-center justify-between border-b border-border/80 pb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <span className="text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
                           Pending by Modality
                         </span>
 
-                        <span className="text-[11px] font-extrabold text-qc-orange">
+                        <span className="text-[13px] font-extrabold text-qc-orange">
                           {pendingBreakdownTotal} Pending
                         </span>
                       </div>
@@ -1014,7 +1015,7 @@ export function DashboardShell({
                                   isSelected ? "ALL" : m.code,
                                 );
                               }}
-                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors lg:min-h-0 hover:bg-muted ${
+                              className={`flex min-h-10 w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition-colors lg:min-h-0 hover:bg-muted ${
                                 isSelected
                                   ? "bg-orange-500/15 font-bold text-qc-orange ring-1 ring-qc-orange"
                                   : "bg-muted/40"
@@ -1041,7 +1042,7 @@ export function DashboardShell({
                                   {count}
                                 </span>
 
-                                <span className="w-7 text-right text-[10px] text-muted-foreground">
+                                <span className="w-10 text-right text-xs text-muted-foreground">
                                   {count > 0 ? `${pct}%` : "—"}
                                 </span>
                               </div>
@@ -1050,7 +1051,7 @@ export function DashboardShell({
                         })}
                       </div>
 
-                      <div className="mt-2.5 flex items-center justify-between border-t border-border/80 pt-2 text-[10px] text-muted-foreground">
+                      <div className="mt-2.5 flex items-center justify-between border-t border-border/80 pt-2 text-xs text-muted-foreground">
                         <span>Click row to filter</span>
 
                         {selectedModality !== "ALL" && (
@@ -1294,12 +1295,12 @@ function KpiScope({
   tone?: "light" | "dark";
 }) {
   const textClass =
-    tone === "dark" ? "text-white/60" : "text-muted-foreground/80";
+    tone === "dark" ? "text-white/75" : "text-muted-foreground";
   return (
-    <div className={`mt-2 max-w-full space-y-0.5 text-[10px] font-medium leading-snug ${textClass}`}>
+    <div className={`mt-2 max-w-full space-y-0.5 text-xs font-medium leading-snug ${textClass}`}>
       <p className="break-words">{dateLabel || "All time"}</p>
       {scopeLabel && (
-        <p className={`break-words font-bold ${tone === "dark" ? "text-qc-yellow/90" : "text-qc-navy/70"}`}>
+        <p className={`break-words font-bold ${tone === "dark" ? "text-qc-yellow" : "text-qc-navy/80"}`}>
           {scopeLabel}
         </p>
       )}
