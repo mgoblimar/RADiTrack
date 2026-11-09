@@ -9,6 +9,7 @@ import {
 import { parseReportParams, resolveReportRange } from "@/lib/report-params";
 import { PrintToolbar } from "@/components/report/PrintToolbar";
 import { ReportDocument } from "@/components/report/ReportDocument";
+import { requirePageUser } from "@/lib/auth/dal";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function ReportPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requirePageUser();
   const config = parseReportParams(await searchParams);
   const range = resolveReportRange(config);
   const wants = (id: (typeof config.sections)[number]) => config.sections.includes(id);

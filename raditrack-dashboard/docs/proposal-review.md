@@ -104,7 +104,7 @@ This document compares the client's project proposal ("QCGH – RADiTrack") with
 ### Summary of gaps against the proposal
 
 1. **RIS integration is not on main yet.** Merge `ris-sync-agent` after testing.
-2. **No login or access control for staff screens** (Sections XIII, XVII.14–15, XXI).
+2. ~~No login or access control for staff screens (Sections XIII, XVII.14–15, XXI).~~ **Built on branch `login-accounts`:** per-doctor accounts (Radiologist, Resident, Administrator), each starting on their assigned modalities; server-side role checks on every action; the Patient TV stays public.
 3. ~~TAT by modality uses average, not median, and does not show the exam count (Section XI).~~ **Fixed on branch `proposal-gaps`:** a table under the chart lists exams, signed, pending, average and median TAT per modality (the tooltip shows them too).
 4. ~~7-day table: no per-category finalized, pending and TAT sub-rows, and no "% longer/shorter than last week" note (Section X).~~ **Fixed on branch `proposal-gaps`:** a **Show OPD / IN / ER rows** switch adds "a. OPD / b. IN / c. ER" sub-rows under each day, and a note under the table gives the % longer or shorter than the previous 7 days.
 

@@ -19,9 +19,7 @@ title RADiTrack — Use Case Diagram (Zero-PII Radiology Turnaround Time Trackin
 ' PRIMARY ACTORS (left) — declared in the same order as their packages
 ' ==============================================================================
 
-actor "Radiologic Technologist\n(RadTech)" as RadTech
-actor "Radiologist\n(Doctor)" as Radiologist
-actor "Department Head /\nRadiology Staff" as Manager
+actor "Radiologist / Resident\n(signed-in doctor)" as Doctor
 actor "RADiTrack\nAdministrator" as Admin
 actor "Hospital IT" as HospitalIT
 actor "RIS Sync Agent\n<<system>>" as SyncAgent
@@ -33,8 +31,15 @@ actor "Patient / Public\n(Waiting Area)" as Public
 
 rectangle "RADiTrack" {
 
+    package "Access" {
+        usecase "Sign In\n(username & password)" as UC_SignIn
+        usecase "Open Dashboard on\nAssigned Modality" as UC_Default
+        usecase "Change Password" as UC_Password
+        usecase "Manage Accounts &\nAssigned Modalities" as UC_Accounts
+    }
+
     package "Examination Workflow" {
-        usecase "Log Completed Examination" as UC_Log
+        usecase "Log Completed Examination\n(prototype: RIS Simulator)" as UC_Log
         usecase "Edit / Delete Examination" as UC_Edit
         usecase "Search & Filter Examinations" as UC_Search
         usecase "View Reading Backlog\n(Waiting Time & Past-SLA Exams)" as UC_Backlog
@@ -84,26 +89,25 @@ actor "Radiology Information\nSystem (RIS)\n<<system>>" as RIS
 ' ACTOR ↔ USE CASE
 ' ==============================================================================
 
-RadTech --> UC_Log
-RadTech --> UC_Edit
-RadTech --> UC_Search
+Doctor --> UC_SignIn
+Doctor --> UC_Password
+Doctor --> UC_Backlog
+Doctor --> UC_Sign
+Doctor --> UC_Search
+Doctor --> UC_Kpi
+Doctor --> UC_ByModality
+Doctor --> UC_SevenDay
+Doctor --> UC_Trend
+Doctor --> UC_Report
+Doctor --> UC_Guide
+Doctor --> UC_Export
 
-Radiologist --> UC_Backlog
-Radiologist --> UC_Sign
-Radiologist --> UC_Search
-
-Manager --> UC_Kpi
-Manager --> UC_ByModality
-Manager --> UC_SevenDay
-Manager --> UC_Trend
-Manager --> UC_Report
-Manager --> UC_Guide
-Manager --> UC_Backlog
-
+Admin --> UC_Accounts
+Admin --> UC_Log
+Admin --> UC_Edit
 Admin --> UC_Sla
 Admin --> UC_Rooms
 Admin --> UC_Import
-Admin --> UC_Export
 Admin --> UC_LoadTest
 Admin --> UC_Verify
 Admin --> UC_Restore
@@ -115,13 +119,14 @@ Public --> UC_Tv
 UC_View --> RIS
 UC_Sync --> RIS
 
-' An administrator can also do everything the department staff can do
-Manager <|-- Admin
+' An administrator can also do everything a doctor can do
+Doctor <|-- Admin
 
 ' ==============================================================================
 ' INCLUDE / EXTEND RELATIONSHIPS
 ' ==============================================================================
 
+UC_SignIn ..> UC_Default : <<include>>
 UC_Sign ..> UC_Tat : <<include>>
 UC_Sync ..> UC_Tat : <<include>>
 UC_Import ..> UC_Tat : <<include>>
@@ -134,6 +139,8 @@ UC_Trend ..> UC_Filter : <<include>>
 UC_ComparePrev ..> UC_SevenDay : <<extend>>
 
 legend bottom
+  **Sign In:** Radiologists and Residents have the same access. Their first assigned modality is the starting
+  filter, and they can switch to any modality. Accounts never rank or score individual doctors.
   **Calculate TAT & SLA Breach:** TAT = Report signed − Exam completed; a breach is TAT **>** the SLA target
   for the exam's modality and patient category (exactly on target is within SLA).
   **Sync Exams from RIS View:** reads only the read-only view //raditrack.vw_exams// (no patient names or IDs),

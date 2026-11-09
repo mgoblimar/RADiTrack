@@ -9,19 +9,22 @@
     "lint": "eslint",
     "test-data:workbook": "tsx scripts/build-test-workbook.ts",
     "test-data:verify": "tsx scripts/verify-test-data.ts",
-    "docs:computations": "tsx scripts/build-computations-docx.ts"
+    "docs:computations": "tsx scripts/build-computations-docx.ts",
+    "auth:create-admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "@prisma/adapter-better-sqlite3": "^7.10.0",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.0",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.4.0",
     "date-fns": "^4.4.0",
     "dotenv": "^18.0.4",
     "exceljs": "^4.4.0",
+    "jose": "^6.2.16",
     "lucide-react": "^1.48.0",
     "next": "16.3.5",
     "pg": "^8.23.1",

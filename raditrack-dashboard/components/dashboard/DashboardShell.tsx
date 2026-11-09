@@ -9,7 +9,7 @@ import {
   useTransition,
 } from "react";
 
-import { Sidebar, ActiveTab } from "@/components/navigation/Sidebar";
+import { Sidebar, ActiveTab, SIDEBAR_OFFSET } from "@/components/navigation/Sidebar";
 import { ExaminationsHub } from "@/components/examinations/ExaminationsHub";
 import { ConfigurationsHub } from "@/components/config/ConfigurationsHub";
 import { TatOverviewChart } from "@/components/charts/TatOverviewChart";
@@ -27,6 +27,9 @@ import type {
 import { capAtToday, resolveKpiRange, toIsoDate } from "@/lib/kpi-range";
 import { usePersistedBoolean } from "@/hooks/use-persisted-boolean";
 import { ReportBuilderDialog } from "@/components/report/ReportBuilderDialog";
+import { MyModalitiesBar } from "@/components/dashboard/MyModalitiesBar";
+import { AccountSettings } from "@/components/settings/AccountSettings";
+import { isAdmin, type CurrentUser } from "@/lib/auth/roles";
 
 import {
   fetchFilteredExecutiveKpiAction,
@@ -63,6 +66,7 @@ interface DashboardShellProps {
   modalityTatOverview: ModalityTatOverviewData;
   prevMonth: TwelveMonthTrendData["months"][number] | null;
   configurationsData: ConfigurationsData;
+  currentUser: CurrentUser;
 }
 
 export function DashboardShell({
@@ -72,7 +76,19 @@ export function DashboardShell({
   modalityTatOverview,
   prevMonth,
   configurationsData,
+  currentUser,
 }: DashboardShellProps) {
+  const isAdminUser = isAdmin(currentUser);
+
+  // The doctor's assigned modalities (known codes only, in assigned order).
+  const myModalities = useMemo(
+    () =>
+      currentUser.assignedModalities.filter((code): code is ModalityCode =>
+        (MODALITY_ORDER as readonly string[]).includes(code),
+      ),
+    [currentUser.assignedModalities],
+  );
+
   const [activeTab, setActiveTab] =
     useState<ActiveTab>("overview");
 
@@ -129,8 +145,9 @@ export function DashboardShell({
      Dynamic KPI / modality state
   ========================================================= */
 
+  // Starts on the doctor's first assigned modality; they can switch freely.
   const [selectedModality, setSelectedModality] =
-    useState<"ALL" | ModalityCode>("ALL");
+    useState<"ALL" | ModalityCode>(() => myModalities[0] ?? "ALL");
 
   const [selectedTriage, setSelectedTriage] =
     useState<"ALL" | TriageLevel>("ALL");
@@ -625,6 +642,7 @@ export function DashboardShell({
         pendingCount={data.pendingReadingQueue.length}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebar}
+        currentUser={currentUser}
       />
 
       {/* Main viewport */}
@@ -632,8 +650,8 @@ export function DashboardShell({
       <div
         className={`relative z-10 min-w-0 flex-1 transition-all duration-200 ease-in-out ${
           isSidebarCollapsed
-            ? "lg:pl-[76px]"
-            : "lg:pl-[248px]"
+            ? SIDEBAR_OFFSET.collapsed
+            : SIDEBAR_OFFSET.expanded
         }`}
       >
         <main className="mx-auto w-full max-w-[1680px] px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-7 2xl:px-10">
@@ -702,6 +720,11 @@ export function DashboardShell({
                   onModalityChange={setSelectedModality}
                   selectedTriage={selectedTriage}
                   onTriageChange={setSelectedTriage}
+                />
+                <MyModalitiesBar
+                  modalities={myModalities}
+                  selected={selectedModality}
+                  onSelect={setSelectedModality}
                 />
                 </div>
 
@@ -1262,6 +1285,8 @@ export function DashboardShell({
               <ExaminationsHub
                 queue={data.pendingReadingQueue}
                 finalizedCount={data.finalizedCount}
+                defaultModalities={myModalities}
+                canManageExams={isAdminUser}
               />
             </div>
           )}
@@ -1272,9 +1297,19 @@ export function DashboardShell({
 
           {activeTab === "config" && (
             <div className="space-y-4">
-              <ConfigurationsHub initialData={configurationsData} />
+              <ConfigurationsHub
+                initialData={configurationsData}
+                isAdmin={isAdminUser}
+                currentUserId={currentUser.userId}
+              />
             </div>
           )}
+
+          {/* =====================================================
+              SETTINGS (the signed-in user's own account)
+          ===================================================== */}
+
+          {activeTab === "settings" && <AccountSettings currentUser={currentUser} />}
         </main>
       </div>
     </div>

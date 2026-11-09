@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdmin } from "@/lib/auth/dal";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import {
@@ -17,6 +18,7 @@ import {
 export async function simulateScenarioAction(
   scenario: "stat_ct" | "stat_xray" | "opd_us" | "in_mri"
 ) {
+  await requireAdmin();
   const count = await prisma.examination.count();
   const nextId = `ACC-QCGH-${1000 + count + 1}`;
   const now = new Date();
@@ -58,6 +60,7 @@ export async function simulateScenarioAction(
 }
 
 export async function autoSignOldestBacklogAction() {
+  await requireAdmin();
   const oldest = await prisma.examination.findFirst({
     where: {
       statusCode: { not: "CANCELLED" },

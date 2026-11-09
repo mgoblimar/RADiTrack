@@ -9,10 +9,12 @@ import {
 import { TestModeBanner } from "@/components/test-data/TestModeBanner";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { AutoRefresh } from "@/components/common/AutoRefresh";
+import { requirePageUser } from "@/lib/auth/dal";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const currentUser = await requirePageUser();
   const [
     data,
     sevenDayAnalytics,
@@ -48,6 +50,7 @@ export default async function DashboardPage() {
         modalityTatOverview={modalityTatOverview}
         prevMonth={prevMonth}
         configurationsData={configurationsData}
+        currentUser={currentUser}
       />
     </>
   );
