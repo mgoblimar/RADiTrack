@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { FileText, X } from "lucide-react";
 import {
@@ -65,6 +65,15 @@ function initialConfig(filters: DashboardFilters): ReportConfig {
   };
 }
 
+/** Returns a message when the report can't be built, otherwise null. */
+function validateConfig(config: ReportConfig): string | null {
+  if (config.sections.length === 0) return "Choose at least one section to include.";
+  if (config.preset === "CUSTOM" && (!config.startDate || !config.endDate || config.startDate > config.endDate)) {
+    return "Pick a valid custom range: the start date must be on or before the end date.";
+  }
+  return null;
+}
+
 export function ReportBuilderDialog({ isOpen, onClose, filters }: ReportBuilderDialogProps) {
   if (!isOpen || typeof document === "undefined") return null;
   // Remounting per open resets the form to the latest dashboard filters.
@@ -94,19 +103,26 @@ function ReportBuilderForm({ onClose, filters }: Omit<ReportBuilderDialogProps, 
         : REPORT_SECTIONS.map((s) => s.id).filter((s) => s === id || prev.sections.includes(s)),
     }));
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (config.sections.length === 0) {
-      setError("Choose at least one section to include.");
-      return;
-    }
-    if (config.preset === "CUSTOM" && (!config.startDate || !config.endDate || config.startDate > config.endDate)) {
-      setError("Pick a valid custom range: the start date must be on or before the end date.");
+  // A real link (not window.open) so popup blockers and extensions never stop the new tab.
+  const reportHref = `/report?${buildReportQuery(config)}`;
+  const previewLinkRef = useRef<HTMLAnchorElement>(null);
+
+  const handlePreviewClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    const problem = validateConfig(config);
+    if (problem) {
+      event.preventDefault();
+      setError(problem);
       return;
     }
     setError(null);
-    window.open(`/report?${buildReportQuery(config)}`, "_blank", "noopener");
-    onClose();
+    // Close after the browser has followed the link, so the link is still on the page when it does.
+    window.setTimeout(onClose, 0);
+  };
+
+  // Enter in a text field submits the form: follow the same link.
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    previewLinkRef.current?.click();
   };
 
   return (
@@ -198,10 +214,17 @@ function ReportBuilderForm({ onClose, filters }: Omit<ReportBuilderDialogProps, 
 
         <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3.5">
           <button type="button" onClick={onClose} className="h-10 rounded-xl border border-border px-4 text-xs font-bold text-qc-navy hover:bg-muted">Cancel</button>
-          <button type="submit" className="inline-flex h-10 items-center gap-2 rounded-xl bg-qc-navy px-5 text-xs font-extrabold text-white shadow-sm hover:bg-qc-blue">
+          <a
+            ref={previewLinkRef}
+            href={reportHref}
+            target="_blank"
+            rel="noopener"
+            onClick={handlePreviewClick}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-qc-navy px-5 text-xs font-extrabold text-white shadow-sm hover:bg-qc-blue"
+          >
             <FileText className="h-3.5 w-3.5 text-qc-yellow" />
             Preview report
-          </button>
+          </a>
         </div>
       </form>
     </div>
