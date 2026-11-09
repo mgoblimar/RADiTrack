@@ -14,13 +14,13 @@ How to use RADiTrack in the Department of Radiology's daily routine. Each sectio
 
 RADiTrack measures how long each radiology report takes, from the moment the scan is completed to the radiologist's sign-off: the **Turnaround Time (TAT)**. It also shows whether reports meet the hospital's targets (**SLA**). It uses no patient names or identifying details; exams are tracked by accession number only.
 
-| Who | Uses RADiTrack to… | Main screens |
-| --- | --- | --- |
-| Radiologic Technologist | Log completed exams; correct mistakes | RIS Simulator, Examinations |
-| Radiologist | See what is waiting to be read; sign off reports | Examinations → Backlog |
-| Department Head / Staff | Monitor TAT and SLA compliance; produce reports | Dashboard, Generate report |
-| RADiTrack Administrator | Set SLA targets and rooms; import data; check the numbers | Configurations, Examinations, RIS Simulator |
-| Patients (waiting area) | See how busy each imaging service is | Patient TV display |
+| Who | Uses RADiTrack to… | Main screens | Sign-in |
+| --- | --- | --- | --- |
+| Radiologists and Residents | See the backlog, sign off reports, monitor TAT and SLA compliance, produce reports | Dashboard, Examinations, Generate report | Own account |
+| RADiTrack Administrator | Everything above, plus accounts, SLA targets, rooms, imports, test data and the RIS Simulator | Configurations, Examinations, RIS Simulator | Own account |
+| Patients (waiting area) | See how busy each imaging service is | Patient TV display | None |
+
+Radiologists and Residents have the **same access**. Each account has one or more **assigned modalities**; the dashboard and backlog start on the first one, and you can switch to any modality at any time. Accounts only set your starting view: RADiTrack never ranks or scores individual doctors.
 
 ## 2. Getting started
 
@@ -28,9 +28,19 @@ RADiTrack measures how long each radiology report takes, from the moment the sca
 
 1. Open a web browser (Chrome or Edge recommended) on a computer, tablet or phone connected to the hospital network.
 2. Go to the RADiTrack address given by the IT/RADiTrack team. **[TO CONFIRM: final address]**
-3. The **Dashboard** opens.
+3. On the **Sign in** page, enter the **username** and **password** from your administrator.
+4. **First sign-in:** you are asked to **Set your password**. Enter the temporary password, then a new one (at least 8 characters, with a letter and a number).
+5. The **Dashboard** opens on your first assigned modality. Use the **Your modalities** buttons under the filter bar to switch between your modalities, or **All modalities** for the whole department.
 
-> **[SCREENSHOT: Dashboard, desktop, first view]**
+> **[SCREENSHOT: Sign in page]**
+> **[SCREENSHOT: Dashboard, desktop, first view with "Your modalities"]**
+
+**Forgot your password?** Ask the administrator to reset it; you will get a new temporary password.
+After 5 wrong passwords in a row, the account pauses for 5 minutes.
+**Signing out:** press **Log out** at the bottom of the menu.
+**Settings** (next to Log out) shows your account details and assigned modalities, and lets you **change your password**. You stay signed in on that device; your other devices are signed out.
+
+> **[SCREENSHOT: Settings page]**
 
 ### 2.2 Moving around
 
@@ -43,9 +53,9 @@ The numbers refresh by themselves every few seconds, so there is no need to relo
 
 ## 3. Daily routine
 
-### 3.1 Radiologic Technologist: logging a completed exam
+### 3.1 Administrator (prototype only): logging a completed exam
 
-When RADiTrack is connected to the hospital RIS, completed exams appear automatically within about 5 minutes and you can skip this section. Otherwise:
+When RADiTrack is connected to the hospital RIS, completed exams appear automatically within about 5 minutes and you can skip this section. Until then, an administrator logs exams for testing and demos:
 
 1. Open **RIS Simulator** from the menu.
 2. Under **Log Examination**, press **Generate ID** or type the **Accession ID**.
@@ -55,11 +65,11 @@ When RADiTrack is connected to the hospital RIS, completed exams appear automati
 
 > **[SCREENSHOT: RIS Simulator → Log Examination form]**
 
-**Correcting a mistake:** go to **Examinations → Backlog**, find the exam, and use the ✏️ **edit** or 🗑 **delete** button on its row (on tablets and phones these are on the exam's card).
+**Correcting a mistake (administrators):** go to **Examinations → Backlog**, find the exam, and use the ✏️ **edit** or 🗑 **delete** button on its row (on tablets and phones these are on the exam's card).
 
-### 3.2 Radiologist: working through the backlog
+### 3.2 Radiologists and Residents: working through the backlog
 
-1. Open **Examinations**. The **Backlog** tab lists every completed exam that is not yet signed, oldest first.
+1. Open **Examinations**. The **Backlog** tab lists every completed exam that is not yet signed, oldest first. It starts filtered to your assigned modalities; use **Filters** to see others.
 2. Check each exam's **Waiting** time and **SLA target**:
    - **Waiting** (orange): still within its target.
    - **Past SLA** (red): already waiting longer than the target. Read these first.
@@ -71,9 +81,9 @@ When RADiTrack is connected to the hospital RIS, completed exams appear automati
 
 **Tip:** use **Search accession ID** to find one exam, or **Filters** to show only certain dates, modalities or patient categories. The tab counts always add up: **All = Finalized + Backlog** for the filters you chose.
 
-### 3.3 Department Head / Staff: checking performance
+### 3.3 Radiologists and Residents: checking performance
 
-1. Open the **Dashboard**. It starts with the **Rolling 7 days** for all modalities and patient categories.
+1. Open the **Dashboard**. It starts with the **Rolling 7 days**, your first assigned modality and all patient categories.
 2. Read the four **KPI cards**:
    - **Total scans** in the period, with the split by modality.
    - **Average Turnaround Time**, with the **median** underneath.
@@ -127,6 +137,27 @@ If the report shows a **Test data** notice, it was produced while the validation
 Press **Export CSV** on the Examinations tab to download all examinations (de-identified) for audits or checking against the RIS.
 
 ## 6. Configuration (Administrator)
+
+Doctors can open **Configurations** to read the SLA targets, rooms and the RADiTrack Guide; only administrators can change them.
+
+### 6.0 Accounts
+
+1. Open **Configurations → Accounts** and press **Add account**.
+2. Enter the **Full name**, a **Username** (lowercase, e.g. `msantos`) and the **Role** (Radiologist, Resident or Administrator).
+3. Under **Assigned modalities**, click the doctor's modalities **in order of priority**; the number on each shows the order, and **1** is where their dashboard starts. Leave empty to start on all modalities.
+4. Press **Create account**. A **temporary password** is shown **once**: copy it and give it to the doctor privately. They must replace it at first sign-in.
+
+Other actions on each account:
+- **Edit:** change the name, username, role or modalities. A role change signs the person out.
+- **Reset password:** signs them out and shows a new temporary password.
+- **Deactivate / Activate:** a deactivated account can't sign in. Accounts are never deleted.
+
+You can't deactivate or demote your own account, and at least one active administrator is always kept.
+
+**First administrator:** the RADiTrack team creates it once with `npm run auth:create-admin` (username and password come from environment variables).
+
+> **[SCREENSHOT: Configurations → Accounts]**
+> **[SCREENSHOT: Temporary password card]**
 
 ### 6.1 SLA targets
 
@@ -183,6 +214,9 @@ Open **Patient TV Display** from the menu on the waiting-area screen. For each i
 
 | What you see | What to do |
 | --- | --- |
+| "Incorrect username or password." | Check the username (lowercase) and password. After 5 tries the account pauses for 5 minutes; an administrator can reset it. |
+| You were sent back to **Sign in** | Your session ended (after 12 hours, a password change or reset, or a role change). Sign in again. |
+| No **RIS Simulator** in the menu, or no edit/delete buttons | Those are administrator tools. |
 | Numbers look different from yesterday's report | Check the **time window** in the filter bar; "Rolling 7 days" moves every day. |
 | A **TEST DATA ACTIVE** banner | Someone is testing. Do not use these numbers; ask the administrator to **Restore real data**. |
 | An exam is missing | Check the **Filters** and the **All** tab on Examinations; with RIS sync, wait up to 5 minutes. |

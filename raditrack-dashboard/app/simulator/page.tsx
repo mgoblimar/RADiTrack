@@ -7,10 +7,13 @@ import {
 import { HospitalHeader } from "@/components/navigation/HospitalHeader";
 import { SimulatorHub } from "@/components/simulator/SimulatorHub";
 import { TestDataPanel } from "@/components/test-data/TestDataPanel";
+import { requirePageAdmin } from "@/lib/auth/dal";
 
 export const dynamic = "force-dynamic";
 
 export default async function SimulatorPage() {
+  // Prototype tool: only administrators can log or sign test exams here.
+  await requirePageAdmin();
   const [data, datasetStatus] = await Promise.all([
     getDashboardData(),
     getDatasetStatusAction(),

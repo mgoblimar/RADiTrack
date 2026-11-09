@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdmin, requireUser } from "@/lib/auth/dal";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import {
@@ -53,6 +54,7 @@ export interface ConfigurationsData {
 
 // 17. ACTION: Get All Configurations, Modalities, SLAs & Radiologist Roster
 export async function getConfigurationsAction(): Promise<ConfigurationsData> {
+  await requireUser();
   // Ensure default radiologists exist if database has none
   const radCount = await prisma.radiologist.count();
   if (radCount === 0) {
@@ -124,6 +126,7 @@ export async function getConfigurationsAction(): Promise<ConfigurationsData> {
 
 // 18. ACTION: Update or Upsert SLA Benchmark
 export async function updateSlaTargetAction(formData: FormData) {
+  await requireAdmin();
   const modalityCode = formData.get("modalityCode") as string;
   const triageLevel = (formData.get("triageLevel") as string) || "OPD";
   const urgencyLevel = (formData.get("urgencyLevel") as string) || "ROUTINE";
@@ -167,6 +170,7 @@ export async function updateSlaTargetAction(formData: FormData) {
 
 // 19. ACTION: Reset All SLA Benchmarks to Hospital Standards
 export async function resetDefaultSlasAction() {
+  await requireAdmin();
   const standardSlas = [
     // CT Standards (IN/ER: 2 days, OPD: 3 days)
     { modalityCode: ModalityCode.CT, triageLevel: TriageLevel.ER, urgencyLevel: UrgencyLevel.STAT, targetTatMinutes: 2880 },
@@ -211,6 +215,7 @@ export async function resetDefaultSlasAction() {
 
 // 20. ACTION: Update Modality Department Room Location & Details
 export async function updateModalityDetailsAction(formData: FormData) {
+  await requireAdmin();
   const modalityCode = formData.get("modalityCode") as string;
   const departmentRoom = (formData.get("departmentRoom") as string) || "";
   const isActive = formData.get("isActive") === "true";
@@ -234,6 +239,7 @@ export async function updateModalityDetailsAction(formData: FormData) {
 
 // 21. ACTION: Fast Toggle Modality Operational Status
 export async function toggleModalityStatusAction(modalityCode: string, isActive: boolean) {
+  await requireAdmin();
   if (!modalityCode) return { success: false };
 
   await prisma.modality.update({
@@ -248,6 +254,7 @@ export async function toggleModalityStatusAction(modalityCode: string, isActive:
 
 // 22. ACTION: Register New Interpreting Radiologist
 export async function createRadiologistAction(formData: FormData) {
+  await requireAdmin();
   const fullName = (formData.get("fullName") as string)?.trim();
   const subspecialty = (formData.get("subspecialty") as string)?.trim() || null;
   const licenseNumber = (formData.get("licenseNumber") as string)?.trim() || null;
@@ -271,6 +278,7 @@ export async function createRadiologistAction(formData: FormData) {
 
 // 23. ACTION: Toggle Radiologist Duty Status
 export async function toggleRadiologistStatusAction(radiologistId: string, isActive: boolean) {
+  await requireAdmin();
   if (!radiologistId) return { success: false };
 
   await prisma.radiologist.update({

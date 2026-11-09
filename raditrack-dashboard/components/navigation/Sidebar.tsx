@@ -7,6 +7,7 @@ import {
   ChevronRight,
   FileSpreadsheet,
   LayoutDashboard,
+  LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -18,10 +19,20 @@ import {
   X,
 } from "lucide-react";
 
+import { logoutAction } from "@/app/actions/auth";
+import { isAdmin, type CurrentUser } from "@/lib/auth/roles";
+
 export type ActiveTab =
   | "overview"
   | "examinations"
-  | "config";
+  | "config"
+  | "settings";
+
+// Left padding the main content needs so it clears the sidebar on desktop.
+export const SIDEBAR_OFFSET = {
+  expanded: "lg:pl-[248px]",
+  collapsed: "lg:pl-[76px]",
+} as const;
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -29,6 +40,7 @@ interface SidebarProps {
   pendingCount?: number;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  currentUser: CurrentUser;
 }
 
 export function Sidebar({
@@ -37,7 +49,9 @@ export function Sidebar({
   pendingCount = 0,
   isCollapsed = false,
   onToggleCollapse,
+  currentUser,
 }: SidebarProps) {
+  const canUseSimulator = isAdmin(currentUser);
   const [isMobileOpen, setIsMobileOpen] =
     useState(false);
 
@@ -392,8 +406,9 @@ export function Sidebar({
               )}
             </Link>
 
-            {/* RIS Simulator */}
+            {/* RIS Simulator (administrators only) */}
 
+            {canUseSimulator && (
             <Link
               href="/simulator"
               onClick={() => setIsMobileOpen(false)}
@@ -429,6 +444,7 @@ export function Sidebar({
                 <ChevronRight className="h-4 w-4 text-white/50 transition-transform duration-200 group-hover:translate-x-0.5" />
               )}
             </Link>
+            )}
           </div>
         </div>
 
@@ -441,8 +457,8 @@ export function Sidebar({
             <div className="flex flex-col items-center gap-2.5">
               <button
                 type="button"
-                onClick={() => handleTabChange("config")}
-                title="Dr. Test Radiologist"
+                onClick={() => handleTabChange("settings")}
+                title={currentUser.fullName}
                 className="group relative"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow shadow-[0_5px_12px_rgba(0,0,0,0.12)] transition-all duration-200 group-hover:border-qc-yellow group-hover:bg-white/[0.16] group-active:scale-95">
@@ -457,7 +473,7 @@ export function Sidebar({
 
               <button
                 type="button"
-                onClick={() => handleTabChange("config")}
+                onClick={() => handleTabChange("settings")}
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-white/65 transition-all duration-200 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95"
                 title="Settings"
                 aria-label="Open settings"
@@ -467,14 +483,28 @@ export function Sidebar({
                   strokeWidth={2.1}
                 />
               </button>
+
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-white/65 transition-all duration-200 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95"
+                  title="Sign out"
+                  aria-label="Sign out"
+                >
+                  <LogOut
+                    className="h-[18px] w-[18px]"
+                    strokeWidth={2.1}
+                  />
+                </button>
+              </form>
             </div>
           ) : (
             <div className="flex items-center gap-2.5 rounded-2xl border border-white/[0.15] bg-white/[0.07] p-2.5 transition-colors hover:bg-white/[0.11]">
               <button
                 type="button"
-                onClick={() => handleTabChange("config")}
+                onClick={() => handleTabChange("settings")}
                 className="group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow shadow-[0_5px_12px_rgba(0,0,0,0.12)] transition-all duration-200 hover:border-qc-yellow hover:bg-white/[0.16] active:scale-95"
-                title="Dr. Test Radiologist"
+                title={currentUser.fullName}
               >
                 <User
                   className="h-[18px] w-[18px]"
@@ -486,12 +516,12 @@ export function Sidebar({
 
               <button
                 type="button"
-                onClick={() => handleTabChange("config")}
+                onClick={() => handleTabChange("settings")}
                 className="min-w-0 flex-1 text-left"
                 title="Open profile settings"
               >
                 <div className="truncate text-[13px] font-extrabold text-white">
-                  Dr. Test Radiologist
+                  {currentUser.fullName}
                 </div>
 
                 <div className="mt-1 flex items-center gap-1.5">
@@ -505,7 +535,7 @@ export function Sidebar({
 
               <button
                 type="button"
-                onClick={() => handleTabChange("config")}
+                onClick={() => handleTabChange("settings")}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white/65 transition-all duration-200 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95"
                 title="Settings"
                 aria-label="Open settings"
@@ -515,6 +545,20 @@ export function Sidebar({
                   strokeWidth={2.1}
                 />
               </button>
+
+              <form action={logoutAction} className="shrink-0">
+                <button
+                  type="submit"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-white/65 transition-all duration-200 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95"
+                  title="Sign out"
+                  aria-label="Sign out"
+                >
+                  <LogOut
+                    className="h-[18px] w-[18px]"
+                    strokeWidth={2.1}
+                  />
+                </button>
+              </form>
             </div>
           )}
         </div>

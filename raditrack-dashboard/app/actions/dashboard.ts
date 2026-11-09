@@ -1,5 +1,6 @@
 "use server";
 
+import { requireUser } from "@/lib/auth/dal";
 import prisma from "@/lib/prisma";
 import {
   TriageLevel,
@@ -14,6 +15,7 @@ import type { ModalityTatOverviewItem, ModalityTatStats } from "./analytics";
 
 // 3. QUERY: Dashboard Aggregations
 export async function getDashboardData() {
+  await requireUser();
   const now = new Date();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -185,6 +187,7 @@ export interface FilteredKpiResult {
 export async function fetchFilteredExecutiveKpiAction(
   options: FilteredKpiOptions
 ): Promise<FilteredKpiResult> {
+  await requireUser();
   const now = new Date();
   const preset = options.preset || "ALL";
   const {

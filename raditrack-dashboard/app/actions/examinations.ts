@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdmin, requireUser } from "@/lib/auth/dal";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
@@ -15,6 +16,7 @@ import {
 // 1. ACTION: Log New Examination (Manual Ingestion)
 // ============================================================================
 export async function createExaminationAction(formData: FormData) {
+  await requireAdmin();
   const examinationIdentifier = formData.get("examinationIdentifier") as string;
   const modalityCode = (formData.get("modalityCode") as string) || ModalityCode.CT;
   const triageLevel = (formData.get("triageLevel") as string) || TriageLevel.OPD;
@@ -41,6 +43,7 @@ export async function createExaminationAction(formData: FormData) {
 // 2. ACTION: Sign Off Report (TAT & SLA Engine)
 // ============================================================================
 export async function signOffReportAction(formData: FormData) {
+  await requireUser();
   const examId = formData.get("examId") as string;
   const now = new Date();
 
@@ -96,6 +99,7 @@ export async function signOffReportAction(formData: FormData) {
 // Used by hospital staff to audit timestamps against RIS and monthly reports
 // ============================================================================
 export async function exportExaminationsCSVAction(): Promise<string> {
+  await requireUser();
   const exams = await prisma.examination.findMany({
     include: {
       report: true,
@@ -151,6 +155,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
  * Corrects manual entry mistakes (Accession ID, Modality, Triage, Urgency, Notes)
  */
 export async function updateExaminationAction(formData: FormData) {
+  await requireAdmin();
   const examId = formData.get("examId") as string;
   const examinationIdentifier = (formData.get("examinationIdentifier") as string)?.trim();
   const modalityCode = formData.get("modalityCode") as string;
@@ -194,6 +199,7 @@ export async function updateExaminationAction(formData: FormData) {
  * Sets status to CANCELLED, removing from queue & TAT while preserving medical-legal logs
  */
 export async function cancelExaminationAction(formData: FormData) {
+  await requireAdmin();
   const examId = formData.get("examId") as string;
   if (!examId) throw new Error("Missing examId for cancellation.");
 
@@ -213,6 +219,7 @@ export async function cancelExaminationAction(formData: FormData) {
  * Permanently removes mistaken double entries from database (cascades report)
  */
 export async function deleteExaminationAction(formData: FormData) {
+  await requireAdmin();
   const examId = formData.get("examId") as string;
   if (!examId) throw new Error("Missing examId for deletion.");
 
@@ -296,6 +303,7 @@ function toLocalIsoDate(d: Date): string {
 export async function fetchFilteredExaminationsAction(
   options: ExaminationFilterOptions
 ): Promise<FilteredExaminationsResult> {
+  await requireUser();
   const now = new Date();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
