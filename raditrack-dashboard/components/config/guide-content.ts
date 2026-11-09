@@ -62,16 +62,18 @@ export const PARTS: { icon: LucideIcon; title: string; summary: string; items: s
   {
     icon: Settings2,
     title: "Configurations",
-    summary: "Targets, rooms and this guide.",
+    summary: "Targets, rooms, accounts and this guide.",
     items: [
       "SLA targets: maximum TAT per modality and patient category. Changes apply to reports signed afterwards.",
       "Modality rooms: room assignment and whether a modality is online or under maintenance.",
+      "Accounts (administrators): create sign-ins for radiologists and residents and assign their modalities. The first modality is where their dashboard starts.",
+      "Doctors can read these settings; only administrators can change them.",
     ],
   },
   {
     icon: FlaskConical,
     title: "RIS Simulator",
-    summary: "Practice and testing.",
+    summary: "Practice and testing (administrators only).",
     items: [
       "Log test scans and run preset scenarios for demonstrations.",
       "Load the 100-exam validation dataset, then restore the real data.",

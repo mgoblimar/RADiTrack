@@ -1,5 +1,6 @@
 "use server";
 
+import { requireUser } from "@/lib/auth/dal";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import {
@@ -20,6 +21,7 @@ export interface SevenDayAnalyticsOptions {
 }
 
 export async function getSevenDayStaffAnalytics(options?: SevenDayAnalyticsOptions) {
+  await requireUser();
   const mode = options?.mode || "rolling";
   let anchor: Date;
   if (options?.anchorDate) {
@@ -248,6 +250,7 @@ export async function fetchSevenDayAnalyticsAction(
   anchorDate?: string,
   mode: "rolling" | "static" = "rolling"
 ) {
+  await requireUser();
   return await getSevenDayStaffAnalytics({ anchorDate, mode });
 }
 
@@ -360,6 +363,7 @@ export async function getTwelveMonthTatTrend(
   /** Optional "YYYY-MM-DD"; the rolling window ends on this date's month. */
   anchorDate?: string,
 ): Promise<TwelveMonthTrendResult> {
+  await requireUser();
   const now = parseAnchorDate(anchorDate) ?? new Date();
   const isRolling = period === "rolling";
   const targetYear = !isRolling && !isNaN(Number(period)) ? Number(period) : now.getFullYear();
@@ -715,6 +719,7 @@ export async function fetchYearlyTrendAction(
   triageLevel: "ALL" | TriageLevel = "ALL",
   anchorDate?: string,
 ) {
+  await requireUser();
   return await getTwelveMonthTatTrend(period, triageLevel, anchorDate);
 }
 
@@ -764,6 +769,7 @@ export interface MultiPeriodModalityTatOverview {
 }
 
 export async function getModalityTatOverview(): Promise<MultiPeriodModalityTatOverview> {
+  await requireUser();
   const modalitiesUnsorted = await prisma.modality.findMany({
     include: {
       slaConfigs: true,
@@ -895,6 +901,7 @@ export async function fetchModalityTatDataAction(options: {
   startDate?: string;
   endDate?: string;
 }): Promise<ModalityTatOverviewItem[]> {
+  await requireUser();
   const now = new Date();
   let start: Date | undefined;
   let end: Date = now;
@@ -1006,6 +1013,7 @@ export async function fetchModalityTatCustomRangeAction(
   startDateStr: string,
   endDateStr: string
 ): Promise<ModalityTatOverviewItem[]> {
+  await requireUser();
   return fetchModalityTatDataAction({
     period: "CUSTOM",
     startDate: startDateStr,

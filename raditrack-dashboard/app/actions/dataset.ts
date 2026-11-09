@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdmin, requireUser } from "@/lib/auth/dal";
 // Test-data switch and examination import.
 //
 // Test mode: real exams and reports are copied into backup tables, replaced by
@@ -150,6 +151,7 @@ function revalidateRecords(records: ExamImportRecord[]): ImportRowError[] {
 // ---------------------------------------------------------------------------
 
 export async function getDatasetStatusAction(): Promise<DatasetStatus> {
+  await requireUser();
   const [isTestActive, activeCount] = await Promise.all([backupExists(prisma), prisma.examination.count()]);
   let backupCount = 0;
   if (isTestActive) {
@@ -179,12 +181,14 @@ export async function previewExamImportAction(formData: FormData): Promise<Impor
 
     return { fileName: file.name, totalRows: rows.length, records, errors, conflicts };
   } catch (error) {
+  await requireAdmin();
     return { error: errorMessage(error, "Could not read the file.") };
   }
 }
 
 /** Saves previewed records: append to current data, or load them as test data (backing up real data). */
 export async function commitExamImportAction(records: ExamImportRecord[], mode: ImportMode): Promise<ActionResult> {
+  await requireAdmin();
   if (records.length === 0) return { success: false, error: "There are no valid rows to import." };
   const invalid = revalidateRecords(records);
   if (invalid.length > 0) return { success: false, error: invalid[0].message };
@@ -212,6 +216,7 @@ export async function commitExamImportAction(records: ExamImportRecord[], mode: 
 
 /** Loads the bundled 100-exam validation dataset (dates relative to now) as test data. */
 export async function loadTestDatasetAction(): Promise<ActionResult> {
+  await requireAdmin();
   const { records, errors } = parseExamRows(testDatasetRows());
   if (errors.length > 0) {
     return { success: false, error: `Test dataset row ${errors[0].rowNumber}: ${errors[0].message}` };
@@ -228,6 +233,7 @@ export async function loadTestDatasetAction(): Promise<ActionResult> {
 
 /** Puts the backed-up real data back and leaves test mode. */
 export async function restoreRealDataAction(): Promise<ActionResult> {
+  await requireAdmin();
   try {
     const count = await prisma.$transaction(async (tx) => {
       if (!(await backupExists(tx))) throw new Error("Test mode is not active; there is no backup to restore.");

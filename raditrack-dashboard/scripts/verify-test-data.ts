@@ -10,6 +10,8 @@
 // 4. Writes Expected vs RADiTrack with PASS/FAIL into the Verification sheet of
 //    docs/test-data/verification-YYYY-MM-DD.xlsx (a fresh copy of the workbook).
 
+// Must stay first: lets this script call the dashboard's actions without a sign-in.
+import "./local-script-context";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import prisma from "@/lib/prisma";

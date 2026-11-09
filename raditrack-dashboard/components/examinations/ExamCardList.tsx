@@ -17,6 +17,8 @@ interface ExamCardListProps {
   /** Called after a report is signed so the list and other tabs refresh. */
   onSigned: () => void;
   onResetFilters: () => void;
+  /** Shows edit and delete (administrators only). */
+  canManageExams?: boolean;
   className?: string;
 }
 
@@ -59,7 +61,17 @@ function SignButton({ examId, onSigned }: { examId: string; onSigned: () => void
   );
 }
 
-function ExamCard({ item, statusTab, onSigned }: { item: FilteredExaminationItem; statusTab: StatusTab; onSigned: () => void }) {
+function ExamCard({
+  item,
+  statusTab,
+  onSigned,
+  canManageExams,
+}: {
+  item: FilteredExaminationItem;
+  statusTab: StatusTab;
+  onSigned: () => void;
+  canManageExams: boolean;
+}) {
   const dwell = hours(item.dwellHours, item.dwellMinutes);
   const tat = hours(item.tatHours, item.tatMinutes);
   const target = item.targetTatHours !== null && item.targetTatHours !== undefined ? `${item.targetTatHours}h` : "—";
@@ -114,7 +126,7 @@ function ExamCard({ item, statusTab, onSigned }: { item: FilteredExaminationItem
 
       {!item.isFinalized && (
         <div className="mt-3 flex items-center gap-2">
-          {statusTab === "backlog" && (
+          {statusTab === "backlog" && canManageExams && (
             <>
               <EditExamDialog item={item} />
               <DeleteExamDialog examId={item.examId} identifier={item.identifier} />
@@ -127,7 +139,7 @@ function ExamCard({ item, statusTab, onSigned }: { item: FilteredExaminationItem
   );
 }
 
-export function ExamCardList({ items, statusTab, onSigned, onResetFilters, className = "" }: ExamCardListProps) {
+export function ExamCardList({ items, statusTab, onSigned, onResetFilters, canManageExams = false, className = "" }: ExamCardListProps) {
   if (items.length === 0) {
     return (
       <div className={`flex flex-col items-center px-5 py-14 text-center ${className}`}>
@@ -151,7 +163,7 @@ export function ExamCardList({ items, statusTab, onSigned, onResetFilters, class
   return (
     <ul className={`space-y-2.5 p-3 sm:p-4 ${className}`}>
       {items.map((item) => (
-        <ExamCard key={item.examId} item={item} statusTab={statusTab} onSigned={onSigned} />
+        <ExamCard key={item.examId} item={item} statusTab={statusTab} onSigned={onSigned} canManageExams={canManageExams} />
       ))}
     </ul>
   );

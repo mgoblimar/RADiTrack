@@ -9,6 +9,7 @@ import {
   UserCheck,
   RotateCcw,
   Pencil,
+  UsersRound,
   Plus,
   X,
   Save,
@@ -18,6 +19,7 @@ import {
   Lock,
   Cpu,
 } from "lucide-react";
+import { AccountsPanel } from "@/components/config/AccountsPanel";
 
 import {
   ConfigurationsData,
@@ -426,6 +428,10 @@ function EditSlaModal({
 
 interface ConfigurationsHubProps {
   initialData?: ConfigurationsData;
+  /** Only administrators can change settings or manage accounts. */
+  isAdmin?: boolean;
+  /** Used so administrators can't lock themselves out on the Accounts tab. */
+  currentUserId?: string;
 }
 
 // "governance" is the RADiTrack Guide tab: shown first and opened by default.
@@ -433,10 +439,13 @@ type ConfigTab =
   | "governance"
   | "slas"
   | "rooms"
+  | "accounts"
   | "radiologists";
 
 export function ConfigurationsHub({
   initialData,
+  isAdmin = false,
+  currentUserId = "",
 }: ConfigurationsHubProps) {
   const [activeTab, setActiveTab] =
     useState<ConfigTab>("governance");
@@ -607,6 +616,21 @@ export function ConfigurationsHub({
               </span>
             </button>
 
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("accounts")}
+                className={`${tabButtonBase} ${
+                  activeTab === "accounts"
+                    ? "bg-qc-yellow text-qc-navy shadow-sm"
+                    : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
+                }`}
+              >
+                <UsersRound className="h-4 w-4" />
+                Accounts
+              </button>
+            )}
+
             {/*<button
               type="button"
               onClick={() =>
@@ -688,6 +712,7 @@ export function ConfigurationsHub({
                   </h3>
                 </div>
 
+                {isAdmin ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -714,6 +739,9 @@ export function ConfigurationsHub({
                   <RotateCcw className="h-4 w-4 text-qc-orange" />
                   Reset SLA defaults
                 </button>
+                ) : (
+                <span className="inline-flex w-fit items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/60 px-4 py-2.5 text-xs font-bold text-slate-500">View only · set by the administrator</span>
+                )}
               </div>
             </div>
           </section>
@@ -811,6 +839,7 @@ export function ConfigurationsHub({
                               : "2 days (48 hrs)"}
                           </span>
 
+                          {isAdmin && (
                           <button
                             type="button"
                             onClick={() =>
@@ -831,6 +860,7 @@ export function ConfigurationsHub({
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -857,6 +887,7 @@ export function ConfigurationsHub({
                               : "3 days (72 hrs)"}
                           </span>
 
+                          {isAdmin && (
                           <button
                             type="button"
                             onClick={() =>
@@ -877,6 +908,7 @@ export function ConfigurationsHub({
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -903,6 +935,7 @@ export function ConfigurationsHub({
                               : "2 days (48 hrs)"}
                           </span>
 
+                          {isAdmin && (
                           <button
                             type="button"
                             onClick={() =>
@@ -923,6 +956,7 @@ export function ConfigurationsHub({
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -984,6 +1018,7 @@ export function ConfigurationsHub({
                   </span>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
+                  {isAdmin && (
                   <button
                     type="button"
                     onClick={() => setEditingModality(m)}
@@ -991,6 +1026,8 @@ export function ConfigurationsHub({
                   >
                     Edit room
                   </button>
+                  )}
+                  {isAdmin && (
                   <button
                     type="button"
                     disabled={isPending}
@@ -1001,6 +1038,7 @@ export function ConfigurationsHub({
                   >
                     {m.isActive ? "Set maintenance" : "Set online"}
                   </button>
+                  )}
                 </div>
               </li>
             ))}
@@ -1097,6 +1135,7 @@ export function ConfigurationsHub({
 
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        {isAdmin && (
                         <button
                           type="button"
                           onClick={() =>
@@ -1106,7 +1145,9 @@ export function ConfigurationsHub({
                         >
                           Edit room
                         </button>
+                        )}
 
+                        {isAdmin && (
                         <button
                           type="button"
                           disabled={isPending}
@@ -1121,6 +1162,7 @@ export function ConfigurationsHub({
                             ? "Set maintenance"
                             : "Set online"}
                         </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1129,6 +1171,10 @@ export function ConfigurationsHub({
             </table>
           </div>
         </section>
+      )}
+
+      {isAdmin && activeTab === "accounts" && (
+        <AccountsPanel currentUserId={currentUserId} />
       )}
 
       {/* =========================================================

@@ -49,6 +49,10 @@ import {
 interface ExaminationsHubProps {
   queue: PendingReadingQueueItem[];
   finalizedCount: number;
+  /** The signed-in doctor's modalities; the list starts filtered to them. Empty = all. */
+  defaultModalities?: readonly string[];
+  /** Administrators can import, edit and delete exams; everyone can sign. */
+  canManageExams?: boolean;
 }
 
 type StatusTab =
@@ -86,7 +90,12 @@ function toLocalIsoDate(d: Date): string {
 export function ExaminationsHub({
   queue,
   finalizedCount: initialFinalizedCount,
+  defaultModalities = [],
+  canManageExams = false,
 }: ExaminationsHubProps) {
+  const startingModalities =
+    defaultModalities.length > 0 ? [...defaultModalities] : ALL_MODALITIES;
+
   /* =========================================================
      State
   ========================================================= */
@@ -106,7 +115,7 @@ export function ExaminationsHub({
     useState<string>(todayStr);
 
   const [selectedModalities, setSelectedModalities] =
-    useState<string[]>(ALL_MODALITIES);
+    useState<string[]>(startingModalities);
 
   const [selectedCategories, setSelectedCategories] =
     useState<string[]>(ALL_CATEGORIES);
@@ -919,7 +928,7 @@ export function ExaminationsHub({
 
                 {/* Import / Export */}
                 <div className="flex shrink-0 items-center gap-2">
-                  <ImportExamsButton />
+                  {canManageExams && <ImportExamsButton />}
                   <ExportCsvButton />
                 </div>
               </div>
@@ -1249,6 +1258,7 @@ export function ExaminationsHub({
             notifyDatabaseChanged();
           }}
           onResetFilters={handleResetFilters}
+          canManageExams={canManageExams}
         />
 
         {/* Desktop: full table */}
@@ -1441,18 +1451,22 @@ export function ExaminationsHub({
 
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-1.5">
-                          <EditExamDialog
-                            item={item}
-                          />
+                          {canManageExams && (
+                            <>
+                              <EditExamDialog
+                                item={item}
+                              />
 
-                          <DeleteExamDialog
-                            examId={
-                              item.examId
-                            }
-                            identifier={
-                              item.identifier
-                            }
-                          />
+                              <DeleteExamDialog
+                                examId={
+                                  item.examId
+                                }
+                                identifier={
+                                  item.identifier
+                                }
+                              />
+                            </>
+                          )}
 
                           <form
                             action={async (
