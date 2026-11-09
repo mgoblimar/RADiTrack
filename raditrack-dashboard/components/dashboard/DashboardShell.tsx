@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-
 import {
   useEffect,
   useMemo,
@@ -10,12 +8,14 @@ import {
 } from "react";
 
 import { Sidebar, ActiveTab } from "@/components/navigation/Sidebar";
+import { HospitalHeader } from "@/components/navigation/HospitalHeader";
 import { ExaminationsHub } from "@/components/examinations/ExaminationsHub";
 import { ConfigurationsHub } from "@/components/config/ConfigurationsHub";
 import { TatOverviewChart } from "@/components/charts/TatOverviewChart";
 import { SevenDayTatTable } from "@/components/staff/SevenDayTatTable";
 import { TwelveMonthTrendChart } from "@/components/staff/TwelveMonthTrendChart";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
+
 import type {
   ConfigurationsData,
   DashboardData,
@@ -24,6 +24,7 @@ import type {
   SevenDayAnalyticsData,
   TwelveMonthTrendData,
 } from "@/lib/dashboard-types";
+
 import { capAtToday, resolveKpiRange, toIsoDate } from "@/lib/kpi-range";
 import { usePersistedBoolean } from "@/hooks/use-persisted-boolean";
 import { ReportBuilderDialog } from "@/components/report/ReportBuilderDialog";
@@ -283,11 +284,13 @@ export function DashboardShell({
       const counts: Record<string, number> = Object.fromEntries(
         MODALITY_ORDER.map((code) => [code, 0]),
       );
+
       for (const row of rows) {
         if (counts[row.modalityCode] !== undefined) {
           counts[row.modalityCode] += 1;
         }
       }
+
       return counts;
     };
 
@@ -450,6 +453,7 @@ export function DashboardShell({
   // category), so their percentages use these totals, not the picked modality's.
   const sumCounts = (counts: Record<string, number>) =>
     Object.values(counts).reduce((sum, count) => sum + count, 0);
+
   const volumeBreakdownTotal = sumCounts(activeVolumeByModality);
   const pendingBreakdownTotal = sumCounts(activePendingByModality);
 
@@ -510,7 +514,7 @@ export function DashboardShell({
     : kpiRange.dateRangeFormatted;
 
   const displayVolumeForCard = displayVolume;
-  
+
   const displayPendingForCard = displayPending;
 
   /* =========================================================
@@ -594,6 +598,16 @@ export function DashboardShell({
   const compactLabel =
     "text-xs font-extrabold uppercase tracking-[0.08em] text-muted-foreground";
 
+  /* =========================================================
+     Shared header: active page identity
+  ========================================================= */
+
+  const activeTabTitle: Record<ActiveTab, string> = {
+    overview: "Dashboard",
+    examinations: "Examinations",
+    config: "Configurations",
+  };
+
   return (
     <div className="relative min-h-screen overflow-clip bg-[#F7F9FC] text-foreground">
       {/* overflow-clip (not overflow-hidden) keeps sticky bars working inside */}
@@ -614,7 +628,7 @@ export function DashboardShell({
 
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(247,249,252,0.08)_0%,rgba(247,249,252,0.02)_38%,rgba(247,249,252,0.16)_100%)]" />
 
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_4%,rgba(24,41,140,0.045),transparent_28%),radial-gradient(circle_at_92%_7%,rgba(242,203,73,0.055),transparent_26%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_4%,rgba(0,53,122,0.045),transparent_28%),radial-gradient(circle_at_92%_7%,rgba(255,210,48,0.055),transparent_26%)]" />
       </div>
 
       {/* Sidebar */}
@@ -637,46 +651,13 @@ export function DashboardShell({
         }`}
       >
         <main className="mx-auto w-full max-w-[1680px] px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-7 2xl:px-10">
-          {/* Shared hospital and department header */}
 
-          <header
-            aria-label="Quezon City General Hospital Department of Radiology"
-            className="mb-6 flex flex-col gap-4 rounded-[24px] border border-[#DDE3F2]/90 bg-white/90 px-4 py-4 shadow-[0_4px_18px_rgba(5,14,64,0.06)] backdrop-blur-sm sm:flex-row sm:items-center sm:px-5 sm:py-4"
-          >
-            <div className="flex shrink-0 items-center gap-3">
-              <div className="flex h-[58px] w-[58px] items-center justify-center rounded-2xl border border-[#E7EAF2] bg-white p-1.5">
-                <Image
-                  src="/qcgh-hospital-logo.png"
-                  alt="Quezon City General Hospital logo"
-                  width={58}
-                  height={58}
-                  priority
-                  className="h-full w-full object-contain"
-                />
-              </div>
+          {/* Shared hospital header */}
 
-              <div className="flex h-[58px] w-[58px] items-center justify-center rounded-2xl border border-[#E7EAF2] bg-white p-1.5">
-                <Image
-                  src="/qcgh-radiology-logo.png"
-                  alt="Quezon City General Hospital Department of Radiology logo"
-                  width={58}
-                  height={58}
-                  priority
-                  className="h-full w-full object-contain"
-                />
-              </div>
-            </div>
-
-            <div className="min-w-0 border-t border-[#E5E9F2] pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
-              <p className="text-xs font-bold uppercase tracking-[0.13em] text-qc-blue sm:text-sm">
-                Quezon City General Hospital
-              </p>
-
-              <p className="mt-0.5 text-xl font-extrabold leading-tight tracking-tight text-qc-navy sm:text-2xl">
-                Department of Radiology
-              </p>
-            </div>
-          </header>
+          <HospitalHeader
+            pageTitle={activeTabTitle[activeTab]}
+            className="mb-5"
+          />
 
           {/* =================================================
               DASHBOARD
@@ -691,24 +672,24 @@ export function DashboardShell({
                 className="flex flex-col gap-2 lg:flex-row lg:items-start"
               >
                 <div className="min-w-0 flex-1">
-                <DateRangeFilter
-                  currentPreset={filterPreset}
-                  startDate={customStart}
-                  endDate={customEnd}
-                  onPresetChange={handlePresetChange}
-                  onCustomRangeApply={handleCustomRangeApply}
-                  isPending={isKpiPending}
-                  selectedModality={selectedModality}
-                  onModalityChange={setSelectedModality}
-                  selectedTriage={selectedTriage}
-                  onTriageChange={setSelectedTriage}
-                />
+                  <DateRangeFilter
+                    currentPreset={filterPreset}
+                    startDate={customStart}
+                    endDate={customEnd}
+                    onPresetChange={handlePresetChange}
+                    onCustomRangeApply={handleCustomRangeApply}
+                    isPending={isKpiPending}
+                    selectedModality={selectedModality}
+                    onModalityChange={setSelectedModality}
+                    selectedTriage={selectedTriage}
+                    onTriageChange={setSelectedTriage}
+                  />
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setIsReportOpen(true)}
-                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-qc-navy px-4 text-xs font-extrabold text-white shadow-[0_6px_16px_rgba(5,14,64,0.18)] transition-colors hover:bg-qc-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-yellow"
+                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-qc-navy px-4 text-xs font-extrabold text-white shadow-[0_6px_16px_rgba(0,53,122,0.18)] transition-colors hover:bg-qc-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-yellow"
                 >
                   <FileText className="h-4 w-4 text-qc-yellow" />
                   Generate report
@@ -729,7 +710,7 @@ export function DashboardShell({
               >
                 {/* Total scans */}
 
-                <div className="group relative isolate flex min-h-[132px] flex-col items-center justify-center rounded-[24px] border border-qc-navy/20 bg-qc-navy px-5 py-4 text-center shadow-[0_10px_26px_rgba(5,14,64,0.10)] transition-all duration-300 hover:z-30 hover:-translate-y-1 hover:border-qc-blue/40 hover:shadow-[0_18px_34px_rgba(5,14,64,0.16)]">
+                <div className="group relative isolate flex min-h-[132px] flex-col items-center justify-center rounded-[24px] border border-qc-navy/20 bg-qc-navy px-5 py-4 text-center shadow-[0_10px_26px_rgba(0,53,122,0.10)] transition-all duration-300 hover:z-30 hover:-translate-y-1 hover:border-qc-blue/40 hover:shadow-[0_18px_34px_rgba(0,53,122,0.16)]">
                   <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]">
                     <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-qc-blue/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
 
@@ -740,7 +721,7 @@ export function DashboardShell({
 
                   <div className="relative z-10 flex w-full flex-col items-center">
                     <div className="mb-1.5 flex items-center justify-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_8px_rgba(242,203,73,0.55)] motion-safe:animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_8px_rgba(255,210,48,0.55)] motion-safe:animate-pulse" />
 
                       <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/75">
                         Total scans
@@ -751,7 +732,7 @@ export function DashboardShell({
                       {displayVolumeForCard}
                     </div>
 
-                    {/* Displays covered date range (e.g. "Oct 18 – Oct 24") */}
+                    {/* Displays covered date range */}
                     <KpiScope
                       dateLabel={dateRangeLabel}
                       scopeLabel={filterScopeSubtitle}
@@ -762,7 +743,7 @@ export function DashboardShell({
                   {/* Scan breakdown popover */}
 
                   <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-80 -translate-x-1/2 translate-y-1 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
-                    <div className="rounded-2xl border border-white/20 bg-[#061148]/95 p-3.5 text-left text-white shadow-[0_20px_50px_rgba(5,14,64,0.40)] backdrop-blur-xl">
+                    <div className="rounded-2xl border border-white/20 bg-[#003064]/95 p-3.5 text-left text-white shadow-[0_20px_50px_rgba(0,53,122,0.35)] backdrop-blur-xl">
                       <div className="mb-2.5 flex items-center justify-between border-b border-white/10 pb-2">
                         <span className="text-[13px] font-bold uppercase tracking-wider text-white/70">
                           Scans by Modality
@@ -778,8 +759,6 @@ export function DashboardShell({
                           const count =
                             activeVolumeByModality[m.code] ?? 0;
 
-                          // Share of every scan in this range and
-                          // patient category, so the rows add up to 100%.
                           const pct =
                             volumeBreakdownTotal > 0
                               ? Math.round(
@@ -854,7 +833,7 @@ export function DashboardShell({
                 {/* Average Turnaround Time */}
 
                 <div
-                  className={`${softCard} group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] px-5 py-4 text-center transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/15 hover:shadow-[0_16px_30px_rgba(24,41,140,0.09)]`}
+                  className={`${softCard} group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] px-5 py-4 text-center transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/15 hover:shadow-[0_16px_30px_rgba(0,53,122,0.09)]`}
                 >
                   <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-qc-blue/[0.055] opacity-70 blur-2xl transition-all duration-500 group-hover:scale-125 group-hover:opacity-100" />
 
@@ -892,7 +871,7 @@ export function DashboardShell({
                 {/* SLA compliance */}
 
                 <div
-                  className={`${softCard} group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] border-qc-blue/10 bg-[linear-gradient(145deg,#FFFFFF_0%,#F7F9FF_100%)] px-5 py-4 text-center transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/20 hover:shadow-[0_16px_30px_rgba(24,41,140,0.10)]`}
+                  className={`${softCard} group relative isolate flex min-h-[132px] flex-col items-center justify-center overflow-hidden rounded-[24px] border-qc-blue/10 bg-[linear-gradient(145deg,#FFFFFF_0%,#F7F9FF_100%)] px-5 py-4 text-center transition-all duration-300 hover:-translate-y-1 hover:border-qc-blue/20 hover:shadow-[0_16px_30px_rgba(0,53,122,0.10)]`}
                 >
                   <div className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 rounded-full bg-qc-blue/[0.055] transition-transform duration-500 group-hover:scale-125" />
 
@@ -925,7 +904,7 @@ export function DashboardShell({
                   className={`group relative isolate flex min-h-[132px] flex-col items-center justify-center rounded-[24px] border px-5 py-4 text-center transition-all duration-300 hover:z-30 ${
                     displayPendingForCard > 0
                       ? "border-orange-100 bg-[linear-gradient(145deg,#FFFDFC_0%,#FFF8F2_100%)] shadow-[0_6px_18px_rgba(234,88,12,0.045)] hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_16px_30px_rgba(234,88,12,0.09)]"
-                      : "border-border/80 bg-card shadow-[0_2px_8px_rgba(15,23,42,0.04)] hover:-translate-y-1 hover:border-qc-blue/15 hover:shadow-[0_16px_30px_rgba(24,41,140,0.08)]"
+                      : "border-border/80 bg-card shadow-[0_2px_8px_rgba(15,23,42,0.04)] hover:-translate-y-1 hover:border-qc-blue/15 hover:shadow-[0_16px_30px_rgba(0,53,122,0.08)]"
                   }`}
                 >
                   <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]">
@@ -968,6 +947,7 @@ export function DashboardShell({
                     >
                       Awaiting sign-off
                     </p>
+
                     {filterScopeSubtitle && (
                       <p className="mt-0.5 max-w-full break-words text-xs font-medium leading-snug text-muted-foreground">
                         {filterScopeSubtitle}
@@ -1092,13 +1072,9 @@ export function DashboardShell({
 
                   <div className="pointer-events-none absolute -bottom-20 -left-16 h-44 w-44 rounded-full bg-qc-blue/[0.04]" />
 
-                  <div className="relative">
-                    <p className={compactLabel}>
-                      Recent pulse
-                    </p>
-
+                  
                     <h2 className="mt-1 text-xl font-extrabold tracking-tight text-qc-navy">
-                      7-Day Turnaround Time
+                      7-DAY TURNAROUND TIME
                     </h2>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1111,7 +1087,7 @@ export function DashboardShell({
                         For all Modalities
                       </span>
                     </div>
-                  </div>
+                 
 
                   <div className="relative mt-9 text-center">
                     <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
@@ -1182,7 +1158,7 @@ export function DashboardShell({
 
               {/* 7-Day Turnaround Time performance */}
 
-              <section className="overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(24,41,140,0.05)]">
+              <section className="overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(0,53,122,0.05)]">
                 <div className="relative overflow-hidden border-b border-[#E4E8F1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-5 sm:px-6">
                   <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-qc-yellow/10" />
 
@@ -1190,11 +1166,11 @@ export function DashboardShell({
 
                   <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-3.5">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow shadow-[0_5px_14px_rgba(5,14,64,0.12)]">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-blue text-qc-yellow shadow-[0_5px_14px_rgba(0,53,122,0.12)]">
                         <BarChart3 className="h-5 w-5" />
                       </div>
 
-                      <h2 className="text-2xl font-extrabold tracking-tight text-qc-navy">
+                      <h2 className="text-2xl font-extrabold tracking-tight text-qc-blue">
                         7-DAY TURNAROUND TIME PERFORMANCE
                       </h2>
                     </div>
@@ -1202,7 +1178,7 @@ export function DashboardShell({
                     <button
                       type="button"
                       onClick={() => setActiveTab("examinations")}
-                      className="group inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[13px] font-extrabold text-qc-blue lg:min-h-0 shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-navy"
+                      className="group inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3.5 py-2 text-[13px] font-extrabold text-qc-blue lg:min-h-0 shadow-sm transition-all hover:border-qc-blue/10 hover:bg-white hover:text-qc-blue"
                     >
                       Open examinations
 
@@ -1223,7 +1199,7 @@ export function DashboardShell({
 
               {/* 12-Month Turnaround Time trend */}
 
-              <section className="overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(24,41,140,0.05)]">
+              <section className="overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(0,53,122,0.05)]">
                 <div className="relative overflow-hidden border-b border-[#E4E8F1] bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-5 py-5 sm:px-6">
                   <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-qc-yellow/10" />
 
@@ -1231,11 +1207,11 @@ export function DashboardShell({
 
                   <div className="relative flex items-center">
                     <div className="flex items-center gap-3.5">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow shadow-[0_5px_14px_rgba(5,14,64,0.12)]">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-blue text-qc-yellow shadow-[0_5px_14px_rgba(0,53,122,0.12)]">
                         <BarChart3 className="h-5 w-5" />
                       </div>
 
-                      <h2 className="text-2xl font-extrabold tracking-tight text-qc-navy">
+                      <h2 className="text-2xl font-extrabold tracking-tight text-qc-blue">
                         12-MONTH TURNAROUND TIME TREND
                       </h2>
                     </div>
@@ -1296,11 +1272,19 @@ function KpiScope({
 }) {
   const textClass =
     tone === "dark" ? "text-white/75" : "text-muted-foreground";
+
   return (
     <div className={`mt-2 max-w-full space-y-0.5 text-xs font-medium leading-snug ${textClass}`}>
       <p className="break-words">{dateLabel || "All time"}</p>
+
       {scopeLabel && (
-        <p className={`break-words font-bold ${tone === "dark" ? "text-qc-yellow" : "text-qc-navy/80"}`}>
+        <p
+          className={`break-words font-bold ${
+            tone === "dark"
+              ? "text-qc-yellow"
+              : "text-qc-navy/80"
+          }`}
+        >
           {scopeLabel}
         </p>
       )}

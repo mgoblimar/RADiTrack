@@ -1,10 +1,14 @@
+
 import { getPublicActivityData } from "@/app/actions";
+
 import {
   ArrowDownRight,
   ArrowUpRight,
   Minus,
   ShieldCheck,
 } from "lucide-react";
+
+import { HospitalHeader } from "@/components/navigation/HospitalHeader";
 import ModalityPieChart from "@/components/charts/ModalityPieChart";
 import AutoRefresh from "@/components/dashboard/AutoRefresh";
 
@@ -12,60 +16,56 @@ export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
 const tableColumns =
-  "grid-cols-[minmax(140px,2.5fr)_minmax(40px,1fr)_minmax(40px,1fr)_minmax(40px,1fr)_minmax(40px,1fr)_minmax(40px,1fr)_minmax(40px,1fr)]";
+  "grid-cols-[minmax(120px,2.5fr)_repeat(6,minmax(32px,1fr))]";
 
-/* =========================================================
-   MODALITY COLOR MAP DICTIONARY
-========================================================= */
 const MODALITY_ROW_COLORS: Record<
   string,
   { bg: string; badgeBg: string; badgeText: string; accentBorder: string }
 > = {
   XRAY: {
-    bg: "bg-[#18298C]/[0.05] hover:bg-[#18298C]/10",
-    badgeBg: "bg-[#18298C]",
+    bg: "bg-[#00357a]/[0.05]",
+    badgeBg: "bg-[#00357a]",
     badgeText: "text-white",
-    accentBorder: "border-l-4 border-l-[#18298C]",
+    accentBorder: "border-l-4 border-l-[#00357a]",
   },
   US: {
-    bg: "bg-[#F2CB49]/[0.12] hover:bg-[#F2CB49]/20",
-    badgeBg: "bg-[#F2CB49]",
-    badgeText: "text-[#050E40]",
-    accentBorder: "border-l-4 border-l-[#F2CB49]",
+    bg: "bg-[#ffd230]/[0.12]",
+    badgeBg: "bg-[#ffd230]",
+    badgeText: "text-[#00357a]",
+    accentBorder: "border-l-4 border-l-[#ffd230]",
   },
   CT: {
-    bg: "bg-[#A60808]/[0.05] hover:bg-[#A60808]/10",
-    badgeBg: "bg-[#A60808]",
+    bg: "bg-[#7a0000]/[0.05]",
+    badgeBg: "bg-[#7a0000]",
     badgeText: "text-white",
-    accentBorder: "border-l-4 border-l-[#A60808]",
+    accentBorder: "border-l-4 border-l-[#7a0000]",
   },
   MRI: {
-    bg: "bg-[#5267C7]/[0.07] hover:bg-[#5267C7]/15",
+    bg: "bg-[#5267C7]/[0.07]",
     badgeBg: "bg-[#5267C7]",
     badgeText: "text-white",
     accentBorder: "border-l-4 border-l-[#5267C7]",
   },
   MAMMO: {
-    bg: "bg-[#050E40]/[0.05] hover:bg-[#050E40]/10",
-    badgeBg: "bg-[#050E40]",
-    badgeText: "text-[#F2CB49]",
-    accentBorder: "border-l-4 border-l-[#050E40]",
+    bg: "bg-[#00357a]/[0.05]",
+    badgeBg: "bg-[#00357a]",
+    badgeText: "text-[#ffd230]",
+    accentBorder: "border-l-4 border-l-[#00357a]",
   },
 };
 
 const DEFAULT_ROW_COLOR = {
-  bg: "hover:bg-qc-blue/[0.015]",
-  badgeBg: "bg-qc-navy",
-  badgeText: "text-qc-yellow",
-  accentBorder: "border-l-4 border-l-qc-navy",
+  bg: "bg-white",
+  badgeBg: "bg-[#00357a]",
+  badgeText: "text-[#ffd230]",
+  accentBorder: "border-l-4 border-l-[#00357a]",
 };
 
 export default async function PatientActivityPage() {
   const data = await getPublicActivityData();
 
   const volumeDiff =
-    data.todayGrandTotal -
-    data.yesterdayGrandTotal;
+    data.todayGrandTotal - data.yesterdayGrandTotal;
 
   const diffLabel =
     volumeDiff > 0
@@ -75,307 +75,250 @@ export default async function PatientActivityPage() {
         : "Same as yesterday";
 
   return (
-    <main className="h-[100dvh] w-screen overflow-hidden bg-[#F4F6FA] text-qc-navy">
+    <main className="relative isolate h-[100dvh] w-full overflow-hidden overscroll-none bg-[#F4F6FA] text-qc-blue">
       <AutoRefresh intervalMs={10000} />
 
-      <div className="flex h-full min-h-0 flex-col">
+      {/* SHARED HOSPITAL BACKGROUND */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.34] saturate-[0.82]"
+          style={{ backgroundImage: "url('/qcgh-background.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-white/[0.34]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(247,249,252,0.08)_0%,rgba(247,249,252,0.02)_38%,rgba(247,249,252,0.16)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_4%,rgba(0,53,122,0.045),transparent_28%),radial-gradient(circle_at_92%_7%,rgba(255,210,0,0.055),transparent_26%)]" />
+      </div>
 
-        {/* =====================================================
-            HEADER
-        ===================================================== */}
+      <div className="pointer-events-none relative z-10 flex h-full min-h-0 select-none flex-col overflow-hidden p-3 sm:p-4 xl:p-5">
+        {/* HOSPITAL HEADER */}
+        <HospitalHeader
+          pageTitle="Patient TV"
+          asOfDate={data.asOfDate}
+          lastUpdatedTime={data.lastUpdatedTime}
+          variant="patient-display"
+          className="mb-3 shrink-0"
+        />
 
-        <header className="flex h-[70px] shrink-0 items-center justify-between border-b border-white/10 bg-qc-navy px-6 text-white shadow-[0_4px_16px_rgba(5,14,64,0.10)] xl:px-9">
+        <div className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col gap-3 overflow-hidden">
+          {/* DAILY EXAMINATION SUMMARY */}
+          <section className="grid shrink-0 grid-cols-12 gap-3">
+            {/* TODAY */}
+            <div className="relative col-span-12 flex h-[130px] items-center justify-between overflow-hidden rounded-[20px] border border-qc-yellow/40 bg-white px-5 shadow-[0_8px_26px_rgba(0,53,122,0.07)] lg:col-span-5 xl:px-8">
+              <div className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-qc-yellow/20 blur-2xl" />
+              <div className="pointer-events-none absolute bottom-0 right-24 h-24 w-24 rounded-full bg-qc-blue/[0.045] blur-xl" />
 
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-qc-blue text-qc-yellow shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-              <span className="text-base font-extrabold">
-                R
-              </span>
-            </div>
-
-            <div>
-              <p className="text-base font-extrabold tracking-tight">
-                RADiTrack
-              </p>
-
-              <p className="text-[11px] font-medium text-white/50">
-                QCGH · Department of Radiology
-              </p>
-            </div>
-
-          </div>
-
-          <div className="flex items-center gap-5">
-
-            <div className="hidden text-right md:block">
-
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-white/40">
-                AS OF TODAY
-              </p>
-
-              <p className="text-sm font-bold text-white">
-                {data.asOfDate}
-              </p>
-
-            </div>
-
-            <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.08] px-4 py-2 shadow-sm">
-
-              <span className="h-2.5 w-2.5 rounded-full bg-qc-red shadow-[0_0_0_3px_rgba(242,203,73,0.12)]" />
-
-              <span className="text-[11px] font-bold text-white">
-                Live · {data.lastUpdatedTime}
-              </span>
-
-            </div>
-
-          </div>
-        </header>
-
-        {/* =====================================================
-            CONTENT
-        ===================================================== */}
-
-        <div className="min-h-0 flex-1 overflow-hidden p-4 xl:p-5">
-
-          <div className="mx-auto flex h-full min-h-0 max-w-[1800px] flex-col gap-3">
-
-            {/* =================================================
-                SUMMARY
-            ================================================= */}
-
-            <section className="grid shrink-0 grid-cols-12 gap-3">
-
-              {/* TODAY */}
-              <div className="relative col-span-12 flex h-[138px] items-center justify-between overflow-hidden rounded-[22px] border border-qc-yellow/30 bg-white px-6 shadow-[0_8px_24px_rgba(5,14,64,0.06)] lg:col-span-5 xl:px-8">
-                <div className="pointer-events-none absolute -right-12 -top-14 h-36 w-36 rounded-full bg-qc-yellow/20" />
-                <div className="pointer-events-none absolute bottom-0 right-20 h-20 w-20 rounded-full bg-qc-blue/[0.04]" />
-
-                <div className="relative z-10 min-w-0">
-                  <p className="text-[21px] font-extrabold leading-tight tracking-tight text-qc-navy xl:text-[24px]">
-                    Today&apos;s Examinations
-                  </p>
-                  <p className="mt-2 text-[16px] font-bold leading-tight text-qc-blue xl:text-[18px]">
-                    All Imaging Modalities
-                  </p>
-                </div>
-
-                <div className="relative z-10 flex shrink-0 flex-col items-end">
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
-                    Total Examinations
-                  </p>
-                  <div className="flex h-[68px] min-w-[96px] items-center justify-center rounded-2xl bg-qc-yellow px-5 shadow-[0_8px_20px_rgba(242,203,73,0.22)] xl:h-[70px] xl:min-w-[110px]">
-                    <p className="whitespace-nowrap text-6xl font-black leading-none tracking-[-0.04em] text-qc-navy xl:text-7xl">
-                      {data.todayGrandTotal.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* YESTERDAY */}
-              <div className="relative col-span-12 flex h-[138px] items-center justify-between overflow-hidden rounded-[22px] border border-qc-blue/15 bg-white px-6 shadow-[0_8px_24px_rgba(5,14,64,0.06)] lg:col-span-3 xl:px-8">
-                <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-qc-blue/[0.05]" />
-                <div className="relative z-10">
-                  <p className="text-[17px] font-extrabold tracking-tight text-qc-navy xl:text-[20px]">
-                    Yesterday
-                  </p>
-                  <p className="mt-1.5 text-[14px] font-semibold text-slate-500 xl:text-[16px]">
-                    Previous 24 Hours
-                  </p>
-                </div>
-                <p className="relative z-10 whitespace-nowrap text-5xl font-extrabold leading-none tracking-tight text-qc-blue xl:text-6xl">
-                  {data.yesterdayGrandTotal.toLocaleString()}
+              <div className="relative z-10 min-w-0">
+                <p className="text-xl font-black leading-tight tracking-tight text-qc-blue sm:text-2xl xl:text-[28px]">
+                  Today&apos;s Examinations
+                </p>
+                <p className="mt-2 text-sm font-bold leading-tight text-qc-blue/75 sm:text-base xl:text-lg">
+                  All Imaging Modalities
                 </p>
               </div>
 
-              {/* DAY OVER DAY */}
-              <div className="relative col-span-12 flex h-[138px] items-center justify-between overflow-hidden rounded-[22px] border border-qc-blue/15 bg-white px-6 shadow-[0_8px_24px_rgba(5,14,64,0.06)] lg:col-span-4 xl:px-8">
-                <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-qc-yellow/[0.08]" />
-                <div className="relative z-10">
-                  <p className="text-[17px] font-extrabold tracking-tight text-qc-navy xl:text-[20px]">
-                    Day-Over-Day
-                  </p>
-                  <p className="mt-1.5 text-[14px] font-semibold text-slate-500 xl:text-[16px]">
-                    Compared with Yesterday
+              <div className="relative z-10 ml-3 flex shrink-0 flex-col items-end">
+                <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.14em] text-qc-blue/70 sm:text-[10px]">
+                  Total Examinations
+                </p>
+                <div className="flex h-[68px] min-w-[90px] items-center justify-center rounded-2xl bg-qc-yellow px-4 shadow-[0_8px_20px_rgba(255,210,48,0.24)] sm:h-[76px] sm:min-w-[104px]">
+                  <p className="whitespace-nowrap text-5xl font-black leading-none tracking-[-0.04em] text-qc-blue sm:text-6xl">
+                    {data.todayGrandTotal.toLocaleString()}
                   </p>
                 </div>
+              </div>
+            </div>
 
-                <div className="relative z-10 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    {volumeDiff > 0 ? (
-                      <ArrowUpRight className="h-7 w-7 text-qc-blue xl:h-8 xl:w-8" />
-                    ) : volumeDiff < 0 ? (
-                      <ArrowDownRight className="h-7 w-7 text-qc-red xl:h-8 xl:w-8" />
-                    ) : (
-                      <Minus className="h-7 w-7 text-qc-yellow xl:h-8 xl:w-8" />
-                    )}
+            {/* YESTERDAY */}
+            <div className="relative col-span-12 flex h-[130px] items-center justify-between overflow-hidden rounded-[20px] border border-qc-blue/15 bg-white px-5 shadow-[0_8px_26px_rgba(0,53,122,0.06)] lg:col-span-3 xl:px-7">
+              <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-qc-blue/[0.055] blur-xl" />
 
-                    <span
-                      className={`whitespace-nowrap text-5xl font-extrabold leading-none tracking-tight xl:text-6xl ${
-                        volumeDiff > 0
-                          ? "text-qc-blue"
-                          : volumeDiff < 0
-                            ? "text-qc-red"
-                            : "text-qc-yellow"
-                      }`}
+              <div className="relative z-10">
+                <p className="text-lg font-extrabold tracking-tight text-qc-blue sm:text-xl xl:text-[22px]">
+                  Yesterday
+                </p>
+                <p className="mt-2 text-xs font-semibold text-slate-500 sm:text-sm">
+                  Previous 24 Hours
+                </p>
+              </div>
+
+              <p className="relative z-10 whitespace-nowrap text-4xl font-black leading-none tracking-tight text-qc-blue sm:text-5xl xl:text-6xl">
+                {data.yesterdayGrandTotal.toLocaleString()}
+              </p>
+            </div>
+
+            {/* DAY-OVER-DAY */}
+            <div className="relative col-span-12 flex h-[130px] items-center justify-between overflow-hidden rounded-[20px] border border-qc-blue/15 bg-white px-5 shadow-[0_8px_26px_rgba(0,53,122,0.06)] lg:col-span-4 xl:px-7">
+              <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-qc-yellow/[0.10] blur-xl" />
+
+              <div className="relative z-10">
+                <p className="text-lg font-extrabold tracking-tight text-qc-blue sm:text-xl xl:text-[22px]">
+                  Day-Over-Day
+                </p>
+                <p className="mt-2 text-xs font-semibold text-slate-500 sm:text-sm">
+                  Compared with Yesterday
+                </p>
+              </div>
+
+              <div className="relative z-10 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  {volumeDiff > 0 ? (
+                    <ArrowUpRight className="h-6 w-6 text-qc-blue sm:h-7 sm:w-7" />
+                  ) : volumeDiff < 0 ? (
+                    <ArrowDownRight className="h-6 w-6 text-qc-red sm:h-7 sm:w-7" />
+                  ) : (
+                    <Minus className="h-6 w-6 text-qc-yellow sm:h-7 sm:w-7" />
+                  )}
+
+                  <span
+                    className={`whitespace-nowrap text-4xl font-black leading-none tracking-tight sm:text-5xl xl:text-6xl ${
+                      volumeDiff > 0
+                        ? "text-qc-blue"
+                        : volumeDiff < 0
+                          ? "text-qc-red"
+                          : "text-qc-blue"
+                    }`}
+                  >
+                    {volumeDiff > 0 ? "+" : ""}
+                    {volumeDiff.toLocaleString()}
+                  </span>
+                </div>
+
+                <p
+                  className={`mt-2 text-[9px] font-extrabold uppercase tracking-[0.1em] sm:text-[10px] ${
+                    volumeDiff < 0 ? "text-qc-red" : "text-slate-400"
+                  }`}
+                >
+                  {diffLabel}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* MAIN DISPLAY AREA */}
+          <section className="grid min-h-0 flex-1 grid-cols-12 gap-3 overflow-hidden">
+            {/* IMAGING ACTIVITIES TABLE */}
+            <div className="col-span-12 flex min-h-0 flex-col overflow-hidden rounded-[20px] border border-qc-blue/10 bg-white shadow-[0_8px_26px_rgba(0,53,122,0.055)] lg:col-span-8">
+              <div className="flex shrink-0 flex-col overflow-hidden">
+                {/* TABLE MAIN HEADER */}
+                <div
+                  className={`grid ${tableColumns} shrink-0 items-center border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F5F8FC_0%,#EDF3FA_65%,#FFF9E9_100%)]`}
+                >
+                  <div className="relative flex h-[50px] items-center overflow-hidden border-r border-slate-200/80 px-4 lg:px-6">
+                    <div className="pointer-events-none absolute -right-8 -top-12 h-24 w-24 rounded-full bg-qc-yellow/15" />
+                    <h2 className="relative z-10 text-base font-black tracking-tight text-qc-blue xl:text-lg">
+                      Imaging Activities
+                    </h2>
+                  </div>
+
+                  <div className="col-span-3 flex h-[50px] items-center justify-center gap-2 border-r border-slate-200/80 bg-qc-blue/[0.045] text-xs font-extrabold uppercase tracking-wider text-qc-blue xl:text-sm">
+                    <span className="h-2 w-2 rounded-full bg-qc-blue" />
+                    <span>Today</span>
+                  </div>
+
+                  <div className="col-span-3 flex h-[50px] items-center justify-center gap-2 bg-slate-50 text-xs font-extrabold uppercase tracking-wider text-slate-500 xl:text-sm">
+                    <span className="h-2 w-2 rounded-full bg-slate-400" />
+                    <span>Yesterday</span>
+                  </div>
+                </div>
+
+                {/* TABLE COLUMN HEADERS */}
+                <div
+                  className={`grid ${tableColumns} shrink-0 items-center border-b border-slate-200/70 bg-slate-50/70 px-4 py-2.5 text-[9px] font-extrabold uppercase tracking-[0.09em] text-qc-blue lg:px-6 xl:text-[10px]`}
+                >
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <span className="h-1.5 w-3 rounded-full border border-slate-300" />
+                    <span>Code &amp; Name</span>
+                  </div>
+
+                  <span className="text-right">OPD</span>
+                  <span className="text-right">IN</span>
+                  <span className="border-r border-slate-200/80 pr-2 text-right text-qc-red xl:pr-4">
+                    ER
+                  </span>
+                  <span className="pl-2 text-right text-slate-500 xl:pl-4">
+                    OPD
+                  </span>
+                  <span className="text-right text-slate-500">IN</span>
+                  <span className="text-right text-slate-500">ER</span>
+                </div>
+              </div>
+
+              {/* TABLE DATA ROWS - NO SCROLLING */}
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                {data.modalities.map((item) => {
+                  const modStyle =
+                    MODALITY_ROW_COLORS[item.modalityCode] ||
+                    DEFAULT_ROW_COLOR;
+
+                  return (
+                    <div
+                      key={item.modalityCode}
+                      className={`grid ${tableColumns} min-h-0 flex-1 items-center border-b border-slate-200/70 px-4 last:border-b-0 lg:px-6 ${modStyle.bg} ${modStyle.accentBorder}`}
                     >
-                      {volumeDiff > 0 ? "+" : ""}
-                      {volumeDiff.toLocaleString()}
-                    </span>
-                  </div>
+                      <div className="flex min-w-0 items-center gap-2 pr-2">
+                        <span
+                          className={`flex h-7 min-w-9 shrink-0 items-center justify-center rounded-lg px-1.5 text-[9px] font-extrabold shadow-sm xl:h-8 xl:min-w-10 xl:text-[10px] ${modStyle.badgeBg} ${modStyle.badgeText}`}
+                        >
+                          {item.modalityCode}
+                        </span>
 
-                  <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400 xl:text-[11px]">
-                    {diffLabel}
-                  </p>
-                </div>
-              </div>
-
-            </section>
-
-            {/* =================================================
-                MAIN CONTENT
-            ================================================= */}
-
-            <section className="grid min-h-0 flex-1 grid-cols-12 gap-3">
-
-              {/* =================================================
-                  IMAGING ACTIVITIES
-              ================================================= */}
-
-              <div className="col-span-12 flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-qc-blue/10 bg-white shadow-[0_8px_24px_rgba(5,14,64,0.05)] lg:col-span-8">
-                
-                {/* HORIZONTAL SCROLL WRAPPER FOR SMALL SCREENS */}
-                <div className="flex min-h-0 flex-1 flex-col overflow-x-auto">
-                  <div className="min-w-[620px] flex-1 flex flex-col">
-
-                    {/* TOP HEADER ROW: IMAGING ACTIVITIES | TODAY | YESTERDAY */}
-                    <div className={`grid ${tableColumns} shrink-0 items-center border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)]`}>
-                      <div className="relative flex h-[48px] items-center overflow-hidden border-r border-slate-200/80 px-4 lg:px-6">
-                        <div className="pointer-events-none absolute -right-8 -top-12 h-24 w-24 rounded-full bg-qc-yellow/10" />
-                        <h2 className="relative z-10 text-base font-extrabold tracking-tight text-qc-navy xl:text-lg">
-                          Imaging Activities
-                        </h2>
+                        <span className="truncate text-xs font-extrabold text-qc-blue sm:text-sm xl:text-[15px]">
+                          {item.modalityName}
+                        </span>
                       </div>
 
-                      <div className="col-span-3 flex h-[48px] items-center justify-center gap-1.5 border-r border-slate-200/80 bg-qc-blue/[0.03] text-xs font-extrabold uppercase tracking-wider text-qc-navy xl:text-sm">
-                        <span className="h-2 w-2 rounded-full bg-qc-blue" />
-                        <span>TODAY</span>
-                      </div>
+                      <span className="whitespace-nowrap text-right text-sm font-bold text-qc-blue sm:text-base xl:text-lg">
+                        {item.today.opd}
+                      </span>
+                      <span className="whitespace-nowrap text-right text-sm font-bold text-qc-blue sm:text-base xl:text-lg">
+                        {item.today.in}
+                      </span>
+                      <span className="whitespace-nowrap border-r border-slate-200/80 pr-2 text-right text-sm font-extrabold text-qc-red sm:text-base xl:pr-4 xl:text-lg">
+                        {item.today.er}
+                      </span>
 
-                      <div className="col-span-3 flex h-[48px] items-center justify-center gap-1.5 bg-slate-50 text-xs font-extrabold uppercase tracking-wider text-slate-500 xl:text-sm">
-                        <span className="h-2 w-2 rounded-full bg-slate-400" />
-                        <span>YESTERDAY</span>
-                      </div>
+                      <span className="whitespace-nowrap pl-2 text-right text-sm font-semibold text-slate-500 sm:text-base xl:pl-4 xl:text-lg">
+                        {item.yesterday.opd}
+                      </span>
+                      <span className="whitespace-nowrap text-right text-sm font-semibold text-slate-500 sm:text-base xl:text-lg">
+                        {item.yesterday.in}
+                      </span>
+                      <span className="whitespace-nowrap text-right text-sm font-semibold text-slate-500 sm:text-base xl:text-lg">
+                        {item.yesterday.er}
+                      </span>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
 
-                    {/* SUB-HEADER ROW: CODE & NAME | OPD | IN | ER | OPD | IN | ER */}
-                    <div className={`grid ${tableColumns} shrink-0 items-center border-b border-slate-200/70 bg-slate-50/60 px-4 lg:px-6 py-2 text-[9px] xl:text-[10px] font-extrabold uppercase tracking-[0.08em] text-qc-blue`}>
-                      <div className="flex items-center gap-2 text-slate-400">
-                        <span className="h-1.5 w-3 rounded-full border border-slate-300" />
-                        <span>Code & Name</span>
-                      </div>
+            {/* MODALITY DISTRIBUTION */}
+            <div className="col-span-12 flex min-h-0 flex-col overflow-hidden rounded-[20px] border border-qc-blue/10 bg-white shadow-[0_8px_26px_rgba(0,53,122,0.055)] lg:col-span-4">
+              <div className="relative flex h-[68px] shrink-0 items-center border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F5F8FC_0%,#EDF3FA_65%,#FFF9E9_100%)] px-6">
+                <div className="pointer-events-none absolute -right-8 -top-12 h-24 w-24 rounded-full bg-qc-yellow/15" />
 
-                      <span className="text-right">OPD</span>
-                      <span className="text-right">IN</span>
-                      <span className="text-right border-r border-slate-200/80 pr-2 xl:pr-4 text-qc-red">ER</span>
-
-                      <span className="text-right pl-2 xl:pl-4 text-slate-500">OPD</span>
-                      <span className="text-right text-slate-500">IN</span>
-                      <span className="text-right text-slate-500">ER</span>
-                    </div>
-
-                    {/* TABLE DATA ROWS */}
-                    <div className="min-h-0 flex-1 overflow-y-auto">
-                      <div className="flex h-full flex-col justify-between">
-                        {data.modalities.map((item) => {
-                          const modStyle =
-                            MODALITY_ROW_COLORS[item.modalityCode] || DEFAULT_ROW_COLOR;
-
-                          return (
-                            <div
-                              key={item.modalityCode}
-                              className={`grid ${tableColumns} min-h-[52px] flex-1 items-center border-b border-slate-200/70 px-4 lg:px-6 last:border-b-0 transition-colors ${modStyle.bg} ${modStyle.accentBorder}`}
-                            >
-                              {/* BADGE & NAME */}
-                              <div className="flex min-w-0 items-center gap-2 lg:gap-3 pr-2">
-                                <span className={`flex h-7 min-w-9 xl:h-8 xl:min-w-11 shrink-0 items-center justify-center rounded-lg px-1.5 text-[10px] xl:text-[11px] font-extrabold shadow-sm ${modStyle.badgeBg} ${modStyle.badgeText}`}>
-                                  {item.modalityCode}
-                                </span>
-                                <span className="truncate text-xs font-extrabold text-qc-navy lg:text-sm xl:text-[15px]">
-                                  {item.modalityName}
-                                </span>
-                              </div>
-
-                              {/* TODAY VALUES */}
-                              <span className="whitespace-nowrap text-right text-sm font-bold text-qc-blue lg:text-base xl:text-lg">
-                                {item.today.opd}
-                              </span>
-                              <span className="whitespace-nowrap text-right text-sm font-bold text-qc-blue lg:text-base xl:text-lg">
-                                {item.today.in}
-                              </span>
-                              <span className="whitespace-nowrap text-right text-sm font-extrabold border-r border-slate-200/80 pr-2 xl:pr-4 text-qc-red lg:text-base xl:text-lg">
-                                {item.today.er}
-                              </span>
-
-                              {/* YESTERDAY VALUES */}
-                              <span className="whitespace-nowrap text-right text-sm font-semibold pl-2 xl:pl-4 text-slate-500 lg:text-base xl:text-lg">
-                                {item.yesterday.opd}
-                              </span>
-                              <span className="whitespace-nowrap text-right text-sm font-semibold text-slate-500 lg:text-base xl:text-lg">
-                                {item.yesterday.in}
-                              </span>
-                              <span className="whitespace-nowrap text-right text-sm font-semibold text-slate-500 lg:text-base xl:text-lg">
-                                {item.yesterday.er}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-
+                <h2 className="relative z-10 text-xl font-black tracking-tight text-qc-blue xl:text-2xl">
+                  Modality Distribution Today
+                </h2>
               </div>
 
-              {/* =================================================
-                  MODALITY DISTRIBUTION
-              ================================================= */}
-
-              <div className="col-span-12 flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-qc-blue/10 bg-white shadow-[0_8px_24px_rgba(5,14,64,0.05)] lg:col-span-4">
-                <div className="relative flex h-[60px] shrink-0 items-center border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-6">
-                  <div className="pointer-events-none absolute -right-8 -top-12 h-24 w-24 rounded-full bg-qc-yellow/10" />
-                  <h2 className="relative z-10 text-xl font-extrabold tracking-tight text-qc-navy">
-                    Modality Distribution Today
-                  </h2>
-                </div>
-
-                <div className="flex min-h-0 flex-1 flex-col p-2 xl:p-3">
-                  <ModalityPieChart modalities={data.modalities} />
-                </div>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 xl:p-4">
+                <ModalityPieChart modalities={data.modalities} />
               </div>
+            </div>
+          </section>
 
-            </section>
-
-            {/* =================================================
-                FOOTER
-            ================================================= */}
-
-            <footer className="flex h-[28px] shrink-0 items-center justify-between px-1 text-[9px] font-semibold text-slate-400 xl:text-[10px]">
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5 text-qc-blue" />
-                <span>
-                  Public display · No patient-identifiable information
-                </span>
-              </div>
-
+          {/* FOOTER */}
+          <footer className="flex h-[26px] shrink-0 items-center justify-between px-1 text-[9px] font-semibold text-slate-400 xl:text-[10px]">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-3.5 w-3.5 text-qc-blue" />
               <span>
-                Auto-refresh · 10 sec
+                Public display · No patient-identifiable information
               </span>
-            </footer>
+            </div>
 
-          </div>
+            <span>Auto-refresh · 10 sec</span>
+          </footer>
         </div>
       </div>
     </main>
