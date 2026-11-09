@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+
 import {
-  Activity,
   ChevronRight,
   FileSpreadsheet,
   LayoutDashboard,
@@ -70,34 +70,17 @@ export function Sidebar({
           MOBILE HEADER
       ===================================================== */}
 
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-qc-navy px-4 py-3 lg:hidden">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-qc-blue text-qc-yellow shadow-[0_5px_14px_rgba(24,41,140,0.24)]">
-            <div className="pointer-events-none absolute -right-2 -top-2 h-5 w-5 rounded-full bg-qc-yellow/10" />
-
-            <Activity
-              className="relative h-[18px] w-[18px]"
-              strokeWidth={2.2}
-            />
-          </div>
-
-          <div>
-            <p className="text-sm font-extrabold tracking-tight text-white">
-              RADiTrack
-            </p>
-
-            <p className="text-[10px] font-medium text-white/40">
-              Radiology Operations
-            </p>
-          </div>
-        </div>
+      <div className="sticky top-0 z-40 flex h-[64px] items-center justify-center border-b border-white/10 bg-qc-blue px-4 lg:hidden">
+        <h1 className="text-[23px] font-black tracking-[-0.055em] text-white">
+          RADiTrack
+        </h1>
 
         <button
           type="button"
           onClick={() =>
             setIsMobileOpen((previous) => !previous)
           }
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 text-white/50 transition-all duration-200 hover:border-white/10 hover:bg-white/10 hover:text-white active:scale-95"
+          className="absolute right-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/75 transition-all hover:bg-white/10 hover:text-qc-yellow active:scale-95"
           aria-label={
             isMobileOpen
               ? "Close navigation"
@@ -122,7 +105,7 @@ export function Sidebar({
           type="button"
           aria-label="Close navigation"
           onClick={() => setIsMobileOpen(false)}
-          className="fixed inset-0 z-40 bg-qc-navy/50 backdrop-blur-[3px] lg:hidden"
+          className="fixed inset-0 z-40 bg-qc-blue/60 backdrop-blur-[3px] lg:hidden"
         />
       )}
 
@@ -131,7 +114,7 @@ export function Sidebar({
       ===================================================== */}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden border-r border-white/[0.08] bg-qc-navy transition-all duration-300 ease-out ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden border-r border-white/[0.15] bg-qc-blue shadow-[8px_0_30px_rgba(0,35,82,0.12)] transition-all duration-300 ease-out ${
           isMobileOpen
             ? "w-72 translate-x-0"
             : "-translate-x-full lg:translate-x-0"
@@ -143,79 +126,67 @@ export function Sidebar({
       >
         {/* Background accents */}
 
-        <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-qc-blue/[0.12] blur-3xl" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-white/[0.055] blur-3xl"
+        />
 
-        <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-qc-yellow/[0.035] blur-3xl" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-qc-yellow/[0.06] blur-3xl"
+        />
 
         {/* ===================================================
             RADiTrack BRAND
-            Official hospital logos are shown in the main header.
+            Large centered text branding.
         =================================================== */}
 
         <div
-          className={`relative flex shrink-0 border-b border-white/[0.08] ${
+          className={`relative flex shrink-0 items-center justify-center border-b border-white/[0.15] ${
             isCollapsed
-              ? "h-[76px] items-center justify-center px-2"
-              : "items-center justify-between px-4 py-4"
+              ? "h-[76px] px-2"
+              : "h-[88px] px-4"
           }`}
         >
           {isCollapsed ? (
-            <div className="relative flex items-center justify-center">
-              <div className="group relative flex h-11 w-11 items-center justify-center rounded-2xl bg-qc-blue text-qc-yellow shadow-[0_7px_18px_rgba(24,41,140,0.28)] transition-all duration-200 hover:scale-[1.03] hover:shadow-[0_8px_22px_rgba(24,41,140,0.34)]">
-                <div className="pointer-events-none absolute -right-2 -top-2 h-6 w-6 rounded-full bg-qc-yellow/10" />
-
-                <Activity
-                  className="relative h-5 w-5"
-                  strokeWidth={2.2}
-                />
-              </div>
-
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-qc-yellow ring-2 ring-qc-navy" />
-            </div>
+            <span
+              title="RADiTrack"
+              aria-label="RADiTrack"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.09] text-xl font-black tracking-tighter text-white"
+            >
+              R
+            </span>
           ) : (
-            <>
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-qc-blue text-qc-yellow shadow-[0_7px_18px_rgba(24,41,140,0.28)]">
-                  <div className="pointer-events-none absolute -right-3 -top-3 h-7 w-7 rounded-full bg-qc-yellow/10" />
+            <h2 className="text-center text-[25px] font-black tracking-[-0.065em] text-white sm:text-[27px]">
+              RADiTrack
+            </h2>
+          )}
 
-                  <Activity
-                    className="relative h-5 w-5"
-                    strokeWidth={2.2}
-                  />
-                </div>
+          {/* Desktop collapse button */}
 
-                <div className="min-w-0">
-                  <h2 className="truncate text-[15px] font-extrabold tracking-tight text-white">
-                    RADiTrack
-                  </h2>
+          {!isCollapsed && onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="absolute right-3 hidden h-8 w-8 items-center justify-center rounded-lg border border-white/[0.12] bg-white/[0.035] text-white/65 transition-all duration-200 hover:border-white/25 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95 lg:flex"
+              title="Collapse sidebar"
+              aria-label="Collapse sidebar"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          )}
 
-                  <p className="mt-0.5 truncate text-[10px] font-medium tracking-wide text-white/40">
-                    Radiology Operations
-                  </p>
-                </div>
-              </div>
+          {/* Mobile close button */}
 
-              {onToggleCollapse && (
-                <button
-                  type="button"
-                  onClick={onToggleCollapse}
-                  className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] text-white/35 transition-all duration-200 hover:border-white/10 hover:bg-white/[0.07] hover:text-white active:scale-95 lg:flex"
-                  title="Collapse sidebar"
-                  aria-label="Collapse sidebar"
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setIsMobileOpen(false)}
-                className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] text-white/35 transition-all duration-200 hover:border-white/10 hover:bg-white/[0.07] hover:text-white active:scale-95 lg:hidden"
-                aria-label="Close navigation"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </>
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={() => setIsMobileOpen(false)}
+              className="absolute right-3 flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.12] text-white/65 transition-all hover:bg-white/[0.12] hover:text-white active:scale-95 lg:hidden"
+              aria-label="Close navigation"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
         </div>
 
@@ -224,11 +195,11 @@ export function Sidebar({
         =================================================== */}
 
         {isCollapsed && onToggleCollapse && (
-          <div className="relative flex justify-center border-b border-white/[0.06] px-2 py-2">
+          <div className="relative flex justify-center border-b border-white/[0.12] px-2 py-2">
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-white/30 transition-all duration-200 hover:bg-white/[0.07] hover:text-white active:scale-95"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-white/65 transition-all duration-200 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95"
               title="Expand sidebar"
               aria-label="Expand sidebar"
             >
@@ -241,9 +212,9 @@ export function Sidebar({
             PRIMARY NAVIGATION
         =================================================== */}
 
-        <div className="relative flex-1 overflow-y-auto px-3 py-5">
+        <div className="relative flex-1 overflow-y-auto px-3 py-6">
           <nav
-            className="space-y-2"
+            className="space-y-2.5"
             aria-label="Primary navigation"
           >
             {navItems.map((item) => {
@@ -259,22 +230,24 @@ export function Sidebar({
                   aria-current={
                     isActive ? "page" : undefined
                   }
-                  className={`group relative flex w-full items-center rounded-2xl border transition-all duration-200 ${
+                  className={`group relative flex min-h-[54px] w-full items-center rounded-2xl border transition-all duration-200 ${
                     isCollapsed
-                      ? "h-12 justify-center"
+                      ? "h-[52px] justify-center px-1"
                       : "justify-between px-3 py-2.5"
                   } ${
                     isActive
-                      ? "border-white/[0.08] bg-white/[0.09] text-white shadow-[0_6px_18px_rgba(0,0,0,0.10)]"
-                      : "border-transparent text-white/50 hover:border-white/[0.05] hover:bg-white/[0.045] hover:text-white"
+                      ? "border-white/[0.20] bg-white/[0.13] text-white shadow-[0_6px_18px_rgba(0,0,0,0.10)]"
+                      : "border-transparent text-white/75 hover:border-white/[0.09] hover:bg-white/[0.07] hover:text-white"
                   }`}
                 >
+                  {/* Active indicator */}
+
                   {isActive && (
                     <span
-                      className={`absolute rounded-full bg-qc-yellow shadow-[0_0_10px_rgba(242,203,73,0.42)] ${
+                      className={`absolute rounded-full bg-qc-yellow shadow-[0_0_12px_rgba(255,210,48,0.50)] ${
                         isCollapsed
-                          ? "left-0 top-1/2 h-7 w-[3px] -translate-y-1/2"
-                          : "bottom-2.5 left-0 top-2.5 w-[3px]"
+                          ? "left-0 top-1/2 h-8 w-[4px] -translate-y-1/2"
+                          : "bottom-2.5 left-0 top-2.5 w-[4px]"
                       }`}
                     />
                   )}
@@ -286,33 +259,29 @@ export function Sidebar({
                         : "gap-3"
                     }`}
                   >
+                    {/* Navigation icon */}
+
                     <div
-                      className={`flex shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${
-                        isCollapsed
-                          ? "h-10 w-10"
-                          : "h-9 w-9"
-                      } ${
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${
                         isActive
-                          ? "bg-qc-yellow text-qc-navy shadow-[0_5px_12px_rgba(242,203,73,0.16)]"
-                          : "bg-white/[0.045] text-white/40 group-hover:bg-white/[0.075] group-hover:text-qc-yellow group-active:scale-95"
+                          ? "bg-qc-yellow text-qc-blue shadow-[0_4px_12px_rgba(255,210,48,0.22)]"
+                          : "bg-white/[0.09] text-white/75 group-hover:bg-white/[0.16] group-hover:text-qc-yellow group-active:scale-95"
                       }`}
                     >
                       <Icon
-                        className={
-                          isCollapsed
-                            ? "h-[18px] w-[18px]"
-                            : "h-[17px] w-[17px]"
-                        }
+                        className="h-[19px] w-[19px]"
                         strokeWidth={2.1}
                       />
                     </div>
 
+                    {/* Navigation label */}
+
                     {!isCollapsed && (
                       <span
-                        className={`truncate text-[13px] font-semibold transition-colors ${
+                        className={`truncate text-[14px] font-bold tracking-[0.005em] transition-colors ${
                           isActive
                             ? "text-white"
-                            : "text-white/60 group-hover:text-white"
+                            : "text-white/80 group-hover:text-white"
                         }`}
                       >
                         {item.label}
@@ -320,28 +289,34 @@ export function Sidebar({
                     )}
                   </div>
 
+                  {/* Pending examinations badge */}
+
                   {!isCollapsed &&
                     item.id === "examinations" &&
                     pendingCount > 0 && (
                       <span
-                        className={`flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-4 ${
+                        className={`flex min-w-7 items-center justify-center rounded-full px-2 py-1 text-[11px] font-extrabold leading-none ${
                           isActive
-                            ? "bg-qc-yellow text-qc-navy"
-                            : "bg-qc-orange text-white shadow-[0_3px_8px_rgba(0,0,0,0.12)]"
+                            ? "bg-qc-yellow text-qc-blue"
+                            : "bg-qc-red text-white shadow-[0_3px_8px_rgba(0,0,0,0.16)]"
                         }`}
                       >
                         {pendingCount}
                       </span>
                     )}
 
+                  {/* Active navigation arrow */}
+
                   {!isCollapsed && isActive && (
-                    <ChevronRight className="ml-2 h-3.5 w-3.5 shrink-0 text-white/25 transition-transform duration-200 group-hover:translate-x-0.5" />
+                    <ChevronRight className="ml-2 h-4 w-4 shrink-0 text-white/70 transition-transform duration-200 group-hover:translate-x-0.5" />
                   )}
+
+                  {/* Collapsed pending badge */}
 
                   {isCollapsed &&
                     item.id === "examinations" &&
                     pendingCount > 0 && (
-                      <span className="absolute right-0.5 top-0.5 flex min-w-[17px] items-center justify-center rounded-full bg-qc-orange px-1 text-[8px] font-extrabold leading-4 text-white shadow-[0_3px_8px_rgba(0,0,0,0.16)]">
+                      <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-qc-red px-1 text-[9px] font-extrabold leading-4 text-white shadow-[0_3px_8px_rgba(0,0,0,0.16)]">
                         {pendingCount}
                       </span>
                     )}
@@ -355,29 +330,29 @@ export function Sidebar({
           ================================================= */}
 
           <div
-            className={`my-5 border-t border-white/[0.07] ${
+            className={`my-6 border-t border-white/[0.15] ${
               isCollapsed ? "mx-1" : ""
             }`}
           />
 
           {!isCollapsed && (
-            <p className="mb-3 px-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/25">
+            <p className="mb-3 px-3 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/60">
               Tools
             </p>
           )}
 
-          <div className="space-y-2">
-            {/* Patient TV Display */}
+          <div className="space-y-2.5">
+            {/* Patient TV */}
 
             <Link
               href="/patient"
               target="_blank"
               rel="noreferrer"
               onClick={() => setIsMobileOpen(false)}
-              title="Patient TV Display"
-              className={`group relative flex w-full items-center rounded-2xl border border-transparent text-white/50 transition-all duration-200 hover:border-white/[0.05] hover:bg-white/[0.045] hover:text-white ${
+              title="Patient TV"
+              className={`group relative flex min-h-[54px] w-full items-center rounded-2xl border border-transparent text-white/75 transition-all duration-200 hover:border-white/[0.09] hover:bg-white/[0.07] hover:text-white ${
                 isCollapsed
-                  ? "h-12 justify-center"
+                  ? "h-[52px] justify-center px-1"
                   : "justify-between px-3 py-2.5"
               }`}
             >
@@ -388,37 +363,31 @@ export function Sidebar({
                     : "gap-3"
                 }`}
               >
-                <div
-                  className={`relative flex shrink-0 items-center justify-center rounded-xl bg-white/[0.035] text-white/35 transition-all duration-200 group-hover:bg-white/[0.07] group-hover:text-qc-yellow group-active:scale-95 ${
-                    isCollapsed
-                      ? "h-10 w-10"
-                      : "h-9 w-9"
-                  }`}
-                >
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.09] text-white/75 transition-all duration-200 group-hover:bg-white/[0.16] group-hover:text-qc-yellow group-active:scale-95">
                   <Tv
-                    className="h-[17px] w-[17px]"
+                    className="h-[19px] w-[19px]"
                     strokeWidth={2.1}
                   />
 
                   {!isCollapsed && (
-                    <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_7px_rgba(242,203,73,0.45)]" />
+                    <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_7px_rgba(255,210,48,0.45)]" />
                   )}
                 </div>
 
                 {!isCollapsed && (
-                  <span className="truncate text-[13px] font-semibold transition-colors group-hover:text-white">
-                    Patient TV Display
+                  <span className="truncate text-[14px] font-bold tracking-[0.005em] transition-colors group-hover:text-white">
+                    Patient TV
                   </span>
                 )}
               </div>
 
               {!isCollapsed && (
                 <span className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25 transition-colors group-hover:text-white/40">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 transition-colors group-hover:text-qc-yellow">
                     Live
                   </span>
 
-                  <ChevronRight className="h-3.5 w-3.5 text-white/20 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  <ChevronRight className="h-4 w-4 text-white/50 transition-transform duration-200 group-hover:translate-x-0.5" />
                 </span>
               )}
             </Link>
@@ -429,9 +398,9 @@ export function Sidebar({
               href="/simulator"
               onClick={() => setIsMobileOpen(false)}
               title="RIS Simulator"
-              className={`group relative flex w-full items-center rounded-2xl border border-transparent text-white/50 transition-all duration-200 hover:border-white/[0.05] hover:bg-white/[0.045] hover:text-white ${
+              className={`group relative flex min-h-[54px] w-full items-center rounded-2xl border border-transparent text-white/75 transition-all duration-200 hover:border-white/[0.09] hover:bg-white/[0.07] hover:text-white ${
                 isCollapsed
-                  ? "h-12 justify-center"
+                  ? "h-[52px] justify-center px-1"
                   : "justify-between px-3 py-2.5"
               }`}
             >
@@ -442,28 +411,22 @@ export function Sidebar({
                     : "gap-3"
                 }`}
               >
-                <div
-                  className={`flex shrink-0 items-center justify-center rounded-xl bg-white/[0.035] text-white/35 transition-all duration-200 group-hover:bg-white/[0.07] group-hover:text-qc-yellow group-active:scale-95 ${
-                    isCollapsed
-                      ? "h-10 w-10"
-                      : "h-9 w-9"
-                  }`}
-                >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.09] text-white/75 transition-all duration-200 group-hover:bg-white/[0.16] group-hover:text-qc-yellow group-active:scale-95">
                   <Radio
-                    className="h-[17px] w-[17px]"
+                    className="h-[19px] w-[19px]"
                     strokeWidth={2.1}
                   />
                 </div>
 
                 {!isCollapsed && (
-                  <span className="truncate text-[13px] font-semibold transition-colors group-hover:text-white">
+                  <span className="truncate text-[14px] font-bold tracking-[0.005em] transition-colors group-hover:text-white">
                     RIS Simulator
                   </span>
                 )}
               </div>
 
               {!isCollapsed && (
-                <ChevronRight className="h-3.5 w-3.5 text-white/20 transition-transform duration-200 group-hover:translate-x-0.5" />
+                <ChevronRight className="h-4 w-4 text-white/50 transition-transform duration-200 group-hover:translate-x-0.5" />
               )}
             </Link>
           </div>
@@ -473,52 +436,52 @@ export function Sidebar({
             USER PROFILE
         =================================================== */}
 
-        <div className="relative shrink-0 border-t border-white/[0.08] bg-black/[0.10] p-3">
+        <div className="relative shrink-0 border-t border-white/[0.15] bg-black/[0.10] p-3">
           {isCollapsed ? (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => handleTabChange("config")}
                 title="Dr. Test Radiologist"
                 className="group relative"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-qc-blue/60 bg-qc-blue text-qc-yellow shadow-[0_5px_12px_rgba(24,41,140,0.18)] transition-all duration-200 group-hover:border-qc-yellow group-hover:shadow-[0_6px_16px_rgba(242,203,73,0.12)] group-active:scale-95">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow shadow-[0_5px_12px_rgba(0,0,0,0.12)] transition-all duration-200 group-hover:border-qc-yellow group-hover:bg-white/[0.16] group-active:scale-95">
                   <User
-                    className="h-4 w-4"
+                    className="h-[18px] w-[18px]"
                     strokeWidth={2.1}
                   />
                 </div>
 
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-qc-yellow ring-2 ring-qc-navy" />
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-qc-blue" />
               </button>
 
               <button
                 type="button"
                 onClick={() => handleTabChange("config")}
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-white/30 transition-all duration-200 hover:bg-white/[0.07] hover:text-white active:scale-95"
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-white/65 transition-all duration-200 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95"
                 title="Settings"
                 aria-label="Open settings"
               >
                 <Settings
-                  className="h-4 w-4"
+                  className="h-[18px] w-[18px]"
                   strokeWidth={2.1}
                 />
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 rounded-2xl border border-white/[0.07] bg-white/[0.035] p-2.5 transition-colors hover:bg-white/[0.05]">
+            <div className="flex items-center gap-2.5 rounded-2xl border border-white/[0.15] bg-white/[0.07] p-2.5 transition-colors hover:bg-white/[0.11]">
               <button
                 type="button"
                 onClick={() => handleTabChange("config")}
-                className="group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-qc-blue/60 bg-qc-blue text-qc-yellow shadow-[0_5px_12px_rgba(24,41,140,0.18)] transition-all duration-200 hover:border-qc-yellow hover:shadow-[0_6px_16px_rgba(242,203,73,0.12)] active:scale-95"
+                className="group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow shadow-[0_5px_12px_rgba(0,0,0,0.12)] transition-all duration-200 hover:border-qc-yellow hover:bg-white/[0.16] active:scale-95"
                 title="Dr. Test Radiologist"
               >
                 <User
-                  className="h-4 w-4"
+                  className="h-[18px] w-[18px]"
                   strokeWidth={2.1}
                 />
 
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-qc-yellow ring-2 ring-qc-navy" />
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-qc-blue" />
               </button>
 
               <button
@@ -527,14 +490,14 @@ export function Sidebar({
                 className="min-w-0 flex-1 text-left"
                 title="Open profile settings"
               >
-                <div className="truncate text-xs font-bold text-white">
+                <div className="truncate text-[13px] font-extrabold text-white">
                   Dr. Test Radiologist
                 </div>
 
-                <div className="mt-0.5 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-qc-yellow" />
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
 
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/30">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.09em] text-white/65">
                     Online
                   </span>
                 </div>
@@ -543,12 +506,12 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={() => handleTabChange("config")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white/30 transition-all duration-200 hover:bg-white/[0.07] hover:text-white active:scale-95"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white/65 transition-all duration-200 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95"
                 title="Settings"
                 aria-label="Open settings"
               >
                 <Settings
-                  className="h-4 w-4"
+                  className="h-[18px] w-[18px]"
                   strokeWidth={2.1}
                 />
               </button>

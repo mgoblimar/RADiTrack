@@ -36,15 +36,29 @@ export interface ModalityTatDisplayItem {
 }
 
 /* =========================================================
-   RADiTrack palette
+   RADiTrack OFFICIAL BRAND PALETTE
+
+   Blue:   #00357a
+   Red:    #7a0000
+   Yellow: #ffd230
+
+   QC_NAVY is retained as a compatibility alias for
+   existing chart components that import the old constant.
 ========================================================= */
-export const QC_NAVY = "#050E40";
-export const QC_BLUE = "#18298C";
-export const QC_YELLOW = "#F2CB49";
-export const QC_RED = "#A60808";
+
+export const QC_NAVY = "#00357a";
+export const QC_BLUE = "#00357a";
+export const QC_YELLOW = "#ffd230";
+export const QC_RED = "#7a0000";
+
+// Neutral chart colors
 export const QC_MUTED = "#94A3B8";
 export const QC_GRID = "#E2E8F0";
 export const QC_EMPTY = "#CBD5E1";
+
+/* =========================================================
+   TEMPORAL LABELS
+========================================================= */
 
 export const TEMPORAL_LABELS: Record<ExtendedTemporalPeriod, string> = {
   ALL: "All time",
