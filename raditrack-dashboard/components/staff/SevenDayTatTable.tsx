@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useEffect,
   useMemo,
   useState,
@@ -19,6 +20,14 @@ import {
   Layers,
 } from "lucide-react";
 
+interface CategoryDay {
+  totalExams: number;
+  finalizedCount: number;
+  pendingCount: number;
+  avgTatMinutes: number;
+  avgTatHours: number;
+}
+
 interface DayRow {
   dayLabel: string;
   formattedDate: string;
@@ -31,6 +40,8 @@ interface DayRow {
   pendingCount: number;
   avgTatMinutes: number;
   avgTatHours: number;
+  /** Per patient category; missing on data from before this field existed. */
+  byCategory?: Record<"OPD" | "IN" | "ER", CategoryDay>;
 }
 
 interface ModalityAnalytics {
@@ -81,6 +92,13 @@ const MODALITY_TABS = [
   { key: ModalityCode.MRI, label: "MRI" },
 ];
 
+/** Sub-row order and labels, as in the proposal's 7-day table. */
+const CATEGORY_SUB_ROWS = [
+  { key: "OPD", label: "a. OPD", columnIndex: 0 },
+  { key: "IN", label: "b. IN", columnIndex: 1 },
+  { key: "ER", label: "c. ER", columnIndex: 2 },
+] as const;
+
 const CATEGORY_COLUMNS = [
   {
     key: "opdCount",
@@ -127,6 +145,9 @@ export function SevenDayTatTable({
 
   // Off by default; shows the previous 7 days next to the current table.
   const [showPrevious, setShowPrevious] = useState(false);
+
+  // Off by default; adds OPD / IN / ER sub-rows under each day.
+  const [showCategoryRows, setShowCategoryRows] = useState(false);
 
   /* =========================================================
      Analytics: always the latest 7 days (ending today), the same
@@ -310,6 +331,22 @@ export function SevenDayTatTable({
                 </div>
               ))}
             </dl>
+            {showCategoryRows && row.byCategory && (
+              <ul className="mt-2 space-y-1 border-t border-border pt-2 text-xs">
+                {CATEGORY_SUB_ROWS.map((category) => {
+                  const values = row.byCategory![category.key];
+                  return (
+                    <li key={category.key} className="flex items-center justify-between gap-2">
+                      <span className="font-extrabold text-muted-foreground">{category.label}</span>
+                      <span className="font-mono text-qc-navy">
+                        {values.totalExams} exams · {values.finalizedCount} signed · {values.pendingCount} pending ·{" "}
+                        <strong>{values.finalizedCount > 0 ? `${values.avgTatHours} hrs` : "—"}</strong>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </li>
         ))}
         <li className="rounded-2xl border border-qc-navy/15 bg-qc-navy/[0.04] p-3.5">
@@ -416,8 +453,8 @@ export function SevenDayTatTable({
                 ];
 
                 return (
+                  <Fragment key={`${row.isoDate}-${row.dayLabel}`}>
                   <tr
-                    key={`${row.isoDate}-${row.dayLabel}`}
                     className={`transition-colors ${
                       isToday
                         ? "bg-qc-yellow/10"
@@ -500,6 +537,18 @@ export function SevenDayTatTable({
                       )}
                     </td>
                   </tr>
+                  {showCategoryRows &&
+                    row.byCategory &&
+                    CATEGORY_SUB_ROWS.map((category) => (
+                      <CategorySubRow
+                        key={category.key}
+                        label={category.label}
+                        columnIndex={category.columnIndex}
+                        values={row.byCategory![category.key]}
+                        isPrior={isPrior}
+                      />
+                    ))}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -624,6 +673,15 @@ export function SevenDayTatTable({
             accentColor={QC_BLUE}
             swatch={<span className="h-2 w-2 rounded-full bg-qc-blue" />}
           />
+
+          {/* OPD / IN / ER detail under each day */}
+          <CompareToggle
+            label="Show OPD / IN / ER rows"
+            checked={showCategoryRows}
+            onChange={() => setShowCategoryRows((previous) => !previous)}
+            accentColor="#050E40"
+            title="Signed, pending and average TAT for each patient category"
+          />
           </div>
         </div>
       </div>
@@ -686,8 +744,109 @@ export function SevenDayTatTable({
             </div>
           )}
         </div>
+
+        <WeekComparisonNote
+          currentHours={currentData.currentAvgTatHours}
+          priorHours={currentData.priorAvgTatHours}
+          pctChange={currentData.pctChange}
+          previousLabel={previousLabel.toLowerCase()}
+        />
       </div>
     </div>
+  );
+}
+
+interface CategorySubRowProps {
+  label: string;
+  /** Which of the OPD / IN / ER columns holds this category's count. */
+  columnIndex: number;
+  values: CategoryDay;
+  isPrior: boolean;
+}
+
+/** One "a. OPD" style sub-row under a day: the same columns for one patient category. */
+function CategorySubRow({ label, columnIndex, values, isPrior }: CategorySubRowProps) {
+  const muted = <span className="text-xs text-muted-foreground/40">—</span>;
+  return (
+    <tr className="bg-background/50 text-xs">
+      <td className="py-1.5 pl-9 pr-4 font-bold text-muted-foreground">{label}</td>
+      <td className="px-3 py-1.5 text-center font-bold text-qc-navy">{values.totalExams}</td>
+      {CATEGORY_COLUMNS.map((category, index) => (
+        <td key={category.key} className={`px-2 py-1.5 text-center font-bold ${category.valueClass}`}>
+          {index === columnIndex ? values.totalExams : ""}
+        </td>
+      ))}
+      <td className="px-3 py-1.5 text-center font-bold text-qc-blue">{values.finalizedCount}</td>
+      <td className="px-3 py-1.5 text-center">
+        {values.pendingCount > 0 ? (
+          <span className="font-extrabold text-qc-orange">{values.pendingCount}</span>
+        ) : (
+          muted
+        )}
+      </td>
+      <td className="px-4 py-1.5 text-right">
+        {values.finalizedCount > 0 ? (
+          <span className={`font-mono font-bold ${isPrior ? "text-qc-blue" : "text-qc-navy"}`}>
+            {values.avgTatHours} hrs
+          </span>
+        ) : (
+          muted
+        )}
+      </td>
+    </tr>
+  );
+}
+
+interface WeekComparisonNoteProps {
+  currentHours: number;
+  priorHours: number;
+  pctChange: number;
+  previousLabel: string;
+}
+
+/**
+ * The proposal's note under the weekly table: "There is a longer / shorter (_%)
+ * TAT than the previous week (average _ hours)".
+ */
+function WeekComparisonNote({ currentHours, priorHours, pctChange, previousLabel }: WeekComparisonNoteProps) {
+  const boxClass = "mt-4 rounded-xl border border-border bg-background px-4 py-3 text-xs text-muted-foreground";
+
+  if (currentHours <= 0) {
+    return (
+      <p className={boxClass}>
+        No signed reports in this period yet, so there is no average TAT to compare.
+      </p>
+    );
+  }
+
+  const summary = <strong className="text-qc-navy">{currentHours} hrs</strong>;
+
+  if (priorHours <= 0) {
+    return (
+      <p className={boxClass}>
+        Average TAT for this period: {summary}. No signed reports in the {previousLabel} to compare with.
+      </p>
+    );
+  }
+
+  const isSame = Math.abs(pctChange) < 0.05;
+  const isLonger = pctChange > 0;
+
+  return (
+    <p className={boxClass}>
+      Average TAT for this period: {summary}.{" "}
+      {isSame ? (
+        <>The same as the {previousLabel}</>
+      ) : (
+        <>
+          <strong className={isLonger ? "text-qc-red" : "text-emerald-700"}>
+            {Math.abs(pctChange)}% {isLonger ? "longer" : "shorter"}
+          </strong>{" "}
+          than the {previousLabel}
+        </>
+      )}{" "}
+      (average {priorHours} hrs).
+    </p>
   );
 }
 /** Small "Today" / "Yesterday" pill next to a day's date; nothing otherwise. */

@@ -87,9 +87,11 @@ export function useTatOverviewData(
       name: item.name,
       avgTatMinutes: stats.avgTat,
       avgTat: avgTatHours,
+      medianTat: Number(((stats.medianTat ?? 0) / 60).toFixed(1)),
       targetMinutes: hasTargetSla ? stats.target : null,
       target: targetHours,
       volume: stats.volume,
+      examCount: stats.examCount ?? stats.volume,
     };
   });
 

@@ -75,7 +75,7 @@ export function TatChartTooltip({
                     : "bg-qc-navy"
               }`}
             />
-            Actual TAT
+            Average TAT
           </span>
           <strong
             className={
@@ -91,11 +91,21 @@ export function TatChartTooltip({
         </div>
 
         <div className="flex items-center justify-between gap-5">
-          <span className="text-muted-foreground">
-            Finalized
-          </span>
+          <span className="text-muted-foreground">Median TAT</span>
+          <strong className={point.volume === 0 ? "text-muted-foreground" : "text-qc-navy"}>
+            {point.volume === 0 ? "—" : `${point.medianTat} hrs`}
+          </strong>
+        </div>
+
+        <div className="flex items-center justify-between gap-5">
+          <span className="text-muted-foreground">Exams</span>
+          <strong className="text-qc-navy">{point.examCount}</strong>
+        </div>
+
+        <div className="flex items-center justify-between gap-5">
+          <span className="text-muted-foreground">Finalized · Pending</span>
           <strong className="text-qc-navy">
-            {point.volume}
+            {point.volume} · {Math.max(point.examCount - point.volume, 0)}
           </strong>
         </div>
 

@@ -30,9 +30,14 @@ export interface ModalityTatDisplayItem {
   name?: string;
   avgTatMinutes: number;
   avgTat: number;
+  /** Median TAT of signed reports, in hours. */
+  medianTat: number;
   targetMinutes: number | null;
   target: number | null;
+  /** Signed (finalized) reports. */
   volume: number;
+  /** All exams in the window, signed or pending. */
+  examCount: number;
 }
 
 /* =========================================================

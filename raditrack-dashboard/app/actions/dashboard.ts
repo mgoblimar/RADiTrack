@@ -10,7 +10,8 @@ import {
 } from "@/lib/enums";
 import { calculatedMedian } from "./utils";
 import { resolveKpiRange, type KpiPreset } from "@/lib/kpi-range";
-import type { ModalityTatOverviewItem, ModalityTatStats } from "./analytics";
+import type { ModalityTatOverviewItem } from "./analytics";
+import { modalityTatBreakdown } from "@/lib/modality-tat";
 
 // 3. QUERY: Dashboard Aggregations
 export async function getDashboardData() {
@@ -237,7 +238,6 @@ export async function fetchFilteredExecutiveKpiAction(
         slaConfigs: true,
         examinations: {
           where: {
-            report: { reportSignedAt: { not: null } },
             statusCode: { not: ExaminationStatusCode.CANCELLED },
             studyDate: isAllTime ? undefined : { gte: start, lte: end },
           },
@@ -360,57 +360,10 @@ export async function fetchFilteredExecutiveKpiAction(
 
   // Modality TAT Breakdown for this period
   const modalityOverview: ModalityTatOverviewItem[] = sortByModalityOrder(modalities).map((m) => {
-    const calcStats = (
-      filterType: "all" | "isStat" | "isRoutine" | "OPD" | "ER" | "IN"
-    ): ModalityTatStats => {
-      const filtered = m.examinations.filter((e) => {
-        if (filterType === "all") return true;
-        if (filterType === "isStat") return e.triageLevel === TriageLevel.ER;
-        if (filterType === "isRoutine") return e.triageLevel !== TriageLevel.ER;
-        return e.triageLevel === filterType;
-      });
-
-      const tatList = filtered
-        .map((e) => e.report?.tatExamToSignMinutes || 0)
-        .filter((v) => v > 0);
-
-      const avgTat =
-        tatList.length > 0
-          ? Number((tatList.reduce((a, b) => a + b, 0) / tatList.length).toFixed(1))
-          : 0;
-
-      let sla: (typeof m.slaConfigs)[number] | undefined;
-      if (filterType === "isStat" || filterType === "ER") {
-        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.ER);
-      } else if (filterType === "OPD") {
-        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD);
-      } else if (filterType === "IN") {
-        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.IN);
-      } else {
-        sla = m.slaConfigs.find((s) => s.triageLevel === TriageLevel.OPD) || m.slaConfigs[0];
-      }
-
-      const defaultTarget =
-          filterType === "isStat" || filterType === "ER" || filterType === "IN"
-            ? 2880
-            : 4320;
-
-      return {
-        avgTat,
-        target: sla?.targetTatMinutes || defaultTarget,
-        volume: filtered.length,
-      };
-    };
-
     return {
       modality: m.modalityCode,
       name: m.modalityName,
-      all: calcStats("all"),
-      emergency: calcStats("isStat"),
-      routine: calcStats("isRoutine"),
-      opd: calcStats("OPD"),
-      er: calcStats("ER"),
-      inpatient: calcStats("IN"),
+      ...modalityTatBreakdown(m.examinations, m.slaConfigs),
     };
   });
 

@@ -28,6 +28,7 @@ import {
   createActualTatLabelRenderer,
 } from "./tat-overview/TatChartTicks";
 import { TatChartLegend } from "./tat-overview/TatChartLegend";
+import { TatModalitySummaryTable } from "./tat-overview/TatModalitySummaryTable";
 
 export { type TatOverviewChartProps } from "./tat-overview/types";
 
@@ -123,7 +124,7 @@ export function TatOverviewChart({
             </p>
 
             <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-              No finalized scans match the selected filters.
+              No scans match the selected filters.
               Try another date range or patient category in the filter bar.
             </p>
           </div>
@@ -255,6 +256,16 @@ export function TatOverviewChart({
       {/* Chart legend */}
 
       <TatChartLegend hasTargetSla={hasTargetSla} />
+
+      {/* Exams, average and median per modality (proposal Section XI) */}
+
+      {displayData.length > 0 && (
+        <TatModalitySummaryTable
+          rows={displayData}
+          highlightModality={highlightModality}
+          hasTargetSla={hasTargetSla}
+        />
+      )}
     </section>
   );
 }
