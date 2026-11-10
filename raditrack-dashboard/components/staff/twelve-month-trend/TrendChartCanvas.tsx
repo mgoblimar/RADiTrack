@@ -10,18 +10,25 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
 import type { MonthTrendData } from "@/app/actions";
 import { ModalityCode } from "@/lib/enums";
+
 import {
   MODALITIES,
   ModalityConfig,
-  QC_BLUE,
   QC_GRID,
   QC_MUTED,
-  QC_NAVY,
   QC_PURPLE,
 } from "./types";
+
 import { TrendTooltip } from "./TrendTooltip";
+
+/* =========================================================
+   RADiTrack OFFICIAL BRAND COLORS
+========================================================= */
+
+const BRAND_BLUE = "#00357a";
 
 interface TrendChartCanvasProps {
   months: MonthTrendData[];
@@ -57,6 +64,8 @@ export function TrendChartCanvas({
           }}
         >
           <defs>
+            {/* Overall historical trend gradient */}
+
             <linearGradient
               id="raditrackHistoricalGradient"
               x1="0"
@@ -64,9 +73,20 @@ export function TrendChartCanvas({
               x2="0"
               y2="1"
             >
-              <stop offset="5%" stopColor={QC_BLUE} stopOpacity={0.16} />
-              <stop offset="95%" stopColor={QC_BLUE} stopOpacity={0} />
+              <stop
+                offset="5%"
+                stopColor={BRAND_BLUE}
+                stopOpacity={0.16}
+              />
+
+              <stop
+                offset="95%"
+                stopColor={BRAND_BLUE}
+                stopOpacity={0}
+              />
             </linearGradient>
+
+            {/* Individual modality gradients */}
 
             {MODALITIES.map((m) => (
               <linearGradient
@@ -77,17 +97,30 @@ export function TrendChartCanvas({
                 x2="0"
                 y2="1"
               >
-                <stop offset="5%" stopColor={m.color} stopOpacity={0.18} />
-                <stop offset="95%" stopColor={m.color} stopOpacity={0} />
+                <stop
+                  offset="5%"
+                  stopColor={m.color}
+                  stopOpacity={0.18}
+                />
+
+                <stop
+                  offset="95%"
+                  stopColor={m.color}
+                  stopOpacity={0}
+                />
               </linearGradient>
             ))}
           </defs>
+
+          {/* Grid */}
 
           <CartesianGrid
             strokeDasharray="3 3"
             stroke={QC_GRID}
             vertical={false}
           />
+
+          {/* Month labels */}
 
           <XAxis
             dataKey="monthLabel"
@@ -99,14 +132,18 @@ export function TrendChartCanvas({
             dy={6}
           />
 
+          {/* Turnaround Time in hours */}
+
           <YAxis
             stroke={QC_MUTED}
             fontSize={12}
             tickLine={false}
             axisLine={false}
-            width={42}
-            tickFormatter={(value) => `${value}h`}
+            width={48}
+            tickFormatter={(value) => `${value} hrs`}
           />
+
+          {/* Chart tooltip */}
 
           <Tooltip
             content={
@@ -120,22 +157,25 @@ export function TrendChartCanvas({
           />
 
           {/* =====================================================
-              1. OVERALL VIEW (selectedModality === "ALL")
+              1. OVERALL VIEW
+              selectedModality === "ALL"
           ===================================================== */}
+
           {selectedModality === "ALL" && (
             <>
-              {/* Current period (straight/solid line) */}
+              {/* Current period: solid blue area */}
+
               <Area
                 type="monotone"
                 dataKey="avgTatHours"
-                stroke={QC_BLUE}
+                stroke={BRAND_BLUE}
                 strokeWidth={2.5}
                 fill="url(#raditrackHistoricalGradient)"
                 fillOpacity={1}
                 name={selectedPeriodLabel}
                 dot={{
                   r: 2.5,
-                  fill: QC_BLUE,
+                  fill: BRAND_BLUE,
                   strokeWidth: 0,
                 }}
                 activeDot={{
@@ -143,7 +183,8 @@ export function TrendChartCanvas({
                 }}
               />
 
-              {/* Prior period (dashed line) */}
+              {/* Prior period: dashed comparison line */}
+
               {comparePriorYear && (
                 <Line
                   type="monotone"
@@ -166,25 +207,29 @@ export function TrendChartCanvas({
           )}
 
           {/* =====================================================
-              2. MULTI-MODALITY VIEW (selectedModality === "MULTI")
+              2. MULTI-MODALITY VIEW
+              selectedModality === "MULTI"
           ===================================================== */}
+
           {selectedModality === "MULTI" && (
             <>
               {/* Overall benchmark line */}
+
               <Line
                 type="monotone"
                 dataKey="avgTatHours"
-                stroke={QC_NAVY}
+                stroke={BRAND_BLUE}
                 strokeWidth={2}
                 strokeDasharray="4 2"
-                name="Overall Avg"
+                name="Overall Average Turnaround Time"
                 dot={{
                   r: 2,
-                  fill: QC_NAVY,
+                  fill: BRAND_BLUE,
                 }}
               />
 
-              {/* Modality straight/solid lines */}
+              {/* Individual modality lines */}
+
               {MODALITIES.map((m) => (
                 <Line
                   key={`line-${m.code}`}
@@ -204,7 +249,8 @@ export function TrendChartCanvas({
                 />
               ))}
 
-              {/* Prior modality dashed lines */}
+              {/* Prior-period modality comparison lines */}
+
               {comparePriorYear &&
                 MODALITIES.map((m) => (
                   <Line
@@ -227,9 +273,11 @@ export function TrendChartCanvas({
           {/* =====================================================
               3. SPECIFIC MODALITY VIEW
           ===================================================== */}
+
           {isModalitySpecific && activeModalityConfig && (
             <>
               {/* Overall hospital benchmark reference line */}
+
               <Line
                 type="monotone"
                 dataKey="avgTatHours"
@@ -240,7 +288,8 @@ export function TrendChartCanvas({
                 dot={false}
               />
 
-              {/* Selected modality straight/solid line with gradient fill */}
+              {/* Selected modality: solid current-period line */}
+
               <Area
                 type="monotone"
                 dataKey={`${selectedModality}_avgTatHours`}
@@ -260,7 +309,8 @@ export function TrendChartCanvas({
                 name={`${activeModalityConfig.label} (Current)`}
               />
 
-              {/* Selected modality prior period dashed line */}
+              {/* Selected modality: prior-period comparison */}
+
               {comparePriorYear && (
                 <Line
                   type="monotone"

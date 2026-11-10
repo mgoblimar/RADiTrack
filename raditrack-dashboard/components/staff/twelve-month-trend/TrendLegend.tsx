@@ -1,7 +1,12 @@
 "use client";
 
 import { ModalityCode } from "@/lib/enums";
-import { MODALITIES, ModalityConfig, QC_PURPLE } from "./types";
+import {
+  MODALITIES,
+  QC_NAVY,
+  QC_PURPLE,
+} from "./types";
+import type { ModalityConfig } from "./types";
 
 interface TrendLegendProps {
   selectedModality: "ALL" | "MULTI" | ModalityCode;
@@ -25,11 +30,20 @@ export function TrendLegend({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-xs">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+
+        {/* =====================================================
+            OVERALL VIEW
+        ===================================================== */}
+
         {selectedModality === "ALL" && (
           <>
             <span className="flex items-center gap-1.5 font-semibold text-qc-navy">
-              <span className="h-2.5 w-2.5 rounded-full bg-qc-blue" />
-              {selectedPeriodLabel} (Solid Straight Line)
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: QC_NAVY }}
+              />
+
+              {selectedPeriodLabel} (Current)
             </span>
 
             {comparePriorYear && (
@@ -41,70 +55,105 @@ export function TrendLegend({
                   className="h-0 w-5 border-t-2 border-dashed"
                   style={{ borderColor: QC_PURPLE }}
                 />
-                {priorPeriodLabel} (Dashed Line)
+
+                {priorPeriodLabel} (Previous)
               </span>
             )}
           </>
         )}
+
+        {/* =====================================================
+            MULTI-MODALITY VIEW
+        ===================================================== */}
 
         {selectedModality === "MULTI" && (
           <>
             <span className="flex items-center gap-1.5 font-bold text-qc-navy">
-              <span className="h-0 w-4 border-t-2 border-dashed border-qc-navy" />
-              Hospital Overall Avg
+              <span
+                className="h-0 w-4 border-t-2 border-dashed"
+                style={{ borderColor: QC_NAVY }}
+              />
+
+              Hospital Overall Average
             </span>
 
-            {MODALITIES.map((m) => (
+            {MODALITIES.map((modality) => (
               <span
-                key={m.code}
+                key={modality.code}
                 className="flex items-center gap-1.5 font-semibold text-qc-navy"
               >
                 <span
                   className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: m.color }}
+                  style={{
+                    backgroundColor: modality.color,
+                  }}
                 />
-                {m.label} (Solid)
+
+                {modality.label} (Current)
               </span>
             ))}
 
             {comparePriorYear && (
-              <span className="font-semibold text-muted-foreground italic">
-                * Dashed lines: {priorPeriodLabel}
+              <span
+                className="flex items-center gap-1.5 font-semibold"
+                style={{ color: QC_PURPLE }}
+              >
+                <span
+                  className="h-0 w-5 border-t-2 border-dashed"
+                  style={{ borderColor: QC_PURPLE }}
+                />
+
+                Previous period: {priorPeriodLabel}
               </span>
             )}
           </>
         )}
+
+        {/* =====================================================
+            SPECIFIC MODALITY VIEW
+        ===================================================== */}
 
         {isModalitySpecific && activeModalityConfig && (
           <>
             <span className="flex items-center gap-1.5 font-semibold text-qc-navy">
               <span
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: activeModalityConfig.color }}
+                style={{
+                  backgroundColor: activeModalityConfig.color,
+                }}
               />
-              {activeModalityConfig.label} ({selectedPeriodLabel} — Solid Straight Line)
+
+              {activeModalityConfig.label} ({selectedPeriodLabel})
             </span>
 
             {comparePriorYear && (
               <span
                 className="flex items-center gap-1.5 font-semibold"
-                style={{ color: activeModalityConfig.color }}
+                style={{
+                  color: activeModalityConfig.color,
+                }}
               >
                 <span
                   className="h-0 w-5 border-t-2 border-dashed"
-                  style={{ borderColor: activeModalityConfig.color }}
+                  style={{
+                    borderColor: activeModalityConfig.color,
+                  }}
                 />
-                {activeModalityConfig.label} ({priorPeriodLabel} — Dashed Line)
+
+                {activeModalityConfig.label} ({priorPeriodLabel})
               </span>
             )}
 
             <span className="flex items-center gap-1.5 font-semibold text-muted-foreground">
               <span className="h-0 w-4 border-t-2 border-dotted border-slate-400" />
+
               Hospital Overall Average Benchmark
             </span>
           </>
         )}
       </div>
+
+      {/* Finalized examination count */}
 
       <span className="font-semibold text-muted-foreground">
         {displayAnnualFinalized} finalized exams

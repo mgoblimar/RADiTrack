@@ -14,10 +14,7 @@ import { toIsoDate } from "@/lib/kpi-range";
 import { SegmentedToggle } from "@/components/common/SegmentedToggle";
 import { CompareToggle } from "@/components/common/CompareToggle";
 
-import {
-  Calendar,
-  Layers,
-} from "lucide-react";
+import { Layers } from "lucide-react";
 
 interface DayRow {
   dayLabel: string;
@@ -60,16 +57,29 @@ interface Props {
 
 type AnalyticsMode = "rolling" | "static";
 
-// Same blue as the "previous" table's dot and figures.
-const QC_BLUE = "#18298C";
+/* =========================================================
+   RADiTrack OFFICIAL BRAND COLORS
+========================================================= */
+
+const QC_BLUE = "#00357a";
+const QC_YELLOW = "#ffd230";
+const QC_RED = "#7a0000";
 
 const WINDOW_MODES: ReadonlyArray<{
   value: AnalyticsMode;
   label: string;
   hint: string;
 }> = [
-  { value: "rolling", label: "Last 7 days", hint: "Today and the 6 days before it" },
-  { value: "static", label: "Mon–Sun week", hint: "This calendar week, Monday to Sunday" },
+  {
+    value: "rolling",
+    label: "Last 7 days",
+    hint: "Today and the 6 days before it",
+  },
+  {
+    value: "static",
+    label: "Mon–Sun week",
+    hint: "This calendar week, Monday to Sunday",
+  },
 ];
 
 const MODALITY_TABS = [
@@ -87,36 +97,89 @@ const CATEGORY_COLUMNS = [
     letter: "O",
     label: "Outpatient",
     shortLabel: "OPD",
-    headerClass: "bg-blue-50 text-blue-800",
-    valueClass: "text-blue-800",
-    totalClass: "bg-blue-50 text-blue-900",
+    headerClass: "bg-[#eaf1f9] text-[#00357a]",
+    valueClass: "text-[#00357a]",
+    totalClass: "bg-[#eaf1f9] text-[#00357a]",
   },
   {
     key: "inCount",
     letter: "I",
     label: "Inpatient",
     shortLabel: "IN",
-    headerClass: "bg-indigo-50 text-indigo-800",
-    valueClass: "text-indigo-800",
-    totalClass: "bg-indigo-50 text-indigo-900",
+    headerClass: "bg-[#fff7d6] text-[#6b5200]",
+    valueClass: "text-[#6b5200]",
+    totalClass: "bg-[#fff7d6] text-[#6b5200]",
   },
   {
     key: "erCount",
     letter: "E",
     label: "Emergency",
     shortLabel: "ER",
-    headerClass: "bg-red-50 text-red-800",
-    valueClass: "text-red-800",
-    totalClass: "bg-red-50 text-red-900",
+    headerClass: "bg-[#f8e9e9] text-[#7a0000]",
+    valueClass: "text-[#7a0000]",
+    totalClass: "bg-[#f8e9e9] text-[#7a0000]",
   },
 ] as const;
+
+/* =========================================================
+   DATE COVERAGE FORMATTER
+
+   Produces a single readable range such as:
+   Nov 3 – Nov 9, 2026
+========================================================= */
+
+function formatCoverageRange(rows: DayRow[]): string {
+  if (rows.length === 0) {
+    return "Latest 7-day window";
+  }
+
+  // Rows are ordered newest to oldest.
+  const oldestIso = rows[rows.length - 1]?.isoDate;
+  const newestIso = rows[0]?.isoDate;
+
+  const parseIsoDate = (value?: string): Date | null => {
+    if (!value) return null;
+
+    const [year, month, day] = value.split("-").map(Number);
+
+    if (!year || !month || !day) return null;
+
+    return new Date(year, month - 1, day);
+  };
+
+  const oldestDate = parseIsoDate(oldestIso);
+  const newestDate = parseIsoDate(newestIso);
+
+  if (!oldestDate || !newestDate) {
+    const first = rows[rows.length - 1]?.formattedDate;
+    const last = rows[0]?.formattedDate;
+
+    return first && last
+      ? `${first} – ${last}`
+      : "Latest 7-day window";
+  }
+
+  const formatDate = (date: Date) =>
+    new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+    }).format(date);
+
+  if (
+    oldestDate.getFullYear() === newestDate.getFullYear()
+  ) {
+    return `${formatDate(oldestDate)} – ${formatDate(newestDate)}, ${newestDate.getFullYear()}`;
+  }
+
+  return `${formatDate(oldestDate)}, ${oldestDate.getFullYear()} – ${formatDate(newestDate)}, ${newestDate.getFullYear()}`;
+}
 
 export function SevenDayTatTable({
   analytics: initialAnalytics,
   filters,
 }: Props) {
   /* =========================================================
-     UI state
+     UI STATE
   ========================================================= */
 
   // Modality comes from the dashboard filter bar.
@@ -129,11 +192,14 @@ export function SevenDayTatTable({
   const [showPrevious, setShowPrevious] = useState(false);
 
   /* =========================================================
-     Analytics: always the latest 7 days (ending today), the same
-     window as Recent pulse. The date filter does not move it.
+     ANALYTICS
+
+     Always the latest 7 days (ending today), the same
+     window as Recent Pulse. The date filter does not move it.
   ========================================================= */
 
   const todayIso = useMemo(() => toIsoDate(new Date()), []);
+
   const requestKey = `${todayIso}|${mode}`;
   const isInitialRequest = mode === "rolling";
 
@@ -142,16 +208,27 @@ export function SevenDayTatTable({
     data: Props["analytics"];
   } | null>(null);
 
-  const [isTransitionPending, startTransition] = useTransition();
+  const [isTransitionPending, startTransition] =
+    useTransition();
 
   useEffect(() => {
     if (isInitialRequest) return;
 
     let isCancelled = false;
+
     startTransition(async () => {
       try {
-        const result = await fetchSevenDayAnalyticsAction(todayIso, mode);
-        if (!isCancelled) setFetched({ key: requestKey, data: result });
+        const result = await fetchSevenDayAnalyticsAction(
+          todayIso,
+          mode,
+        );
+
+        if (!isCancelled) {
+          setFetched({
+            key: requestKey,
+            data: result,
+          });
+        }
       } catch (error) {
         console.error(
           "Failed to fetch seven-day Turnaround Time analytics:",
@@ -169,11 +246,13 @@ export function SevenDayTatTable({
   const analytics = isInitialRequest
     ? initialAnalytics
     : (fetched?.data ?? initialAnalytics);
+
   const isPending =
-    isTransitionPending || (!isInitialRequest && fetched?.key !== requestKey);
+    isTransitionPending ||
+    (!isInitialRequest && fetched?.key !== requestKey);
 
   /* =========================================================
-     Current modality data
+     CURRENT MODALITY DATA
   ========================================================= */
 
   const currentData: ModalityAnalytics =
@@ -190,22 +269,20 @@ export function SevenDayTatTable({
       ? "For all Modalities"
       : `${currentTabLabel} only`;
 
-  const previousLabel = mode === "rolling" ? "Previous 7 days" : "Previous week";
+  const previousLabel =
+    mode === "rolling" ? "Previous 7 days" : "Previous week";
 
   /* =========================================================
-     Date labels
+     DATE COVERAGE
   ========================================================= */
 
-  const firstDay =
-    currentData.dayRows[
-      currentData.dayRows.length - 1
-    ]?.formattedDate ?? "";
-
-  const lastDay =
-    currentData.dayRows[0]?.formattedDate ?? "";
+  const dateCoverageLabel = useMemo(
+    () => formatCoverageRange(currentData.dayRows),
+    [currentData.dayRows],
+  );
 
   /* =========================================================
-     Format Turnaround Time
+     FORMAT TURNAROUND TIME
   ========================================================= */
 
   const formatTurnaroundTime = (
@@ -214,7 +291,7 @@ export function SevenDayTatTable({
   ) => `${hours} hrs`;
 
   /* =========================================================
-     Render table
+     RENDER TABLE
   ========================================================= */
 
   const renderTable = (
@@ -267,10 +344,10 @@ export function SevenDayTatTable({
           )
         : 0;
 
-    const weightedTatHours =
-      weightedTat >= 60
-        ? Number((weightedTat / 60).toFixed(1))
-        : 0;
+    // Preserve fractional hours, including averages below one hour.
+    const weightedTatHours = Number(
+      (weightedTat / 60).toFixed(1),
+    );
 
     const categoryTotals = [
       totalOutpatient,
@@ -278,326 +355,387 @@ export function SevenDayTatTable({
       totalEmergency,
     ];
 
-    const tatTone = isPrior ? "text-qc-blue" : "text-qc-navy";
+    const tatTone = isPrior
+      ? "text-[#00357a]"
+      : "text-qc-navy";
 
     return (
       <>
-      {/* Phones and tablets: one card per day, totals last */}
-      <ol className="space-y-2 lg:hidden">
-        {rows.map((row) => (
-          <li key={row.isoDate} className="rounded-2xl border border-border bg-card p-3.5">
+        {/* Phones and tablets: one card per day, totals last */}
+
+        <ol className="space-y-2 lg:hidden">
+          {rows.map((row) => (
+            <li
+              key={row.isoDate}
+              className="rounded-2xl border border-border bg-card p-3.5"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="flex items-center gap-2 text-sm font-extrabold text-qc-navy">
+                  {row.formattedDate}
+                  <DayTag label={row.dayLabel} />
+                </p>
+
+                <p
+                  className={`font-mono text-sm font-extrabold ${
+                    row.finalizedCount > 0
+                      ? tatTone
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {row.finalizedCount > 0
+                    ? `${row.avgTatHours} hrs`
+                    : "—"}
+                </p>
+              </div>
+
+              <dl className="mt-2 grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
+                {[
+                  ["Exams", row.totalExams],
+                  ["OPD", row.opdCount],
+                  ["IN", row.inCount],
+                  ["ER", row.erCount],
+                  ["Signed", row.finalizedCount],
+                  ["Pending", row.pendingCount],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-xl bg-background px-2 py-1.5"
+                  >
+                    <dt className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+                      {label}
+                    </dt>
+
+                    <dd
+                      className={`font-mono text-sm font-extrabold ${
+                        label === "Pending" && Number(value) > 0
+                          ? "text-qc-orange"
+                          : "text-qc-navy"
+                      }`}
+                    >
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
+          ))}
+
+          <li className="rounded-2xl border border-[#00357a]/15 bg-[#00357a]/[0.04] p-3.5">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="flex items-center gap-2 text-sm font-extrabold text-qc-navy">
-                {row.formattedDate}
-                <DayTag label={row.dayLabel} />
+              <p className="text-sm font-extrabold text-qc-navy">
+                7-day total
               </p>
-              <p className={`font-mono text-sm font-extrabold ${row.finalizedCount > 0 ? tatTone : "text-muted-foreground"}`}>
-                {row.finalizedCount > 0 ? `${row.avgTatHours} hrs` : "—"}
+
+              <p className={`font-mono text-sm font-extrabold ${tatTone}`}>
+                {weightedTat > 0
+                  ? `${weightedTatHours} hrs`
+                  : "—"}
               </p>
             </div>
-            <dl className="mt-2 grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
-              {[
-                ["Exams", row.totalExams],
-                ["OPD", row.opdCount],
-                ["IN", row.inCount],
-                ["ER", row.erCount],
-                ["Signed", row.finalizedCount],
-                ["Pending", row.pendingCount],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl bg-background px-2 py-1.5">
-                  <dt className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{label}</dt>
-                  <dd className={`font-mono text-sm font-extrabold ${label === "Pending" && Number(value) > 0 ? "text-qc-orange" : "text-qc-navy"}`}>{value}</dd>
-                </div>
-              ))}
-            </dl>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              {totalVolume} exams · OPD {totalOutpatient} · IN{" "}
+              {totalInpatient} · ER {totalEmergency} ·{" "}
+              {totalFinalized} signed · {totalPending} pending
+            </p>
           </li>
-        ))}
-        <li className="rounded-2xl border border-qc-navy/15 bg-qc-navy/[0.04] p-3.5">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-sm font-extrabold text-qc-navy">7-day total</p>
-            <p className={`font-mono text-sm font-extrabold ${tatTone}`}>{weightedTat > 0 ? `${weightedTatHours} hrs` : "—"}</p>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {totalVolume} exams · OPD {totalOutpatient} · IN {totalInpatient} · ER {totalEmergency} · {totalFinalized} signed · {totalPending} pending
-          </p>
-        </li>
-      </ol>
+        </ol>
 
-      {/* Desktop: full table */}
-      <div className="hidden overflow-hidden rounded-2xl border border-border bg-card lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left">
-            <thead>
-              {/* Main header */}
-              <tr className="border-b border-border bg-background/70 text-xs font-extrabold uppercase tracking-[0.09em] text-muted-foreground">
-                <th
-                  rowSpan={2}
-                  className="whitespace-nowrap px-4 py-3 align-middle"
-                >
-                  Day
-                </th>
+        {/* Desktop: full table */}
 
-                <th
-                  rowSpan={2}
-                  className="whitespace-nowrap px-3 py-3 text-center align-middle"
-                >
-                  Exams
-                </th>
+        <div className="hidden overflow-hidden rounded-2xl border border-border bg-card lg:block">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] text-left">
+              <thead>
+                {/* Main header */}
 
-                <th
-                  colSpan={3}
-                  className="border-x border-border/70 px-3 py-2.5 text-center"
-                >
-                  <span className="block text-xs font-extrabold text-qc-navy">
-                    Patient Category
-                  </span>
-                </th>
-
-                <th
-                  rowSpan={2}
-                  className="whitespace-nowrap px-3 py-3 text-center align-middle"
-                >
-                  Signed
-                </th>
-
-                <th
-                  rowSpan={2}
-                  className="whitespace-nowrap px-3 py-3 text-center align-middle"
-                >
-                  Pending
-                </th>
-
-                <th
-                  rowSpan={2}
-                  className="min-w-[145px] whitespace-nowrap px-4 py-3 text-right align-middle"
-                >
-                  Avg. Turnaround Time
-                </th>
-              </tr>
-
-              {/* Patient Category subheaders */}
-              <tr className="border-b border-border bg-background/40">
-                {CATEGORY_COLUMNS.map((category) => (
+                <tr className="border-b border-border bg-background/70 text-xs font-extrabold uppercase tracking-[0.09em] text-muted-foreground">
                   <th
-                    key={category.key}
-                    scope="col"
-                    title={category.label}
-                    aria-label={category.label}
-                    className="min-w-[66px] px-2 py-2 text-center"
+                    rowSpan={2}
+                    className="whitespace-nowrap px-4 py-3 align-middle"
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <span
-                        className={`flex h-6 w-7 items-center justify-center rounded-md text-xs font-black ${category.headerClass}`}
-                      >
-                        {category.letter}
-                      </span>
-
-                      <span className="text-xs font-bold normal-case tracking-normal text-muted-foreground">
-                        {category.shortLabel}
-                      </span>
-                    </div>
+                    Day
                   </th>
-                ))}
-              </tr>
-            </thead>
 
-            <tbody className="divide-y divide-border">
-              {rows.map((row) => {
-                const isToday = row.isoDate === todayIso;
-
-                const isSlow =
-                  row.finalizedCount > 0 &&
-                  row.avgTatMinutes > 120;
-
-                const categoryValues = [
-                  row.opdCount,
-                  row.inCount,
-                  row.erCount,
-                ];
-
-                return (
-                  <tr
-                    key={`${row.isoDate}-${row.dayLabel}`}
-                    className={`transition-colors ${
-                      isToday
-                        ? "bg-qc-yellow/10"
-                        : "hover:bg-qc-blue/[0.025]"
-                    }`}
+                  <th
+                    rowSpan={2}
+                    className="whitespace-nowrap px-3 py-3 text-center align-middle"
                   >
-                    {/* Day: weekday and date, tagged Today / Yesterday */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="whitespace-nowrap text-xs font-extrabold text-qc-navy">
-                          {row.formattedDate}
-                        </span>
-                        <DayTag label={row.dayLabel} />
-                      </div>
-                    </td>
+                    Exams
+                  </th>
 
-                    {/* Total examinations */}
-                    <td className="px-3 py-3 text-center">
-                      <span className="text-xs font-extrabold text-qc-navy">
-                        {row.totalExams}
-                      </span>
-                    </td>
+                  <th
+                    colSpan={3}
+                    className="border-x border-border/70 px-3 py-2.5 text-center"
+                  >
+                    <span className="block text-xs font-extrabold text-qc-navy">
+                      Patient Category
+                    </span>
+                  </th>
 
-                    {/* Category counts */}
-                    {CATEGORY_COLUMNS.map((category, index) => (
-                      <td
-                        key={category.key}
-                        className="px-2 py-3 text-center"
-                        title={`${category.label}: ${categoryValues[index]}`}
-                      >
+                  <th
+                    rowSpan={2}
+                    className="whitespace-nowrap px-3 py-3 text-center align-middle"
+                  >
+                    Signed
+                  </th>
+
+                  <th
+                    rowSpan={2}
+                    className="whitespace-nowrap px-3 py-3 text-center align-middle"
+                  >
+                    Pending
+                  </th>
+
+                  <th
+                    rowSpan={2}
+                    className="min-w-[145px] whitespace-nowrap px-4 py-3 text-right align-middle"
+                  >
+                    Avg. Turnaround Time
+                  </th>
+                </tr>
+
+                {/* Patient Category subheaders */}
+
+                <tr className="border-b border-border bg-background/40">
+                  {CATEGORY_COLUMNS.map((category) => (
+                    <th
+                      key={category.key}
+                      scope="col"
+                      title={category.label}
+                      aria-label={category.label}
+                      className="min-w-[66px] px-2 py-2 text-center"
+                    >
+                      <div className="flex flex-col items-center gap-1">
                         <span
-                          className={`inline-flex min-w-7 items-center justify-center rounded-lg px-2 py-1 text-xs font-extrabold tabular-nums ${category.valueClass}`}
+                          className={`flex h-6 w-7 items-center justify-center rounded-md text-xs font-black ${category.headerClass}`}
                         >
-                          {categoryValues[index]}
+                          {category.letter}
+                        </span>
+
+                        <span className="text-xs font-bold normal-case tracking-normal text-muted-foreground">
+                          {category.shortLabel}
+                        </span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-border">
+                {rows.map((row) => {
+                  const isToday = row.isoDate === todayIso;
+
+                  const isSlow =
+                    row.finalizedCount > 0 &&
+                    row.avgTatMinutes > 120;
+
+                  const categoryValues = [
+                    row.opdCount,
+                    row.inCount,
+                    row.erCount,
+                  ];
+
+                  return (
+                    <tr
+                      key={`${row.isoDate}-${row.dayLabel}`}
+                      className={`transition-colors ${
+                        isToday
+                          ? "bg-[#ffd230]/10"
+                          : "hover:bg-[#00357a]/[0.025]"
+                      }`}
+                    >
+                      {/* Day: weekday and date, tagged Today / Yesterday */}
+
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="whitespace-nowrap text-xs font-extrabold text-qc-navy">
+                            {row.formattedDate}
+                          </span>
+
+                          <DayTag label={row.dayLabel} />
+                        </div>
+                      </td>
+
+                      {/* Total examinations */}
+
+                      <td className="px-3 py-3 text-center">
+                        <span className="text-xs font-extrabold text-qc-navy">
+                          {row.totalExams}
                         </span>
                       </td>
-                    ))}
 
-                    {/* Signed */}
-                    <td className="px-3 py-3 text-center">
-                      <span className="text-xs font-extrabold text-qc-blue">
-                        {row.finalizedCount}
-                      </span>
-                    </td>
+                      {/* Category counts */}
 
-                    {/* Pending */}
-                    <td className="px-3 py-3 text-center">
-                      {row.pendingCount > 0 ? (
-                        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-orange-50 px-1.5 py-0.5 text-xs font-extrabold text-qc-orange">
-                          {row.pendingCount}
-                        </span>
-                      ) : (
-                        <span className="text-xs font-semibold text-muted-foreground/40">
-                          —
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Average Turnaround Time */}
-                    <td className="px-4 py-3 text-right">
-                      {row.finalizedCount === 0 ? (
-                        <span className="text-xs font-medium text-muted-foreground/40">
-                          —
-                        </span>
-                      ) : (
-                        <span
-                          className={`font-mono text-xs font-extrabold ${
-                            isSlow
-                              ? "text-qc-red"
-                              : isPrior
-                                ? "text-qc-blue"
-                                : "text-qc-navy"
-                          }`}
+                      {CATEGORY_COLUMNS.map((category, index) => (
+                        <td
+                          key={category.key}
+                          className="px-2 py-3 text-center"
+                          title={`${category.label}: ${categoryValues[index]}`}
                         >
-                          {formatTurnaroundTime(
-                            row.avgTatMinutes,
-                            row.avgTatHours,
-                          )}
+                          <span
+                            className={`inline-flex min-w-7 items-center justify-center rounded-lg px-2 py-1 text-xs font-extrabold tabular-nums ${category.valueClass}`}
+                          >
+                            {categoryValues[index]}
+                          </span>
+                        </td>
+                      ))}
+
+                      {/* Signed */}
+
+                      <td className="px-3 py-3 text-center">
+                        <span className="text-xs font-extrabold text-[#00357a]">
+                          {row.finalizedCount}
                         </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
+                      </td>
 
-            {/* Totals */}
-            <tfoot className="border-t border-border bg-background/70">
-              <tr>
-                <td className="px-4 py-3">
-                  <span className="text-xs font-extrabold text-qc-navy">
-                    Total
-                  </span>
-                </td>
+                      {/* Pending */}
 
-                <td className="px-3 py-3 text-center">
-                  <span className="text-xs font-extrabold text-qc-navy">
-                    {totalVolume}
-                  </span>
-                </td>
+                      <td className="px-3 py-3 text-center">
+                        {row.pendingCount > 0 ? (
+                          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-orange-50 px-1.5 py-0.5 text-xs font-extrabold text-qc-orange">
+                            {row.pendingCount}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-semibold text-muted-foreground/40">
+                            —
+                          </span>
+                        )}
+                      </td>
 
-                {categoryTotals.map((total, index) => (
-                  <td
-                    key={CATEGORY_COLUMNS[index].key}
-                    className="px-2 py-3 text-center"
-                  >
-                    <span
-                      className={`inline-flex min-w-7 items-center justify-center rounded-lg px-2 py-1 text-xs font-extrabold tabular-nums ${CATEGORY_COLUMNS[index].totalClass}`}
-                    >
-                      {total}
+                      {/* Average Turnaround Time */}
+
+                      <td className="px-4 py-3 text-right">
+                        {row.finalizedCount === 0 ? (
+                          <span className="text-xs font-medium text-muted-foreground/40">
+                            —
+                          </span>
+                        ) : (
+                          <span
+                            className={`font-mono text-xs font-extrabold ${
+                              isSlow
+                                ? "text-[#7a0000]"
+                                : isPrior
+                                  ? "text-[#00357a]"
+                                  : "text-qc-navy"
+                            }`}
+                          >
+                            {formatTurnaroundTime(
+                              row.avgTatMinutes,
+                              row.avgTatHours,
+                            )}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+
+              {/* Totals */}
+
+              <tfoot className="border-t border-border bg-background/70">
+                <tr>
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-extrabold text-qc-navy">
+                      Total
                     </span>
                   </td>
-                ))}
 
-                <td className="px-3 py-3 text-center">
-                  <span className="text-xs font-extrabold text-qc-blue">
-                    {totalFinalized}
-                  </span>
-                </td>
-
-                <td className="px-3 py-3 text-center">
-                  {totalPending > 0 ? (
-                    <span className="text-xs font-extrabold text-qc-orange">
-                      {totalPending}
+                  <td className="px-3 py-3 text-center">
+                    <span className="text-xs font-extrabold text-qc-navy">
+                      {totalVolume}
                     </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground/40">
-                      —
-                    </span>
-                  )}
-                </td>
+                  </td>
 
-                <td className="px-4 py-3 text-right">
-                  <span
-                    className={`font-mono text-xs font-extrabold ${
-                      isPrior ? "text-qc-blue" : "text-qc-navy"
-                    }`}
-                  >
-                    {weightedTat > 0
-                      ? `${weightedTatHours} hrs`
-                      : "—"}
-                  </span>
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+                  {categoryTotals.map((total, index) => (
+                    <td
+                      key={CATEGORY_COLUMNS[index].key}
+                      className="px-2 py-3 text-center"
+                    >
+                      <span
+                        className={`inline-flex min-w-7 items-center justify-center rounded-lg px-2 py-1 text-xs font-extrabold tabular-nums ${CATEGORY_COLUMNS[index].totalClass}`}
+                      >
+                        {total}
+                      </span>
+                    </td>
+                  ))}
+
+                  <td className="px-3 py-3 text-center">
+                    <span className="text-xs font-extrabold text-[#00357a]">
+                      {totalFinalized}
+                    </span>
+                  </td>
+
+                  <td className="px-3 py-3 text-center">
+                    {totalPending > 0 ? (
+                      <span className="text-xs font-extrabold text-qc-orange">
+                        {totalPending}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/40">
+                        —
+                      </span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3 text-right">
+                    <span
+                      className={`font-mono text-xs font-extrabold ${
+                        isPrior
+                          ? "text-[#00357a]"
+                          : "text-qc-navy"
+                      }`}
+                    >
+                      {weightedTat > 0
+                        ? `${weightedTatHours} hrs`
+                        : "—"}
+                    </span>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
-      </div>
       </>
     );
   };
 
   /* =========================================================
-     Return
+     RETURN
   ========================================================= */
 
   return (
     <div className="min-w-0">
       {/* Controls */}
+
       <div className="flex flex-col gap-3 border-b border-border px-4 py-3.5 sm:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {/* Date navigation and selected modality */}
+          {/* Date coverage and selected modality */}
+
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="flex items-center gap-1.5">
-              {/* Read-only date span: plain text, not a pill */}
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-extrabold text-qc-navy">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-qc-blue" />
-                {firstDay} – {lastDay}
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground">
+                Date covered
+              </span>
+
+              <span
+                className="text-[13px] font-extrabold text-[#00357a]"
+                aria-label={`Date covered: ${dateCoverageLabel}`}
+              >
+                {dateCoverageLabel}
               </span>
 
               {isPending && (
-                <span className="ml-1 h-2 w-2 shrink-0 animate-pulse rounded-full bg-qc-yellow" />
+                <span className="ml-1 h-2 w-2 shrink-0 animate-pulse rounded-full bg-[#ffd230]" />
               )}
             </div>
 
             <span
               className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-extrabold ${
                 activeTab === "ALL"
-                  ? "border-qc-blue/10 bg-qc-blue/[0.06] text-qc-blue"
-                  : "border-qc-yellow/40 bg-qc-yellow/15 text-qc-navy"
+                  ? "border-[#00357a]/10 bg-[#00357a]/[0.06] text-[#00357a]"
+                  : "border-[#ffd230]/50 bg-[#ffd230]/15 text-[#6b5200]"
               }`}
             >
               <Layers className="h-3.5 w-3.5" />
@@ -606,29 +744,39 @@ export function SevenDayTatTable({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
-          {/* Window type first: it decides which days are shown */}
-          <SegmentedToggle
-            label="Seven-day window"
-            options={WINDOW_MODES}
-            value={mode}
-            onChange={setMode}
-          />
+            {/* Window type first: it decides which days are shown */}
 
-          <span aria-hidden className="hidden h-6 w-px bg-border sm:block" />
+            <SegmentedToggle
+              label="Seven-day window"
+              options={WINDOW_MODES}
+              value={mode}
+              onChange={setMode}
+            />
 
-          {/* Show the period before beside the current table */}
-          <CompareToggle
-            label={`Compare ${previousLabel.toLowerCase()}`}
-            checked={showPrevious}
-            onChange={() => setShowPrevious((previous) => !previous)}
-            accentColor={QC_BLUE}
-            swatch={<span className="h-2 w-2 rounded-full bg-qc-blue" />}
-          />
+            <span
+              aria-hidden
+              className="hidden h-6 w-px bg-border sm:block"
+            />
+
+            {/* Show the period before beside the current table */}
+
+            <CompareToggle
+              label={`Compare ${previousLabel.toLowerCase()}`}
+              checked={showPrevious}
+              onChange={() =>
+                setShowPrevious((previous) => !previous)
+              }
+              accentColor={QC_BLUE}
+              swatch={
+                <span className="h-2 w-2 rounded-full bg-[#00357a]" />
+              }
+            />
           </div>
         </div>
       </div>
 
       {/* Current table, optionally beside the previous 7 days */}
+
       <div className="px-4 pb-5 pt-4 sm:px-5">
         <div
           className={`grid grid-cols-1 gap-5 ${
@@ -638,11 +786,13 @@ export function SevenDayTatTable({
           <div className="min-w-0 space-y-2.5">
             <div className="flex items-center justify-between gap-3 px-1">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-qc-yellow" />
+                <span className="h-2 w-2 rounded-full bg-[#ffd230]" />
+
                 <span className="text-sm font-extrabold text-qc-navy">
                   Current
                 </span>
               </div>
+
               <span className="text-xs font-semibold text-muted-foreground">
                 {currentData.currentTotalVolume} exams
               </span>
@@ -655,11 +805,13 @@ export function SevenDayTatTable({
             <div className="min-w-0 space-y-2.5">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-qc-blue" />
+                  <span className="h-2 w-2 rounded-full bg-[#00357a]" />
+
                   <span className="text-sm font-extrabold text-qc-navy">
                     {previousLabel}
                   </span>
                 </div>
+
                 <span className="text-xs font-semibold text-muted-foreground">
                   {currentData.priorTotalVolume} exams
                 </span>
@@ -674,9 +826,11 @@ export function SevenDayTatTable({
                     <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                       <Layers className="h-4 w-4" />
                     </div>
+
                     <p className="mt-3 text-sm font-extrabold text-qc-navy">
                       No previous data
                     </p>
+
                     <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
                       There is no earlier seven-day period to compare with.
                     </p>
@@ -690,15 +844,18 @@ export function SevenDayTatTable({
     </div>
   );
 }
+
 /** Small "Today" / "Yesterday" pill next to a day's date; nothing otherwise. */
+
 function DayTag({ label }: { label: string }) {
   if (label !== "Today" && label !== "Yesterday") return null;
+
   return (
     <span
       className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${
         label === "Today"
-          ? "bg-qc-yellow text-qc-navy"
-          : "bg-qc-blue/10 text-qc-blue"
+          ? "bg-[#ffd230] text-[#00357a]"
+          : "bg-[#00357a]/10 text-[#00357a]"
       }`}
     >
       {label}

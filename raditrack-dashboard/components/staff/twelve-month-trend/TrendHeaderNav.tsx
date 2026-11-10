@@ -14,8 +14,16 @@ import { SegmentedToggle } from "@/components/common/SegmentedToggle";
 import { CompareToggle } from "@/components/common/CompareToggle";
 
 const PERIOD_MODES = [
-  { value: "year", label: "Calendar year", hint: "January to December of the year you pick" },
-  { value: "rolling", label: "Last 12 months", hint: "This month and the 11 months before it" },
+  {
+    value: "year",
+    label: "Calendar year",
+    hint: "January to December of the year you pick",
+  },
+  {
+    value: "rolling",
+    label: "Last 12 months",
+    hint: "This month and the 11 months before it",
+  },
 ] as const;
 
 interface TrendHeaderNavProps {
@@ -67,26 +75,38 @@ export function TrendHeaderNav({
   onToggleComparePriorYear,
 }: TrendHeaderNavProps) {
   const isRolling = selectedPeriod === "rolling";
+
   const comparisonLabel = isRolling
     ? "prior 12 months"
     : String(calendarYear - 1);
+
   const stepButtonClass =
     "flex h-full w-8 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-qc-blue/5 hover:text-qc-navy disabled:opacity-40";
+
+  // Keep the annual metric label consistent across desktop and mobile.
+  const averageTatLabel =
+    isModalitySpecific && activeModalityLabel
+      ? `${activeModalityLabel} Average Turnaround Time`
+      : "Average Turnaround Time";
 
   return (
     <div className="flex flex-col gap-3 border-b border-border pb-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
       {/* Period: calendar year first, then the last 12 months */}
+
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <SegmentedToggle
           label="Trend period"
           options={PERIOD_MODES}
           value={isRolling ? "rolling" : "year"}
           onChange={(mode) =>
-            mode === "rolling" ? onSelectRolling() : onSelectCalendarYear(calendarYear)
+            mode === "rolling"
+              ? onSelectRolling()
+              : onSelectCalendarYear(calendarYear)
           }
         />
 
         {/* Explains the toggle, so it sits right beside it */}
+
         <div className="group/hint relative">
           <button
             type="button"
@@ -96,17 +116,23 @@ export function TrendHeaderNav({
           >
             <Info className="h-4 w-4" />
           </button>
+
           <div
             id="trend-period-hint"
             role="tooltip"
             className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-72 translate-y-1 rounded-xl border border-border bg-card p-3 text-left text-[13px] leading-relaxed text-muted-foreground opacity-0 shadow-[0_16px_40px_rgba(5,14,64,0.14)] transition-all duration-150 group-focus-within/hint:translate-y-0 group-focus-within/hint:opacity-100 group-hover/hint:translate-y-0 group-hover/hint:opacity-100"
           >
             <p>
-              <span className="font-extrabold text-qc-navy">Calendar year:</span>{" "}
+              <span className="font-extrabold text-qc-navy">
+                Calendar year:
+              </span>{" "}
               January to December of the year you pick.
             </p>
+
             <p className="mt-1.5">
-              <span className="font-extrabold text-qc-navy">Last 12 months:</span>{" "}
+              <span className="font-extrabold text-qc-navy">
+                Last 12 months:
+              </span>{" "}
               the month your date filter ends in plus the 11 months before it
               (now {rollingSpanLabel}), so it crosses into the previous year.
             </p>
@@ -114,6 +140,7 @@ export function TrendHeaderNav({
         </div>
 
         {/* Calendar year: its own stepper. Last 12 months: the span as text. */}
+
         {isRolling ? (
           <span className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-qc-navy">
             <CalendarDays className="h-3.5 w-3.5 text-qc-blue" />
@@ -131,9 +158,12 @@ export function TrendHeaderNav({
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
+
             <select
               value={String(calendarYear)}
-              onChange={(event) => onSelectCalendarYear(Number(event.target.value))}
+              onChange={(event) =>
+                onSelectCalendarYear(Number(event.target.value))
+              }
               aria-label="Calendar year"
               className="h-full cursor-pointer appearance-none bg-transparent px-1.5 text-center text-xs font-extrabold text-qc-navy outline-none focus-visible:ring-2 focus-visible:ring-qc-blue/40"
             >
@@ -143,6 +173,7 @@ export function TrendHeaderNav({
                 </option>
               ))}
             </select>
+
             <button
               type="button"
               onClick={() => onStepYear(1)}
@@ -156,7 +187,8 @@ export function TrendHeaderNav({
           </div>
         )}
 
-        {/* Patient category scope, set apart from the period controls */}
+        {/* Patient category scope */}
+
         <span className="inline-flex items-center gap-1.5 border-l border-border pl-3 text-[13px] font-bold text-muted-foreground">
           <Users className="h-3.5 w-3.5 text-qc-blue" />
           {triageLabel}
@@ -168,16 +200,18 @@ export function TrendHeaderNav({
       </div>
 
       {/* Summary + options */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {/* Period summary: read-only text, not a pill */}
-        <div className="hidden shrink-0 items-baseline gap-2 whitespace-nowrap pr-1 sm:flex">
-          <span className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">
-            {isModalitySpecific && activeModalityLabel ? `${activeModalityLabel} avg` : "Avg TAT"}
+
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+        {/* Annual average summary */}
+
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 pr-1 sm:flex">
+          <span className="max-w-[260px] text-[11px] font-extrabold uppercase leading-snug tracking-wide text-muted-foreground">
+            {averageTatLabel}
           </span>
 
           {hasCurrentData ? (
             <>
-              <span className="text-sm font-extrabold text-qc-navy">
+              <span className="whitespace-nowrap text-sm font-extrabold text-qc-navy">
                 {displayAnnualAvgHours} hrs
               </span>
 
@@ -196,9 +230,12 @@ export function TrendHeaderNav({
                   ) : isSlower ? (
                     <TrendingUp className="h-3 w-3" />
                   ) : null}
+
                   {displayPctChange === 0
                     ? "Same as"
-                    : `${Math.abs(displayPctChange)}% ${isFaster ? "faster than" : "longer than"}`}{" "}
+                    : `${Math.abs(displayPctChange)}% ${
+                        isFaster ? "faster than" : "longer than"
+                      }`}{" "}
                   {comparisonLabel}
                 </span>
               )}
@@ -211,8 +248,13 @@ export function TrendHeaderNav({
         </div>
 
         {/* Dashed prior-period line on the chart */}
+
         <CompareToggle
-          label={isRolling ? "Compare prior 12 months" : `Compare ${calendarYear - 1}`}
+          label={
+            isRolling
+              ? "Compare prior 12 months"
+              : `Compare ${calendarYear - 1}`
+          }
           checked={comparePriorYear}
           onChange={onToggleComparePriorYear}
           accentColor={QC_PURPLE}
@@ -224,7 +266,6 @@ export function TrendHeaderNav({
             />
           }
         />
-
       </div>
     </div>
   );

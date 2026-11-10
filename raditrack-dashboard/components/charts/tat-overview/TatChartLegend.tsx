@@ -1,9 +1,11 @@
-import React from "react";
+"use client";
 
-import {
-  QC_BLUE,
-  QC_RED,
-} from "./types";
+/* =========================================================
+   RADiTrack OFFICIAL BRAND COLORS
+========================================================= */
+
+const BRAND_BLUE = "#00357a";
+const BRAND_RED = "#7a0000";
 
 interface TatChartLegendProps {
   hasTargetSla: boolean;
@@ -14,9 +16,11 @@ export function TatChartLegend({
 }: TatChartLegendProps) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border px-4 py-3 text-[13px] font-semibold text-muted-foreground">
+
       {hasTargetSla ? (
         <>
-          {/* Target SLA */}
+          {/* Target SLA benchmark */}
+
           <span className="flex items-center gap-2">
             <span
               className="h-3 w-5 rounded-xs border"
@@ -25,40 +29,50 @@ export function TatChartLegend({
                 borderColor: "rgba(0, 53, 122, 0.65)",
               }}
             />
-            Target SLA (Wide Benchmark Bar)
+
+            Target SLA Benchmark
           </span>
 
-          {/* Actual TAT within SLA */}
+          {/* Actual Turnaround Time within SLA */}
+
           <span className="flex items-center gap-2">
             <span
               className="h-3 w-3 rounded-xs"
               style={{
-                backgroundColor: QC_BLUE,
+                backgroundColor: BRAND_BLUE,
               }}
             />
-            Actual TAT (Within SLA)
+
+            Actual Turnaround Time (Within SLA)
           </span>
 
-          {/* Actual TAT above SLA */}
+          {/* Actual Turnaround Time above SLA */}
+
           <span className="flex items-center gap-2">
             <span
               className="h-3 w-3 rounded-xs"
               style={{
-                backgroundColor: QC_RED,
+                backgroundColor: BRAND_RED,
               }}
             />
-            Actual TAT (Above SLA / Breached)
+
+            Actual Turnaround Time (SLA Breached)
           </span>
         </>
       ) : (
-        <span className="flex items-center gap-2">
+        <span className="flex flex-wrap items-center justify-center gap-2 text-center">
           <span
-            className="h-3 w-3 rounded-xs"
+            className="h-3 w-3 shrink-0 rounded-xs"
             style={{
-              backgroundColor: QC_BLUE,
+              backgroundColor: BRAND_BLUE,
             }}
           />
-          Actual Average Turnaround Time (Filter by OPD, ER, or Inpatient to compare against SLA targets)
+
+          Actual Average Turnaround Time
+
+          <span className="text-xs font-medium text-muted-foreground">
+            (Filter by OPD, ER, or Inpatient to compare against SLA targets)
+          </span>
         </span>
       )}
     </div>
