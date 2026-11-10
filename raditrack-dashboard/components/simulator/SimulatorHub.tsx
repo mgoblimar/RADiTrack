@@ -9,7 +9,6 @@ import {
   Clock,
   FileSpreadsheet,
   PlusCircle,
-  Radio,
   Sparkles,
   Tv,
   Zap,
@@ -223,16 +222,8 @@ export function SimulatorHub({
         <div className="pointer-events-none absolute bottom-0 right-28 h-20 w-20 rounded-full bg-qc-blue/[0.035]" />
 
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow">
-              <Radio className="h-5 w-5" strokeWidth={2.2} />
-            </div>
-
+          <div className="flex min-w-0 items-center">
             <div className="min-w-0">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
-                Radiology Operations
-              </p>
-
               <h1 className="mt-0.5 text-2xl font-extrabold tracking-tight text-qc-navy sm:text-[28px]">
                 RIS SIMULATOR
               </h1>
@@ -407,7 +398,7 @@ export function SimulatorHub({
         <section className="overflow-hidden rounded-[22px] border border-qc-blue/10 bg-white shadow-[0_8px_24px_rgba(5,14,64,0.05)]">
           <div className="border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-6 py-4">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
-              Preset workflows
+              Preset Entry
             </p>
 
             <h2 className="mt-0.5 text-lg font-extrabold tracking-tight text-qc-navy">
@@ -476,13 +467,9 @@ export function SimulatorHub({
       <section className="overflow-hidden rounded-[22px] border border-qc-blue/10 bg-white shadow-[0_8px_24px_rgba(5,14,64,0.05)]">
         <div className="flex flex-col gap-3 border-b border-qc-blue/10 bg-[linear-gradient(110deg,#F9FAFE_0%,#F4F7FF_55%,#FFF9E9_100%)] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-qc-blue">
-              Reading workflow
-            </p>
-
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-extrabold tracking-tight text-qc-navy">
-                Current Reading Queue
+                CURRENT READING QUEUE
               </h2>
 
               <span className="rounded-full bg-qc-orange/10 px-2.5 py-1 text-[10px] font-extrabold text-qc-orange">
@@ -503,29 +490,59 @@ export function SimulatorHub({
         {/* Phones and tablets: one card per queued exam */}
         <ul className="divide-y divide-slate-200 lg:hidden">
           {initialQueue.map((item) => (
-            <li key={item.examId} className={`p-4 ${item.isBreached ? "bg-red-50/30" : ""}`}>
+            <li
+              key={item.examId}
+              className={`p-4 ${item.isBreached ? "bg-red-50/30" : ""}`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-mono text-sm font-extrabold text-qc-navy">{item.identifier}</p>
+                  <p className="truncate font-mono text-sm font-extrabold text-qc-navy">
+                    {item.identifier}
+                  </p>
+
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     <span className="rounded-lg bg-qc-navy px-2 py-0.5 text-[11px] font-extrabold text-qc-yellow">
-                      {MODALITY_CONFIG[item.modalityCode as ModalityCode]?.shortName ?? item.modalityCode}
+                      {MODALITY_CONFIG[
+                        item.modalityCode as ModalityCode
+                      ]?.shortName ?? item.modalityCode}
                     </span>
-                    <span className={`rounded-lg border px-2 py-0.5 text-[11px] font-extrabold ${getTriageClass(item.triageLevel)}`}>
+
+                    <span
+                      className={`rounded-lg border px-2 py-0.5 text-[11px] font-extrabold ${getTriageClass(
+                        item.triageLevel,
+                      )}`}
+                    >
                       {item.triageLevel}
                     </span>
+
                     {item.isCarryOver && (
-                      <span className="rounded-lg bg-qc-blue/5 px-2 py-0.5 text-[11px] font-bold text-qc-blue">Carry-over</span>
+                      <span className="rounded-lg bg-qc-blue/5 px-2 py-0.5 text-[11px] font-bold text-qc-blue">
+                        Carry-over
+                      </span>
                     )}
                   </div>
                 </div>
+
                 <div className="shrink-0 text-right">
-                  <p className={`font-mono text-sm font-extrabold ${item.isBreached ? "text-qc-red" : "text-qc-orange"}`}>{item.dwellHours} hrs</p>
+                  <p
+                    className={`font-mono text-sm font-extrabold ${
+                      item.isBreached
+                        ? "text-qc-red"
+                        : "text-qc-orange"
+                    }`}
+                  >
+                    {item.dwellHours} hrs
+                  </p>
+
                   <p className="text-[11px] font-semibold text-slate-500">
-                    Target {item.targetTat ? `${Math.round(item.targetTat / 60)} hrs` : "—"}
+                    Target{" "}
+                    {item.targetTat
+                      ? `${Math.round(item.targetTat / 60)} hrs`
+                      : "—"}
                   </p>
                 </div>
               </div>
+
               <form
                 className="mt-3"
                 action={async (formData: FormData) => {
@@ -533,7 +550,12 @@ export function SimulatorHub({
                   notifyDatabaseChanged();
                 }}
               >
-                <input type="hidden" name="examId" value={item.examId} />
+                <input
+                  type="hidden"
+                  name="examId"
+                  value={item.examId}
+                />
+
                 <button
                   type="submit"
                   className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-qc-yellow text-sm font-extrabold text-qc-navy hover:bg-[#eac13d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-navy"
@@ -544,10 +566,16 @@ export function SimulatorHub({
               </form>
             </li>
           ))}
+
           {initialQueue.length === 0 && (
             <li className="px-6 py-12 text-center">
-              <h3 className="text-sm font-extrabold text-qc-navy">Reading queue is clear</h3>
-              <p className="mt-1 text-xs text-slate-400">Add a study above to populate the simulated reading workflow.</p>
+              <h3 className="text-sm font-extrabold text-qc-navy">
+                Reading queue is clear
+              </h3>
+
+              <p className="mt-1 text-xs text-slate-400">
+                Add a study above to populate the simulated reading workflow.
+              </p>
             </li>
           )}
         </ul>
@@ -651,10 +679,12 @@ export function SimulatorHub({
                   </td>
 
                   <td className="px-5 py-4 text-right">
-                    <form action={async (formData: FormData) => {
-                      await signOffReportAction(formData);
-                      notifyDatabaseChanged();
-                    }}>
+                    <form
+                      action={async (formData: FormData) => {
+                        await signOffReportAction(formData);
+                        notifyDatabaseChanged();
+                      }}
+                    >
                       <input
                         type="hidden"
                         name="examId"

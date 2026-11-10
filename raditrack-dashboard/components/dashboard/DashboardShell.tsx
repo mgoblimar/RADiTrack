@@ -714,16 +714,18 @@ export function DashboardShell({
                 />
               </section>
 
-              {/* One shared coverage indicator for the KPI cards */}
-              <div className="flex flex-col gap-1 rounded-2xl border border-qc-navy/10 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground">
-                    Date coverage
-                  </span>
-                  <span className="text-sm font-extrabold text-qc-navy">
-                    {dateRangeLabel}
-                  </span>
-                </div>
+              {/* Compact coverage indicator shared by the KPI cards */}
+              <div className="flex w-fit max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-qc-navy/10 bg-white/80 px-3.5 py-2 shadow-sm backdrop-blur-sm">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground">
+                  Date coverage
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="hidden h-4 w-px bg-qc-navy/15 sm:block"
+                />
+                <span className="text-xs font-extrabold text-qc-navy sm:text-[13px]">
+                  {dateRangeLabel}
+                </span>
               </div>
 
               {/* KPI cards */}
