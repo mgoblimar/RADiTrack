@@ -1,12 +1,6 @@
-
 import { getPublicActivityData } from "@/app/actions";
 
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Minus,
-  ShieldCheck,
-} from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 import { HospitalHeader } from "@/components/navigation/HospitalHeader";
 import ModalityPieChart from "@/components/charts/ModalityPieChart";
@@ -116,12 +110,9 @@ export default async function PatientActivityPage() {
                 </p>
               </div>
 
-              <div className="relative z-10 ml-3 flex shrink-0 flex-col items-end">
-                <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.14em] text-qc-blue/70 sm:text-[10px]">
-                  Total Examinations
-                </p>
-                <div className="flex h-[68px] min-w-[90px] items-center justify-center rounded-2xl bg-qc-yellow px-4 shadow-[0_8px_20px_rgba(255,210,48,0.24)] sm:h-[76px] sm:min-w-[104px]">
-                  <p className="whitespace-nowrap text-5xl font-black leading-none tracking-[-0.04em] text-qc-blue sm:text-6xl">
+              <div className="relative z-10 ml-3 flex shrink-0 items-center">
+                <div className="flex h-[82px] min-w-[108px] items-center justify-center rounded-2xl bg-qc-yellow px-5 shadow-[0_8px_20px_rgba(255,210,48,0.24)] sm:h-[92px] sm:min-w-[124px]">
+                  <p className="whitespace-nowrap text-6xl font-black leading-none tracking-[-0.05em] text-qc-blue sm:text-7xl">
                     {data.todayGrandTotal.toLocaleString()}
                   </p>
                 </div>
@@ -141,7 +132,7 @@ export default async function PatientActivityPage() {
                 </p>
               </div>
 
-              <p className="relative z-10 whitespace-nowrap text-4xl font-black leading-none tracking-tight text-qc-blue sm:text-5xl xl:text-6xl">
+              <p className="relative z-10 whitespace-nowrap text-5xl font-black leading-none tracking-tight text-qc-blue sm:text-6xl xl:text-7xl">
                 {data.yesterdayGrandTotal.toLocaleString()}
               </p>
             </div>
@@ -160,28 +151,18 @@ export default async function PatientActivityPage() {
               </div>
 
               <div className="relative z-10 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  {volumeDiff > 0 ? (
-                    <ArrowUpRight className="h-6 w-6 text-qc-blue sm:h-7 sm:w-7" />
-                  ) : volumeDiff < 0 ? (
-                    <ArrowDownRight className="h-6 w-6 text-qc-red sm:h-7 sm:w-7" />
-                  ) : (
-                    <Minus className="h-6 w-6 text-qc-yellow sm:h-7 sm:w-7" />
-                  )}
-
-                  <span
-                    className={`whitespace-nowrap text-4xl font-black leading-none tracking-tight sm:text-5xl xl:text-6xl ${
-                      volumeDiff > 0
-                        ? "text-qc-blue"
-                        : volumeDiff < 0
-                          ? "text-qc-red"
-                          : "text-qc-blue"
-                    }`}
-                  >
-                    {volumeDiff > 0 ? "+" : ""}
-                    {volumeDiff.toLocaleString()}
-                  </span>
-                </div>
+                <span
+                  className={`block whitespace-nowrap text-5xl font-black leading-none tracking-tight sm:text-6xl xl:text-7xl ${
+                    volumeDiff > 0
+                      ? "text-qc-blue"
+                      : volumeDiff < 0
+                        ? "text-qc-red"
+                        : "text-qc-blue"
+                  }`}
+                >
+                  {volumeDiff > 0 ? "+" : ""}
+                  {volumeDiff.toLocaleString()}
+                </span>
 
                 <p
                   className={`mt-2 text-[9px] font-extrabold uppercase tracking-[0.1em] sm:text-[10px] ${

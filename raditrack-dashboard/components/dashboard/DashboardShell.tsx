@@ -699,13 +699,29 @@ export function DashboardShell({
 
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsReportOpen(true)}
-                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-2xl bg-qc-navy px-5 text-xs font-extrabold text-white shadow-[0_6px_16px_rgba(0,53,122,0.18)] transition-colors hover:bg-qc-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-yellow"
-                >
-                  Generate Report
-                </button>
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+                  {/* Compact date coverage, aligned with the filter controls */}
+                  <div className="inline-flex h-11 w-fit max-w-full shrink-0 items-center gap-2.5 rounded-2xl border border-qc-navy/10 bg-white/80 px-3.5 shadow-sm backdrop-blur-sm">
+                    <span className="whitespace-nowrap text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground">
+                      Date coverage
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="h-4 w-px shrink-0 bg-qc-navy/15"
+                    />
+                    <span className="whitespace-nowrap text-xs font-extrabold text-qc-navy sm:text-[13px]">
+                      {dateRangeLabel}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsReportOpen(true)}
+                    className="inline-flex h-11 w-full shrink-0 items-center justify-center rounded-2xl bg-qc-navy px-5 text-xs font-extrabold text-white shadow-[0_6px_16px_rgba(0,53,122,0.18)] transition-colors hover:bg-qc-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-yellow sm:w-fit"
+                  >
+                    Generate Report
+                  </button>
+                </div>
 
                 <ReportBuilderDialog
                   isOpen={isReportOpen}
@@ -713,20 +729,6 @@ export function DashboardShell({
                   filters={dashboardFilters}
                 />
               </section>
-
-              {/* Compact coverage indicator shared by the KPI cards */}
-              <div className="flex w-fit max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-qc-navy/10 bg-white/80 px-3.5 py-2 shadow-sm backdrop-blur-sm">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground">
-                  Date coverage
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="hidden h-4 w-px bg-qc-navy/15 sm:block"
-                />
-                <span className="text-xs font-extrabold text-qc-navy sm:text-[13px]">
-                  {dateRangeLabel}
-                </span>
-              </div>
 
               {/* KPI cards */}
 
