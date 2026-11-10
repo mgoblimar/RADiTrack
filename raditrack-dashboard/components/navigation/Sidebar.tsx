@@ -52,6 +52,11 @@ export function Sidebar({
   currentUser,
 }: SidebarProps) {
   const canUseSimulator = isAdmin(currentUser);
+
+  const accountType = canUseSimulator
+    ? "Administrator"
+    : "Staff account";
+
   const [isMobileOpen, setIsMobileOpen] =
     useState(false);
 
@@ -152,7 +157,6 @@ export function Sidebar({
 
         {/* ===================================================
             RADiTrack BRAND
-            Large centered text branding.
         =================================================== */}
 
         <div
@@ -273,8 +277,6 @@ export function Sidebar({
                         : "gap-3"
                     }`}
                   >
-                    {/* Navigation icon */}
-
                     <div
                       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${
                         isActive
@@ -287,8 +289,6 @@ export function Sidebar({
                         strokeWidth={2.1}
                       />
                     </div>
-
-                    {/* Navigation label */}
 
                     {!isCollapsed && (
                       <span
@@ -409,41 +409,41 @@ export function Sidebar({
             {/* RIS Simulator (administrators only) */}
 
             {canUseSimulator && (
-            <Link
-              href="/simulator"
-              onClick={() => setIsMobileOpen(false)}
-              title="RIS Simulator"
-              className={`group relative flex min-h-[54px] w-full items-center rounded-2xl border border-transparent text-white/75 transition-all duration-200 hover:border-white/[0.09] hover:bg-white/[0.07] hover:text-white ${
-                isCollapsed
-                  ? "h-[52px] justify-center px-1"
-                  : "justify-between px-3 py-2.5"
-              }`}
-            >
-              <div
-                className={`flex min-w-0 items-center ${
+              <Link
+                href="/simulator"
+                onClick={() => setIsMobileOpen(false)}
+                title="RIS Simulator"
+                className={`group relative flex min-h-[54px] w-full items-center rounded-2xl border border-transparent text-white/75 transition-all duration-200 hover:border-white/[0.09] hover:bg-white/[0.07] hover:text-white ${
                   isCollapsed
-                    ? "justify-center"
-                    : "gap-3"
+                    ? "h-[52px] justify-center px-1"
+                    : "justify-between px-3 py-2.5"
                 }`}
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.09] text-white/75 transition-all duration-200 group-hover:bg-white/[0.16] group-hover:text-qc-yellow group-active:scale-95">
-                  <Radio
-                    className="h-[19px] w-[19px]"
-                    strokeWidth={2.1}
-                  />
+                <div
+                  className={`flex min-w-0 items-center ${
+                    isCollapsed
+                      ? "justify-center"
+                      : "gap-3"
+                  }`}
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.09] text-white/75 transition-all duration-200 group-hover:bg-white/[0.16] group-hover:text-qc-yellow group-active:scale-95">
+                    <Radio
+                      className="h-[19px] w-[19px]"
+                      strokeWidth={2.1}
+                    />
+                  </div>
+
+                  {!isCollapsed && (
+                    <span className="truncate text-[14px] font-bold tracking-[0.005em] transition-colors group-hover:text-white">
+                      RIS Simulator
+                    </span>
+                  )}
                 </div>
 
                 {!isCollapsed && (
-                  <span className="truncate text-[14px] font-bold tracking-[0.005em] transition-colors group-hover:text-white">
-                    RIS Simulator
-                  </span>
+                  <ChevronRight className="h-4 w-4 text-white/50 transition-transform duration-200 group-hover:translate-x-0.5" />
                 )}
-              </div>
-
-              {!isCollapsed && (
-                <ChevronRight className="h-4 w-4 text-white/50 transition-transform duration-200 group-hover:translate-x-0.5" />
-              )}
-            </Link>
+              </Link>
             )}
           </div>
         </div>
@@ -454,22 +454,29 @@ export function Sidebar({
 
         <div className="relative shrink-0 border-t border-white/[0.15] bg-black/[0.10] p-3">
           {isCollapsed ? (
-            <div className="flex flex-col items-center gap-2.5">
+            /* COLLAPSED PROFILE */
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.12] bg-white/[0.045] py-2.5">
               <button
                 type="button"
                 onClick={() => handleTabChange("settings")}
-                title={currentUser.fullName}
+                title={`Profile settings: ${currentUser.fullName}`}
+                aria-label="Open profile settings"
                 className="group relative"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow shadow-[0_5px_12px_rgba(0,0,0,0.12)] transition-all duration-200 group-hover:border-qc-yellow group-hover:bg-white/[0.16] group-active:scale-95">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow transition-all duration-200 group-hover:border-qc-yellow group-hover:bg-white/[0.16] group-active:scale-95">
                   <User
-                    className="h-[18px] w-[18px]"
-                    strokeWidth={2.1}
+                    className="h-[19px] w-[19px]"
+                    strokeWidth={2}
                   />
                 </div>
 
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-qc-blue" />
+                <span
+                  className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-qc-blue"
+                  aria-label="Signed in"
+                />
               </button>
+
+              <div className="h-px w-8 bg-white/[0.12]" />
 
               <button
                 type="button"
@@ -480,7 +487,7 @@ export function Sidebar({
               >
                 <Settings
                   className="h-[18px] w-[18px]"
-                  strokeWidth={2.1}
+                  strokeWidth={2}
                 />
               </button>
 
@@ -493,72 +500,77 @@ export function Sidebar({
                 >
                   <LogOut
                     className="h-[18px] w-[18px]"
-                    strokeWidth={2.1}
+                    strokeWidth={2}
                   />
                 </button>
               </form>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 rounded-2xl border border-white/[0.15] bg-white/[0.07] p-2.5 transition-colors hover:bg-white/[0.11]">
-              <button
-                type="button"
-                onClick={() => handleTabChange("settings")}
-                className="group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow shadow-[0_5px_12px_rgba(0,0,0,0.12)] transition-all duration-200 hover:border-qc-yellow hover:bg-white/[0.16] active:scale-95"
-                title={currentUser.fullName}
-              >
-                <User
-                  className="h-[18px] w-[18px]"
-                  strokeWidth={2.1}
-                />
+            /* EXPANDED PROFILE */
+            <div className="rounded-2xl border border-white/[0.15] bg-white/[0.07] p-3 transition-colors hover:bg-white/[0.10]">
 
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-qc-blue" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTabChange("settings")}
-                className="min-w-0 flex-1 text-left"
-                title="Open profile settings"
-              >
-                <div className="truncate text-[13px] font-extrabold text-white">
-                  {currentUser.fullName}
-                </div>
-
-                <div className="mt-1 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-
-                  <span className="text-[10px] font-bold uppercase tracking-[0.09em] text-white/65">
-                    Online
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTabChange("settings")}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white/65 transition-all duration-200 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95"
-                title="Settings"
-                aria-label="Open settings"
-              >
-                <Settings
-                  className="h-[18px] w-[18px]"
-                  strokeWidth={2.1}
-                />
-              </button>
-
-              <form action={logoutAction} className="shrink-0">
+              {/* Account identity */}
+              <div className="flex min-w-0 items-center gap-3">
                 <button
-                  type="submit"
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-white/65 transition-all duration-200 hover:bg-white/[0.12] hover:text-qc-yellow active:scale-95"
-                  title="Sign out"
-                  aria-label="Sign out"
+                  type="button"
+                  onClick={() => handleTabChange("settings")}
+                  title="Open profile settings"
+                  aria-label={`Open profile settings for ${currentUser.fullName}`}
+                  className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow shadow-[0_4px_12px_rgba(0,0,0,0.10)] transition-all duration-200 hover:border-qc-yellow hover:bg-white/[0.16] active:scale-95"
                 >
-                  <LogOut
-                    className="h-[18px] w-[18px]"
-                    strokeWidth={2.1}
+                  <User
+                    className="h-5 w-5"
+                    strokeWidth={2}
                   />
+
+                  <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-qc-blue" />
                 </button>
-              </form>
+
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="line-clamp-2 break-words text-[13px] font-extrabold leading-snug text-white"
+                    title={currentUser.fullName}
+                  >
+                    {currentUser.fullName}
+                  </p>
+
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.10em] text-white/60">
+                    {accountType}
+                  </p>
+                </div>
+              </div>
+
+              {/* Profile actions */}
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/[0.12] pt-2.5">
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("settings")}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-xl text-xs font-bold text-white/75 transition-all hover:bg-white/[0.10] hover:text-qc-yellow active:scale-[0.98]"
+                  title="Open settings"
+                  aria-label="Open settings"
+                >
+                  <Settings
+                    className="h-4 w-4"
+                    strokeWidth={2}
+                  />
+                  Settings
+                </button>
+
+                <form action={logoutAction}>
+                  <button
+                    type="submit"
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl text-xs font-bold text-white/75 transition-all hover:bg-white/[0.10] hover:text-qc-yellow active:scale-[0.98]"
+                    title="Sign out"
+                    aria-label="Sign out"
+                  >
+                    <LogOut
+                      className="h-4 w-4"
+                      strokeWidth={2}
+                    />
+                    Sign out
+                  </button>
+                </form>
+              </div>
             </div>
           )}
         </div>

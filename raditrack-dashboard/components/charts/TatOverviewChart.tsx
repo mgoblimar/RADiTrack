@@ -12,7 +12,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3 } from "lucide-react";
 
 import {
   QC_GRID,
@@ -94,33 +93,20 @@ export function TatOverviewChart({
 
           {/* Chart title */}
 
-          <div className="flex min-w-0 items-center gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-qc-blue text-qc-yellow shadow-[0_5px_14px_rgba(0,53,122,0.18)]">
-              <BarChart3 className="h-5 w-5" />
-            </div>
+          <div className="min-w-0">
+            <h2
+              className="text-xl font-extrabold tracking-tight sm:text-2xl"
+              style={{ color: BRAND_BLUE }}
+            >
+              TURNAROUND TIME BY MODALITY
+            </h2>
 
-            <div className="min-w-0">
-              <h2 className="text-xl font-extrabold tracking-tight text-qc-blue sm:text-2xl">
-                TURNAROUND TIME BY MODALITY
-              </h2>
-
+            {hasTargetSla && (
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {hasTargetSla
-                  ? "Target SLA benchmark vs Actual Turnaround Time"
-                  : "Average Turnaround Time across modalities. Filter by patient category to view SLA benchmarks."}
+                Target SLA benchmark vs Actual Turnaround Time
               </p>
-            </div>
+            )}
           </div>
-
-          {/* Scope set by the dashboard filter bar */}
-
-          <span
-            className={`inline-flex h-9 shrink-0 items-center rounded-xl border border-border/80 bg-white/90 px-3 text-[13px] font-extrabold text-qc-blue shadow-sm ${
-              isPending ? "opacity-60" : ""
-            }`}
-          >
-            {scopeLabel}
-          </span>
         </div>
       </div>
 
@@ -131,7 +117,10 @@ export function TatOverviewChart({
       <div className="px-3 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
         {displayData.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background px-4 text-center">
-            <p className="text-sm font-extrabold text-qc-blue">
+            <p
+              className="text-sm font-extrabold"
+              style={{ color: BRAND_BLUE }}
+            >
               No modality data
             </p>
 

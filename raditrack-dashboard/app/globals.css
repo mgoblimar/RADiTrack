@@ -61,16 +61,19 @@
   /* =========================================================
      RADiTrack OFFICIAL BRAND PALETTE
 
-     #00357A is the single darkest / primary brand blue.
-     Lighter blues are reserved for secondary text, chart series,
-     borders, and soft surfaces. qc-navy remains a compatibility
-     alias so existing components keep the official brand color.
+     Primary blue:   #00357a
+     Secondary blue: #2d3e9d
+     Yellow:         #ffd230
+     Dark red:       #7a0000
+
+     Supporting colors are used for chart differentiation,
+     borders, secondary text, and softer UI surfaces.
   ========================================================= */
 
   --color-qc-navy: #00357a;
   --color-qc-blue: #00357a;
   --color-qc-blue-700: #00357a;
-  --color-qc-blue-600: #24568d;
+  --color-qc-blue-600: #2d3e9d;
   --color-qc-blue-500: #6689b2;
   --color-qc-blue-300: #9eb5d0;
   --color-qc-blue-100: #eaf0f8;
@@ -81,6 +84,7 @@
   --color-qc-purple: #7652b8;
 
   /* Additional UI neutrals */
+
   --color-qc-cream: #f7f2e8;
   --color-qc-cream-dark: #eee5d4;
   --color-qc-surface: #fffdf9;
@@ -94,10 +98,12 @@
 
 :root {
   /* Main application canvas */
+
   --background: #f7f2e8;
   --foreground: #1f1b16;
 
   /* Cards / panels */
+
   --card: #fffdf9;
   --card-foreground: #1f1b16;
 
@@ -105,35 +111,43 @@
   --popover-foreground: #1f1b16;
 
   /* Primary brand */
+
   --primary: #00357a;
   --primary-foreground: #ffffff;
 
   /* Secondary brand */
+
   --secondary: #ffd230;
   --secondary-foreground: #00357a;
 
   /* Neutral surfaces */
+
   --muted: #eee5d4;
   --muted-foreground: #7d7468;
 
   /* Soft blue accent */
+
   --accent: #eaf0f8;
   --accent-foreground: #00357a;
 
   /* Critical / destructive states */
+
   --destructive: #7a0000;
 
   /* Borders / fields */
+
   --border: #e6ddce;
   --input: #ddd3c3;
   --ring: #00357a;
 
   /* Rounded visual language */
+
   --radius: 1.1rem;
 
-  /* Chart palette: consistent graduated RADiTrack blues */
+  /* Chart palette */
+
   --chart-1: #00357a;
-  --chart-2: #24568d;
+  --chart-2: #2d3e9d;
   --chart-3: #6689b2;
   --chart-4: #9eb5d0;
   --chart-5: #c6d6e8;
@@ -172,13 +186,13 @@
   --primary: #ffd230;
   --primary-foreground: #00357a;
 
-  --secondary: #24568d;
+  --secondary: #2d3e9d;
   --secondary-foreground: #ffffff;
 
   --muted: #12185f;
   --muted-foreground: #c4bdaf;
 
-  --accent: #24568d;
+  --accent: #2d3e9d;
   --accent-foreground: #ffffff;
 
   --destructive: #7a0000;
@@ -189,9 +203,9 @@
   --ring: #ffd230;
 
   --chart-1: #c6d6e8;
-  --chart-2: #9eb5d0;
+  --chart-2: #2d3e9d;
   --chart-3: #6689b2;
-  --chart-4: #24568d;
+  --chart-4: #9eb5d0;
   --chart-5: #00357a;
 
   --sidebar: #00357a;
@@ -371,6 +385,7 @@
 }
 
 /* Respect users who prefer reduced motion */
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -387,6 +402,7 @@
 }
 
 /* Target 4K and large 1080p TV displays */
+
 @media screen and (min-width: 1920px) {
   body {
     font-size: 24px;

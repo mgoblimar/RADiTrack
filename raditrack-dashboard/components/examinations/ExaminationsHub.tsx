@@ -10,19 +10,12 @@ import {
 
 import {
   Search,
-  FileSpreadsheet,
   CheckCircle2,
   Clock,
-  Calendar,
-  AlertTriangle,
-  RotateCcw,
   Layers,
   ChevronDown,
-  Filter,
   X,
   SlidersHorizontal,
-  ArrowUpRight,
-  UserCheck,
 } from "lucide-react";
 
 import { ExportCsvButton } from "@/components/staff/ExportCsvButton";
@@ -36,6 +29,7 @@ import {
   signOffReportAction,
   type FilteredExaminationsResult,
 } from "@/app/actions";
+
 import { notifyDatabaseChanged } from "@/lib/broadcast";
 import type { PendingReadingQueueItem } from "@/lib/dashboard-types";
 
@@ -43,7 +37,6 @@ import {
   MODALITY_CONFIG,
   ModalityCode,
   TriageLevel,
-  UrgencyLevel,
 } from "@/lib/enums";
 
 interface ExaminationsHubProps {
@@ -55,10 +48,7 @@ interface ExaminationsHubProps {
   canManageExams?: boolean;
 }
 
-type StatusTab =
-  | "backlog"
-  | "finalized"
-  | "all";
+type StatusTab = "backlog" | "finalized" | "all";
 
 type DatePreset =
   | "all"
@@ -94,7 +84,9 @@ export function ExaminationsHub({
   canManageExams = false,
 }: ExaminationsHubProps) {
   const startingModalities =
-    defaultModalities.length > 0 ? [...defaultModalities] : ALL_MODALITIES;
+    defaultModalities.length > 0
+      ? [...defaultModalities]
+      : ALL_MODALITIES;
 
   /* =========================================================
      State
@@ -124,9 +116,7 @@ export function ExaminationsHub({
     useState<string>("");
 
   const [result, setResult] =
-    useState<FilteredExaminationsResult | null>(
-      null,
-    );
+    useState<FilteredExaminationsResult | null>(null);
 
   const [isPending, startTransition] =
     useTransition();
@@ -134,30 +124,23 @@ export function ExaminationsHub({
   const [isFilterOpen, setIsFilterOpen] =
     useState(false);
 
-  const filterRef =
-    useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   /* =========================================================
      Close filter popover
   ========================================================= */
 
   useEffect(() => {
-    const handleClickOutside = (
-      event: MouseEvent,
-    ) => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (
         filterRef.current &&
-        !filterRef.current.contains(
-          event.target as Node,
-        )
+        !filterRef.current.contains(event.target as Node)
       ) {
         setIsFilterOpen(false);
       }
     };
 
-    const handleKeyDown = (
-      event: KeyboardEvent,
-    ) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsFilterOpen(false);
       }
@@ -237,26 +220,25 @@ export function ExaminationsHub({
   const loadExaminations = useCallback(() => {
     startTransition(async () => {
       try {
-        const data =
-          await fetchFilteredExaminationsAction({
-            statusType: statusTab,
-            datePreset,
-            startDate:
-              datePreset === "custom"
-                ? startDate
-                : undefined,
-            endDate:
-              datePreset === "custom"
-                ? endDate
-                : undefined,
-            modalityCodes: isAllModalitiesSelected
-              ? ["ALL"]
-              : selectedModalities,
-            patientCategories: isAllCategoriesSelected
-              ? ["ALL"]
-              : selectedCategories,
-            searchTerm,
-          });
+        const data = await fetchFilteredExaminationsAction({
+          statusType: statusTab,
+          datePreset,
+          startDate:
+            datePreset === "custom"
+              ? startDate
+              : undefined,
+          endDate:
+            datePreset === "custom"
+              ? endDate
+              : undefined,
+          modalityCodes: isAllModalitiesSelected
+            ? ["ALL"]
+            : selectedModalities,
+          patientCategories: isAllCategoriesSelected
+            ? ["ALL"]
+            : selectedCategories,
+          searchTerm,
+        });
 
         setResult(data);
       } catch (error) {
@@ -319,6 +301,7 @@ export function ExaminationsHub({
     statusTab !== "finalized" && summary.totalOverdue > 0
       ? `${summary.totalOverdue} past SLA, still unsigned`
       : null,
+
     statusTab !== "backlog" && summary.totalBreached > 0
       ? `${summary.totalBreached} signed late (SLA breached)`
       : null,
@@ -328,9 +311,7 @@ export function ExaminationsHub({
      Display helpers
   ========================================================= */
 
-  const getTriageBadgeClass = (
-    level: string,
-  ) => {
+  const getTriageBadgeClass = (level: string) => {
     switch (level) {
       case TriageLevel.ER:
         return "border-red-200 bg-red-50 text-qc-red";
@@ -346,24 +327,7 @@ export function ExaminationsHub({
     }
   };
 
-  const getUrgencyBadgeClass = (
-    urgency: string,
-  ) => {
-    switch (urgency) {
-      case UrgencyLevel.STAT:
-        return "border-qc-orange/20 bg-orange-50 text-qc-orange";
-
-      case UrgencyLevel.ROUTINE:
-        return "border-border bg-background text-muted-foreground";
-
-      default:
-        return "border-border bg-background text-muted-foreground";
-    }
-  };
-
-  const getStatusBadgeClass = (
-    isFinalized: boolean,
-  ) => {
+  const getStatusBadgeClass = (isFinalized: boolean) => {
     return isFinalized
       ? "border-qc-blue/15 bg-qc-blue/5 text-qc-blue"
       : "border-qc-orange/20 bg-orange-50 text-qc-orange";
@@ -426,7 +390,7 @@ export function ExaminationsHub({
           OPERATIONS CONTROL BAR
       ===================================================== */}
 
-      <section className="overflow-visible rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(24,41,140,0.05)]">
+      <section className="overflow-visible rounded-[28px] border border-[#DDE3F2] bg-[#FBFCFF] shadow-[0_4px_18px_rgba(0,53,122,0.05)]">
         <div className="relative overflow-visible">
           {/* Soft header glow */}
           <div className="pointer-events-none absolute -right-10 -top-14 h-36 w-36 rounded-full bg-qc-yellow/10 blur-xl" />
@@ -442,35 +406,26 @@ export function ExaminationsHub({
                   {/* Backlog */}
                   <button
                     type="button"
-                    onClick={() =>
-                      setStatusTab(
-                        "backlog",
-                      )
-                    }
-                    className={`group flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 sm:min-w-[118px] sm:flex-none sm:gap-2 sm:px-3.5 text-xs font-extrabold transition-all duration-200 ${
-                      statusTab ===
-                      "backlog"
+                    onClick={() => setStatusTab("backlog")}
+                    className={`group flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-extrabold transition-all duration-200 sm:min-w-[118px] sm:flex-none sm:gap-2 sm:px-3.5 ${
+                      statusTab === "backlog"
                         ? "bg-qc-navy text-white shadow-[0_5px_14px_rgba(5,14,64,0.14)]"
                         : "text-muted-foreground hover:bg-white hover:text-qc-navy"
                     }`}
                   >
                     <Clock
                       className={`h-3.5 w-3.5 ${
-                        statusTab ===
-                        "backlog"
+                        statusTab === "backlog"
                           ? "text-qc-yellow"
                           : "text-current"
                       }`}
                     />
 
-                    <span>
-                      Backlog
-                    </span>
+                    <span>Backlog</span>
 
                     <span
                       className={`rounded-full px-1.5 py-0.5 text-xs ${
-                        statusTab ===
-                        "backlog"
+                        statusTab === "backlog"
                           ? "bg-white/10 text-white"
                           : "bg-white text-muted-foreground"
                       }`}
@@ -482,35 +437,26 @@ export function ExaminationsHub({
                   {/* Finalized */}
                   <button
                     type="button"
-                    onClick={() =>
-                      setStatusTab(
-                        "finalized",
-                      )
-                    }
-                    className={`group flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 sm:min-w-[118px] sm:flex-none sm:gap-2 sm:px-3.5 text-xs font-extrabold transition-all duration-200 ${
-                      statusTab ===
-                      "finalized"
+                    onClick={() => setStatusTab("finalized")}
+                    className={`group flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-extrabold transition-all duration-200 sm:min-w-[118px] sm:flex-none sm:gap-2 sm:px-3.5 ${
+                      statusTab === "finalized"
                         ? "bg-qc-navy text-white shadow-[0_5px_14px_rgba(5,14,64,0.14)]"
                         : "text-muted-foreground hover:bg-white hover:text-qc-navy"
                     }`}
                   >
                     <CheckCircle2
                       className={`h-3.5 w-3.5 ${
-                        statusTab ===
-                        "finalized"
+                        statusTab === "finalized"
                           ? "text-qc-yellow"
                           : "text-current"
                       }`}
                     />
 
-                    <span>
-                      Finalized
-                    </span>
+                    <span>Finalized</span>
 
                     <span
                       className={`rounded-full px-1.5 py-0.5 text-xs ${
-                        statusTab ===
-                        "finalized"
+                        statusTab === "finalized"
                           ? "bg-white/10 text-white"
                           : "bg-white text-muted-foreground"
                       }`}
@@ -522,10 +468,8 @@ export function ExaminationsHub({
                   {/* All */}
                   <button
                     type="button"
-                    onClick={() =>
-                      setStatusTab("all")
-                    }
-                    className={`group flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 sm:min-w-[118px] sm:flex-none sm:gap-2 sm:px-3.5 text-xs font-extrabold transition-all duration-200 ${
+                    onClick={() => setStatusTab("all")}
+                    className={`group flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-extrabold transition-all duration-200 sm:min-w-[118px] sm:flex-none sm:gap-2 sm:px-3.5 ${
                       statusTab === "all"
                         ? "bg-qc-navy text-white shadow-[0_5px_14px_rgba(5,14,64,0.14)]"
                         : "text-muted-foreground hover:bg-white hover:text-qc-navy"
@@ -533,8 +477,7 @@ export function ExaminationsHub({
                   >
                     <Layers
                       className={`h-3.5 w-3.5 ${
-                        statusTab ===
-                        "all"
+                        statusTab === "all"
                           ? "text-qc-yellow"
                           : "text-current"
                       }`}
@@ -544,8 +487,7 @@ export function ExaminationsHub({
 
                     <span
                       className={`rounded-full px-1.5 py-0.5 text-xs ${
-                        statusTab ===
-                        "all"
+                        statusTab === "all"
                           ? "bg-white/10 text-white"
                           : "bg-white text-muted-foreground"
                       }`}
@@ -570,9 +512,7 @@ export function ExaminationsHub({
                     placeholder="Search accession ID"
                     value={searchTerm}
                     onChange={(event) =>
-                      setSearchTerm(
-                        event.target.value,
-                      )
+                      setSearchTerm(event.target.value)
                     }
                     className="h-10 w-full rounded-2xl border border-[#DDE3F2] bg-white pl-10 pr-4 text-xs font-semibold text-qc-navy outline-none transition-all placeholder:text-muted-foreground focus:border-qc-blue/30 focus:ring-4 focus:ring-qc-blue/[0.07]"
                   />
@@ -586,27 +526,19 @@ export function ExaminationsHub({
                   <button
                     type="button"
                     onClick={() =>
-                      setIsFilterOpen(
-                        (previous) =>
-                          !previous,
-                      )
+                      setIsFilterOpen((previous) => !previous)
                     }
                     className={`flex h-10 w-full items-center justify-center gap-2 rounded-2xl border px-3.5 text-xs font-extrabold transition-all sm:w-auto ${
-                      isFilterOpen ||
-                      hasActiveFilters
+                      isFilterOpen || hasActiveFilters
                         ? "border-qc-blue/20 bg-qc-blue/5 text-qc-blue"
                         : "border-[#DDE3F2] bg-white text-muted-foreground hover:border-qc-blue/15 hover:bg-qc-blue/[0.03] hover:text-qc-blue"
                     }`}
-                    aria-expanded={
-                      isFilterOpen
-                    }
+                    aria-expanded={isFilterOpen}
                     aria-haspopup="dialog"
                   >
                     <SlidersHorizontal className="h-3.5 w-3.5" />
 
-                    <span>
-                      Filters
-                    </span>
+                    <span>Filters</span>
 
                     {activeFilterCount > 0 && (
                       <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-qc-orange px-1 text-xs font-black text-white">
@@ -616,9 +548,7 @@ export function ExaminationsHub({
 
                     <ChevronDown
                       className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                        isFilterOpen
-                          ? "rotate-180"
-                          : ""
+                        isFilterOpen ? "rotate-180" : ""
                       }`}
                     />
                   </button>
@@ -633,29 +563,19 @@ export function ExaminationsHub({
                         <div className="pointer-events-none absolute -right-5 -top-7 h-20 w-20 rounded-full bg-qc-yellow/10" />
 
                         <div className="relative flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-qc-navy text-qc-yellow">
-                              <Filter className="h-3.5 w-3.5" />
-                            </div>
+                          <div>
+                            <p className="text-sm font-extrabold text-qc-navy">
+                              Refine results
+                            </p>
 
-                            <div>
-                              <p className="text-sm font-extrabold text-qc-navy">
-                                Refine results
-                              </p>
-
-                              <p className="text-xs text-muted-foreground">
-                                Filter by modality, patient category & date
-                              </p>
-                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Filter by modality, patient category & date
+                            </p>
                           </div>
 
                           <button
                             type="button"
-                            onClick={() =>
-                              setIsFilterOpen(
-                                false,
-                              )
-                            }
+                            onClick={() => setIsFilterOpen(false)}
                             className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white hover:text-qc-navy"
                             aria-label="Close filters"
                           >
@@ -667,53 +587,38 @@ export function ExaminationsHub({
                       <div className="space-y-4 p-4">
                         {/* 1. Date Presets */}
                         <div>
-                          <div className="mb-2 flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-qc-blue" />
-
+                          <div className="mb-2">
                             <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
                               Date Range
                             </span>
                           </div>
 
                           <div className="grid grid-cols-3 gap-1.5">
-                            {datePresets.map(
-                              (preset) => (
-                                <button
-                                  key={
-                                    preset.id
-                                  }
-                                  type="button"
-                                  onClick={() =>
-                                    setDatePreset(
-                                      preset.id,
-                                    )
-                                  }
-                                  className={`rounded-xl border px-2.5 py-2 text-[13px] font-bold transition-all ${
-                                    datePreset ===
-                                    preset.id
-                                      ? "border-qc-blue bg-qc-blue text-white shadow-sm"
-                                      : "border-border bg-[#FAFBFD] text-muted-foreground hover:border-qc-blue/15 hover:bg-qc-blue/[0.04] hover:text-qc-blue"
-                                  }`}
-                                >
-                                  {
-                                    preset.label
-                                  }
-                                </button>
-                              ),
-                            )}
+                            {datePresets.map((preset) => (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() =>
+                                  setDatePreset(preset.id)
+                                }
+                                className={`rounded-xl border px-2.5 py-2 text-[13px] font-bold transition-all ${
+                                  datePreset === preset.id
+                                    ? "border-qc-blue bg-qc-blue text-white shadow-sm"
+                                    : "border-border bg-[#FAFBFD] text-muted-foreground hover:border-qc-blue/15 hover:bg-qc-blue/[0.04] hover:text-qc-blue"
+                                }`}
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
                           </div>
                         </div>
 
                         {/* 2. Modality Checkboxes */}
                         <div className="border-t border-[#EAEFF8] pt-3.5">
                           <div className="mb-2 flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <Layers className="h-3.5 w-3.5 text-qc-blue" />
-
-                              <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-                                Modalities
-                              </span>
-                            </div>
+                            <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                              Modalities
+                            </span>
 
                             <span className="text-xs font-semibold text-muted-foreground">
                               {selectedModalities.length}/{ALL_MODALITIES.length} selected
@@ -722,7 +627,7 @@ export function ExaminationsHub({
 
                           {/* Master All Modalities Checkbox */}
                           <label
-                            className={`mb-2 flex items-center gap-2.5 rounded-xl border p-2 text-xs font-extrabold transition-all cursor-pointer ${
+                            className={`mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl border p-2 text-xs font-extrabold transition-all ${
                               isAllModalitiesSelected
                                 ? "border-qc-blue/30 bg-qc-blue/10 text-qc-blue"
                                 : "border-border bg-[#FAFBFD] text-slate-600 hover:bg-qc-blue/[0.03]"
@@ -732,10 +637,14 @@ export function ExaminationsHub({
                               type="checkbox"
                               checked={isAllModalitiesSelected}
                               onChange={toggleAllModalities}
-                              className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
+                              className="h-4 w-4 cursor-pointer rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 accent-qc-blue"
                             />
-                            <span className="flex-1">All modalities</span>
-                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-xs font-bold text-slate-500">
+
+                            <span className="flex-1">
+                              All modalities
+                            </span>
+
+                            <span className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-bold text-slate-500">
                               ALL
                             </span>
                           </label>
@@ -743,13 +652,15 @@ export function ExaminationsHub({
                           {/* Individual Modality Checkboxes */}
                           <div className="space-y-1.5">
                             {ALL_MODALITIES.map((code) => {
-                              const isChecked = selectedModalities.includes(code);
+                              const isChecked =
+                                selectedModalities.includes(code);
+
                               const config = MODALITY_CONFIG[code];
 
                               return (
                                 <label
                                   key={code}
-                                  className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
+                                  className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2 text-xs font-semibold transition-all ${
                                     isChecked
                                       ? "border-qc-blue/25 bg-qc-blue/[0.04] text-qc-navy shadow-xs"
                                       : "border-border/80 bg-[#FAFBFD] text-slate-500 hover:border-qc-blue/15 hover:bg-qc-blue/[0.02]"
@@ -758,13 +669,17 @@ export function ExaminationsHub({
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    onChange={() => toggleModality(code)}
-                                    className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
+                                    onChange={() =>
+                                      toggleModality(code)
+                                    }
+                                    className="h-4 w-4 cursor-pointer rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 accent-qc-blue"
                                   />
+
                                   <span className="flex-1 font-bold">
                                     {config?.name ?? code}
                                   </span>
-                                  <span className="shrink-0 rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-xs font-mono font-extrabold text-slate-500">
+
+                                  <span className="shrink-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-mono font-extrabold text-slate-500">
                                     {code}
                                   </span>
                                 </label>
@@ -773,16 +688,12 @@ export function ExaminationsHub({
                           </div>
                         </div>
 
-                        {/* 3. Patient Category Checkboxes (OPD, ER, IN) */}
+                        {/* 3. Patient Category Checkboxes */}
                         <div className="border-t border-[#EAEFF8] pt-3.5">
                           <div className="mb-2 flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <UserCheck className="h-3.5 w-3.5 text-qc-blue" />
-
-                              <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-                                Patient Category
-                              </span>
-                            </div>
+                            <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                              Patient Category
+                            </span>
 
                             <span className="text-xs font-semibold text-muted-foreground">
                               {selectedCategories.length}/{ALL_CATEGORIES.length} selected
@@ -791,7 +702,7 @@ export function ExaminationsHub({
 
                           {/* Master All Categories Checkbox */}
                           <label
-                            className={`mb-2 flex items-center gap-2.5 rounded-xl border p-2 text-xs font-extrabold transition-all cursor-pointer ${
+                            className={`mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl border p-2 text-xs font-extrabold transition-all ${
                               isAllCategoriesSelected
                                 ? "border-qc-blue/30 bg-qc-blue/10 text-qc-blue"
                                 : "border-border bg-[#FAFBFD] text-slate-600 hover:bg-qc-blue/[0.03]"
@@ -801,23 +712,28 @@ export function ExaminationsHub({
                               type="checkbox"
                               checked={isAllCategoriesSelected}
                               onChange={toggleAllCategories}
-                              className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
+                              className="h-4 w-4 cursor-pointer rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 accent-qc-blue"
                             />
-                            <span className="flex-1">All patient categories</span>
-                            <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-xs font-bold text-slate-500">
+
+                            <span className="flex-1">
+                              All patient categories
+                            </span>
+
+                            <span className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-bold text-slate-500">
                               ALL
                             </span>
                           </label>
 
-                          {/* Individual Category Checkboxes (OPD, ER, IN) */}
+                          {/* Individual Category Checkboxes */}
                           <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
                             {ALL_CATEGORIES.map((cat) => {
-                              const isChecked = selectedCategories.includes(cat);
+                              const isChecked =
+                                selectedCategories.includes(cat);
 
                               return (
                                 <label
                                   key={cat}
-                                  className={`flex items-center gap-2 rounded-xl border p-2 text-xs font-bold transition-all cursor-pointer ${
+                                  className={`flex cursor-pointer items-center gap-2 rounded-xl border p-2 text-xs font-bold transition-all ${
                                     isChecked
                                       ? "border-qc-blue/30 bg-qc-blue/5 text-qc-navy shadow-xs"
                                       : "border-border/80 bg-[#FAFBFD] text-slate-500 hover:border-qc-blue/15 hover:bg-qc-blue/[0.02]"
@@ -826,17 +742,23 @@ export function ExaminationsHub({
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    onChange={() => toggleCategory(cat)}
-                                    className="h-4 w-4 rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 cursor-pointer accent-qc-blue"
+                                    onChange={() =>
+                                      toggleCategory(cat)
+                                    }
+                                    className="h-4 w-4 cursor-pointer rounded border-slate-300 text-qc-blue focus:ring-qc-blue/20 accent-qc-blue"
                                   />
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="font-extrabold text-qc-navy">{cat}</span>
-                                    <span className="text-xs text-muted-foreground truncate">
+
+                                  <div className="flex min-w-0 flex-col">
+                                    <span className="font-extrabold text-qc-navy">
+                                      {cat}
+                                    </span>
+
+                                    <span className="truncate text-xs text-muted-foreground">
                                       {cat === TriageLevel.OPD
                                         ? "Outpatient"
                                         : cat === TriageLevel.ER
-                                        ? "Emergency"
-                                        : "Inpatient"}
+                                          ? "Emergency"
+                                          : "Inpatient"}
                                     </span>
                                   </div>
                                 </label>
@@ -846,9 +768,8 @@ export function ExaminationsHub({
                         </div>
 
                         {/* 4. Custom dates */}
-                        {datePreset ===
-                          "custom" && (
-                          <div className="border-t border-[#EAEFF8] pt-3.5 grid grid-cols-2 gap-2">
+                        {datePreset === "custom" && (
+                          <div className="grid grid-cols-2 gap-2 border-t border-[#EAEFF8] pt-3.5">
                             <label className="space-y-1.5">
                               <span className="text-xs font-bold text-muted-foreground">
                                 Start
@@ -856,17 +777,9 @@ export function ExaminationsHub({
 
                               <input
                                 type="date"
-                                value={
-                                  startDate
-                                }
-                                onChange={(
-                                  event,
-                                ) =>
-                                  setStartDate(
-                                    event
-                                      .target
-                                      .value,
-                                  )
+                                value={startDate}
+                                onChange={(event) =>
+                                  setStartDate(event.target.value)
                                 }
                                 className="h-9 w-full rounded-xl border border-[#DDE3F2] bg-[#FAFBFD] px-2.5 text-[13px] font-semibold text-qc-navy outline-none transition-all focus:border-qc-blue/25 focus:bg-white"
                               />
@@ -879,17 +792,9 @@ export function ExaminationsHub({
 
                               <input
                                 type="date"
-                                value={
-                                  endDate
-                                }
-                                onChange={(
-                                  event,
-                                ) =>
-                                  setEndDate(
-                                    event
-                                      .target
-                                      .value,
-                                  )
+                                value={endDate}
+                                onChange={(event) =>
+                                  setEndDate(event.target.value)
                                 }
                                 className="h-9 w-full rounded-xl border border-[#DDE3F2] bg-[#FAFBFD] px-2.5 text-[13px] font-semibold text-qc-navy outline-none transition-all focus:border-qc-blue/25 focus:bg-white"
                               />
@@ -897,9 +802,7 @@ export function ExaminationsHub({
 
                             <button
                               type="button"
-                              onClick={
-                                loadExaminations
-                              }
+                              onClick={loadExaminations}
                               className="col-span-2 h-9 rounded-xl bg-qc-yellow text-xs font-extrabold text-qc-navy transition-all hover:-translate-y-0.5 hover:bg-[#eac13d]"
                             >
                               Apply custom range
@@ -911,13 +814,9 @@ export function ExaminationsHub({
                         {hasActiveFilters && (
                           <button
                             type="button"
-                            onClick={
-                              handleResetFilters
-                            }
-                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#DDE3F2] bg-[#FAFBFD] px-3 py-2.5 text-xs font-extrabold text-muted-foreground transition-all hover:bg-qc-blue/[0.04] hover:text-qc-blue"
+                            onClick={handleResetFilters}
+                            className="flex w-full items-center justify-center rounded-xl border border-[#DDE3F2] bg-[#FAFBFD] px-3 py-2.5 text-xs font-extrabold text-muted-foreground transition-all hover:bg-qc-blue/[0.04] hover:text-qc-blue"
                           >
-                            <RotateCcw className="h-3.5 w-3.5" />
-
                             Reset all filters
                           </button>
                         )}
@@ -946,12 +845,11 @@ export function ExaminationsHub({
                     <span>
                       {
                         datePresets.find(
-                          (preset) =>
-                            preset.id ===
-                            datePreset,
+                          (preset) => preset.id === datePreset,
                         )?.label
                       }
                     </span>
+
                     <button
                       type="button"
                       onClick={() => setDatePreset("all")}
@@ -970,12 +868,20 @@ export function ExaminationsHub({
                       {selectedModalities.length === 0
                         ? "None (0)"
                         : selectedModalities
-                            .map((m) => MODALITY_CONFIG[m as ModalityCode]?.shortName || m)
+                            .map(
+                              (m) =>
+                                MODALITY_CONFIG[
+                                  m as ModalityCode
+                                ]?.shortName || m,
+                            )
                             .join(", ")}
                     </span>
+
                     <button
                       type="button"
-                      onClick={() => setSelectedModalities(ALL_MODALITIES)}
+                      onClick={() =>
+                        setSelectedModalities(ALL_MODALITIES)
+                      }
                       className="text-slate-500 hover:text-qc-navy"
                       title="Reset to all modalities"
                     >
@@ -992,9 +898,12 @@ export function ExaminationsHub({
                         ? "None (0)"
                         : selectedCategories.join(", ")}
                     </span>
+
                     <button
                       type="button"
-                      onClick={() => setSelectedCategories(ALL_CATEGORIES)}
+                      onClick={() =>
+                        setSelectedCategories(ALL_CATEGORIES)
+                      }
                       className="text-slate-500 hover:text-qc-navy"
                       title="Reset to all patient categories"
                     >
@@ -1004,12 +913,15 @@ export function ExaminationsHub({
                 )}
 
                 {isSearchFiltered && (
-                  <span className="inline-flex items-center gap-1.5 max-w-[200px] truncate rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-xs font-bold text-qc-navy">
-                    <span className="truncate">“{searchTerm}”</span>
+                  <span className="inline-flex max-w-[200px] items-center gap-1.5 truncate rounded-full border border-[#DDE3F2] bg-white px-2.5 py-1 text-xs font-bold text-qc-navy">
+                    <span className="truncate">
+                      “{searchTerm}”
+                    </span>
+
                     <button
                       type="button"
                       onClick={() => setSearchTerm("")}
-                      className="text-slate-500 hover:text-qc-navy shrink-0"
+                      className="shrink-0 text-slate-500 hover:text-qc-navy"
                       title="Clear search"
                     >
                       <X className="h-3 w-3" />
@@ -1019,9 +931,7 @@ export function ExaminationsHub({
 
                 <button
                   type="button"
-                  onClick={
-                    handleResetFilters
-                  }
+                  onClick={handleResetFilters}
                   className="ml-auto text-xs font-extrabold text-muted-foreground transition-colors hover:text-qc-blue"
                 >
                   Clear all
@@ -1041,19 +951,13 @@ export function ExaminationsHub({
         className="grid grid-cols-2 gap-3 xl:grid-cols-4"
       >
         {/* Matching */}
-        <div className="group relative overflow-hidden rounded-[24px] border border-[#DDE3F2] bg-white px-4 py-4 shadow-[0_3px_14px_rgba(24,41,140,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(24,41,140,0.08)]">
+        <div className="group relative overflow-hidden rounded-[24px] border border-[#DDE3F2] bg-white px-4 py-4 shadow-[0_3px_14px_rgba(0,53,122,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(0,53,122,0.08)]">
           <div className="pointer-events-none absolute -right-7 -top-7 h-20 w-20 rounded-full bg-qc-blue/[0.045] blur-xl transition-transform duration-500 group-hover:scale-125" />
 
           <div className="relative">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
-                Matching
-              </p>
-
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-qc-blue/[0.06] text-qc-blue">
-                <Search className="h-3.5 w-3.5" />
-              </div>
-            </div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              Matching
+            </p>
 
             <div className="mt-3 flex items-baseline gap-1.5">
               <span className="text-2xl font-extrabold tracking-tight text-qc-navy">
@@ -1068,19 +972,13 @@ export function ExaminationsHub({
         </div>
 
         {/* Finalized */}
-        <div className="group relative overflow-hidden rounded-[24px] border border-[#DDE3F2] bg-white px-4 py-4 shadow-[0_3px_14px_rgba(24,41,140,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(24,41,140,0.08)]">
+        <div className="group relative overflow-hidden rounded-[24px] border border-[#DDE3F2] bg-white px-4 py-4 shadow-[0_3px_14px_rgba(0,53,122,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(0,53,122,0.08)]">
           <div className="pointer-events-none absolute -right-7 -top-7 h-20 w-20 rounded-full bg-qc-blue/[0.05] blur-xl transition-transform duration-500 group-hover:scale-125" />
 
           <div className="relative">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
-                Finalized
-              </p>
-
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-qc-blue/[0.06] text-qc-blue">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              </div>
-            </div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              Finalized
+            </p>
 
             <div className="mt-3 flex items-baseline gap-1.5">
               <span className="text-2xl font-extrabold tracking-tight text-qc-blue">
@@ -1096,50 +994,29 @@ export function ExaminationsHub({
 
         {/* Backlog */}
         <div
-          className={`group relative overflow-hidden rounded-[24px] border px-4 py-4 shadow-[0_3px_14px_rgba(24,41,140,0.04)] transition-all duration-300 hover:-translate-y-0.5 ${
-            summary.totalBacklog >
-            0
+          className={`group relative overflow-hidden rounded-[24px] border px-4 py-4 shadow-[0_3px_14px_rgba(0,53,122,0.04)] transition-all duration-300 hover:-translate-y-0.5 ${
+            summary.totalBacklog > 0
               ? "border-orange-100 bg-[linear-gradient(145deg,#FFFDFC_0%,#FFF8F2_100%)] hover:border-orange-200 hover:shadow-[0_10px_24px_rgba(234,88,12,0.08)]"
-              : "border-[#DDE3F2] bg-white hover:shadow-[0_10px_24px_rgba(24,41,140,0.08)]"
+              : "border-[#DDE3F2] bg-white hover:shadow-[0_10px_24px_rgba(0,53,122,0.08)]"
           }`}
         >
           <div
             className={`pointer-events-none absolute -right-7 -top-7 h-20 w-20 rounded-full blur-xl transition-transform duration-500 group-hover:scale-125 ${
-              summary.totalBacklog >
-              0
+              summary.totalBacklog > 0
                 ? "bg-qc-orange/[0.09]"
                 : "bg-qc-blue/[0.05]"
             }`}
           />
 
           <div className="relative">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
-                Backlog
-              </p>
-
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-lg ${
-                  summary.totalBacklog >
-                  0
-                    ? "bg-orange-50 text-qc-orange"
-                    : "bg-qc-blue/[0.06] text-qc-blue"
-                }`}
-              >
-                {summary.totalBacklog >
-                0 ? (
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                )}
-              </div>
-            </div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              Backlog
+            </p>
 
             <div className="mt-3 flex items-baseline gap-1.5">
               <span
                 className={`text-2xl font-extrabold tracking-tight ${
-                  summary.totalBacklog >
-                  0
+                  summary.totalBacklog > 0
                     ? "text-qc-orange"
                     : "text-qc-blue"
                 }`}
@@ -1154,24 +1031,20 @@ export function ExaminationsHub({
           </div>
         </div>
 
-        {/* Average TAT */}
-        <div className="group relative overflow-hidden rounded-[24px] border border-[#DDE3F2] bg-white px-4 py-4 shadow-[0_3px_14px_rgba(24,41,140,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(24,41,140,0.08)]">
+        {/* Average Turnaround Time */}
+        <div className="group relative overflow-hidden rounded-[24px] border border-[#DDE3F2] bg-white px-4 py-4 shadow-[0_3px_14px_rgba(0,53,122,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(0,53,122,0.08)]">
           <div className="pointer-events-none absolute -right-7 -top-7 h-20 w-20 rounded-full bg-qc-yellow/[0.07] blur-xl transition-transform duration-500 group-hover:scale-125" />
 
           <div className="relative">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
-                Average TAT
-              </p>
-
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-qc-yellow/15 text-qc-navy">
-                <Clock className="h-3.5 w-3.5" />
-              </div>
-            </div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.11em] text-muted-foreground">
+              Average Turnaround Time
+            </p>
 
             <div className="mt-3 flex items-baseline gap-1.5">
               <span className="text-2xl font-extrabold tracking-tight text-qc-navy">
-                {summary.avgTatMinutes > 0 ? `${summary.avgTatHours}h` : "—"}
+                {summary.avgTatMinutes > 0
+                  ? `${summary.avgTatHours} hrs`
+                  : "—"}
               </span>
             </div>
           </div>
@@ -1183,10 +1056,8 @@ export function ExaminationsHub({
       ===================================================== */}
 
       <section
-        className={`overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-white shadow-[0_4px_18px_rgba(24,41,140,0.05)] transition-opacity duration-200 ${
-          isPending
-            ? "opacity-60"
-            : "opacity-100"
+        className={`overflow-hidden rounded-[28px] border border-[#DDE3F2] bg-white shadow-[0_4px_18px_rgba(0,53,122,0.05)] transition-opacity duration-200 ${
+          isPending ? "opacity-60" : "opacity-100"
         }`}
       >
         {/* ===================================================
@@ -1199,34 +1070,14 @@ export function ExaminationsHub({
           <div className="pointer-events-none absolute bottom-0 right-28 h-16 w-16 rounded-full bg-qc-blue/[0.035]" />
 
           <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow shadow-[0_5px_14px_rgba(5,14,64,0.12)]`}
-              >
-                {statusTab ===
-                "backlog" ? (
-                  <Clock className="h-5 w-5" />
-                ) : statusTab ===
-                  "finalized" ? (
-                  <CheckCircle2 className="h-5 w-5" />
-                ) : (
-                  <Layers className="h-5 w-5" />
-                )}
-              </div>
-
-              <div>
-                <h2 className="text-lg font-extrabold tracking-tight text-qc-navy">
-                  {statusTab ===
-                  "backlog"
-                    ? "Active reading queue"
-                    : statusTab ===
-                        "finalized"
-                      ? "Finalized archive"
-                      : "All examination records"}
-                </h2>
-
-                
-              </div>
+            <div>
+              <h2 className="text-lg font-extrabold tracking-tight text-qc-navy">
+                {statusTab === "backlog"
+                  ? "ACTIVE READING QUEUE"
+                  : statusTab === "finalized"
+                    ? "Finalized archive"
+                    : "All examination records"}
+              </h2>
             </div>
 
             {isPending && (
@@ -1236,8 +1087,7 @@ export function ExaminationsHub({
             )}
 
             {!isPending && slaAlerts.length > 0 && (
-              <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-extrabold text-qc-red">
-                <AlertTriangle className="h-3 w-3" />
+              <span className="inline-flex w-fit items-center rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-extrabold text-qc-red">
                 {slaAlerts.join(" · ")}
               </span>
             )}
@@ -1282,8 +1132,7 @@ export function ExaminationsHub({
                   Study date
                 </th>
 
-                {statusTab ===
-                  "backlog" && (
+                {statusTab === "backlog" && (
                   <>
                     <th className="px-5 py-3.5">
                       Dwell
@@ -1299,8 +1148,7 @@ export function ExaminationsHub({
                   </>
                 )}
 
-                {statusTab ===
-                  "finalized" && (
+                {statusTab === "finalized" && (
                   <>
                     <th className="px-5 py-3.5">
                       Completed
@@ -1320,8 +1168,7 @@ export function ExaminationsHub({
                   </>
                 )}
 
-                {statusTab ===
-                  "all" && (
+                {statusTab === "all" && (
                   <>
                     <th className="px-5 py-3.5">
                       Status
@@ -1383,12 +1230,11 @@ export function ExaminationsHub({
                     <span className="inline-flex rounded-xl border border-[#E1E5EE] bg-[#FAFBFD] px-2.5 py-1 text-xs font-extrabold text-qc-navy transition-colors group-hover:border-qc-blue/10">
                       {MODALITY_CONFIG[
                         item.modalityCode as ModalityCode
-                      ]?.shortName ??
-                        item.modalityCode}
+                      ]?.shortName ?? item.modalityCode}
                     </span>
                   </td>
 
-                  {/* Triage */}
+                  {/* Patient Category */}
                   <td className="px-5 py-4">
                     <span
                       className={`inline-flex rounded-xl border px-2.5 py-1 text-xs font-extrabold ${getTriageBadgeClass(
@@ -1398,8 +1244,6 @@ export function ExaminationsHub({
                       {item.triageLevel}
                     </span>
                   </td>
-
-                  
 
                   {/* Study date */}
                   <td className="px-5 py-4">
@@ -1412,8 +1256,7 @@ export function ExaminationsHub({
                       BACKLOG
                   ================================================= */}
 
-                  {statusTab ===
-                    "backlog" && (
+                  {statusTab === "backlog" && (
                     <>
                       <td className="px-5 py-4">
                         <div className="flex flex-col">
@@ -1424,10 +1267,14 @@ export function ExaminationsHub({
                                 : "text-qc-orange"
                             }`}
                           >
-                            {item.dwellHours !== null && item.dwellHours !== undefined
-                              ? `${item.dwellHours}h`
-                              : item.dwellMinutes !== null && item.dwellMinutes !== undefined
-                                ? `${Number((item.dwellMinutes / 60).toFixed(1))}h`
+                            {item.dwellHours !== null &&
+                            item.dwellHours !== undefined
+                              ? `${item.dwellHours} hrs`
+                              : item.dwellMinutes !== null &&
+                                  item.dwellMinutes !== undefined
+                                ? `${Number(
+                                    (item.dwellMinutes / 60).toFixed(1),
+                                  )} hrs`
                                 : "—"}
                           </span>
 
@@ -1441,11 +1288,14 @@ export function ExaminationsHub({
 
                       <td className="px-5 py-4">
                         <span className="font-mono text-[13px] font-semibold text-muted-foreground">
-                          {item.targetTatHours !== null && item.targetTatHours !== undefined
-                            ? `${item.targetTatHours}h`
+                          {item.targetTatHours !== null &&
+                          item.targetTatHours !== undefined
+                            ? `${item.targetTatHours} hrs`
                             : item.targetTatMinutes
-                            ? `${Math.round(item.targetTatMinutes / 60)}h`
-                            : "—"}
+                              ? `${Math.round(
+                                  item.targetTatMinutes / 60,
+                                )} hrs`
+                              : "—"}
                         </span>
                       </td>
 
@@ -1453,28 +1303,18 @@ export function ExaminationsHub({
                         <div className="flex items-center justify-end gap-1.5">
                           {canManageExams && (
                             <>
-                              <EditExamDialog
-                                item={item}
-                              />
+                              <EditExamDialog item={item} />
 
                               <DeleteExamDialog
-                                examId={
-                                  item.examId
-                                }
-                                identifier={
-                                  item.identifier
-                                }
+                                examId={item.examId}
+                                identifier={item.identifier}
                               />
                             </>
                           )}
 
                           <form
-                            action={async (
-                              formData,
-                            ) => {
-                              await signOffReportAction(
-                                formData,
-                              );
+                            action={async (formData) => {
+                              await signOffReportAction(formData);
 
                               loadExaminations();
                               notifyDatabaseChanged();
@@ -1484,17 +1324,13 @@ export function ExaminationsHub({
                             <input
                               type="hidden"
                               name="examId"
-                              value={
-                                item.examId
-                              }
+                              value={item.examId}
                             />
 
                             <button
                               type="submit"
                               className="group inline-flex items-center gap-1.5 rounded-xl bg-qc-yellow px-3 py-2 text-xs font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.12)] transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] hover:shadow-[0_5px_12px_rgba(242,203,73,0.18)] active:translate-y-0"
                             >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-
                               Sign
                             </button>
                           </form>
@@ -1507,44 +1343,40 @@ export function ExaminationsHub({
                       FINALIZED
                   ================================================= */}
 
-                  {statusTab ===
-                    "finalized" && (
+                  {statusTab === "finalized" && (
                     <>
                       <td className="px-5 py-4">
                         <span className="font-mono text-[13px] font-semibold text-muted-foreground">
-                          {item.examCompletedAtFormatted ||
-                            "—"}
+                          {item.examCompletedAtFormatted || "—"}
                         </span>
                       </td>
 
                       <td className="px-5 py-4">
                         <span className="font-mono text-[13px] font-semibold text-muted-foreground">
-                          {item.reportSignedAtFormatted ||
-                            "—"}
+                          {item.reportSignedAtFormatted || "—"}
                         </span>
                       </td>
 
                       <td className="px-5 py-4 text-right">
                         <span className="font-mono text-xs font-extrabold text-qc-blue">
-                          {item.tatHours !== null && item.tatHours !== undefined
-                            ? `${item.tatHours}h`
+                          {item.tatHours !== null &&
+                          item.tatHours !== undefined
+                            ? `${item.tatHours} hrs`
                             : item.tatMinutes
-                            ? `${Number((item.tatMinutes / 60).toFixed(1))}h`
-                            : "—"}
+                              ? `${Number(
+                                  (item.tatMinutes / 60).toFixed(1),
+                                )} hrs`
+                              : "—"}
                         </span>
                       </td>
 
                       <td className="px-5 py-4 text-center">
                         {item.isBreached ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-extrabold text-qc-red">
-                            <AlertTriangle className="h-3 w-3" />
-
+                          <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-extrabold text-qc-red">
                             Breached
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-xs font-extrabold text-qc-blue">
-                            <CheckCircle2 className="h-3 w-3" />
-
+                          <span className="inline-flex items-center rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-xs font-extrabold text-qc-blue">
                             Met SLA
                           </span>
                         )}
@@ -1556,8 +1388,7 @@ export function ExaminationsHub({
                       ALL
                   ================================================= */}
 
-                  {statusTab ===
-                    "all" && (
+                  {statusTab === "all" && (
                     <>
                       <td className="px-5 py-4">
                         <span
@@ -1580,18 +1411,25 @@ export function ExaminationsHub({
                       <td className="px-5 py-4 text-right">
                         {item.isFinalized ? (
                           <span className="font-mono text-xs font-extrabold text-qc-blue">
-                            {item.tatHours !== null && item.tatHours !== undefined
-                              ? `${item.tatHours}h`
+                            {item.tatHours !== null &&
+                            item.tatHours !== undefined
+                              ? `${item.tatHours} hrs`
                               : item.tatMinutes
-                              ? `${Number((item.tatMinutes / 60).toFixed(1))}h`
-                              : "—"}
+                                ? `${Number(
+                                    (item.tatMinutes / 60).toFixed(1),
+                                  )} hrs`
+                                : "—"}
                           </span>
                         ) : (
                           <span className="font-mono text-xs font-extrabold text-qc-orange">
-                            {item.dwellHours !== null && item.dwellHours !== undefined
-                              ? `${item.dwellHours}h`
-                              : item.dwellMinutes !== null && item.dwellMinutes !== undefined
-                                ? `${Number((item.dwellMinutes / 60).toFixed(1))}h`
+                            {item.dwellHours !== null &&
+                            item.dwellHours !== undefined
+                              ? `${item.dwellHours} hrs`
+                              : item.dwellMinutes !== null &&
+                                  item.dwellMinutes !== undefined
+                                ? `${Number(
+                                    (item.dwellMinutes / 60).toFixed(1),
+                                  )} hrs`
                                 : "—"}
                           </span>
                         )}
@@ -1600,12 +1438,8 @@ export function ExaminationsHub({
                       <td className="px-5 py-4 text-right">
                         {!item.isFinalized && (
                           <form
-                            action={async (
-                              formData,
-                            ) => {
-                              await signOffReportAction(
-                                formData,
-                              );
+                            action={async (formData) => {
+                              await signOffReportAction(formData);
 
                               loadExaminations();
                               notifyDatabaseChanged();
@@ -1615,17 +1449,13 @@ export function ExaminationsHub({
                             <input
                               type="hidden"
                               name="examId"
-                              value={
-                                item.examId
-                              }
+                              value={item.examId}
                             />
 
                             <button
                               type="submit"
                               className="inline-flex items-center gap-1.5 rounded-xl bg-qc-yellow px-3 py-2 text-xs font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.12)] transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] hover:shadow-[0_5px_12px_rgba(242,203,73,0.18)] active:translate-y-0"
                             >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-
                               Sign
                             </button>
                           </form>
@@ -1647,32 +1477,20 @@ export function ExaminationsHub({
                     className="px-5 py-16 text-center"
                   >
                     <div className="mx-auto flex max-w-sm flex-col items-center">
-                      <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(145deg,#F2F5FF_0%,#FFF9E9_100%)] text-qc-blue">
-                        <div className="absolute inset-0 rounded-2xl border border-qc-blue/[0.06]" />
-
-                        <FileSpreadsheet className="relative h-6 w-6" />
-                      </div>
-
-                      <h3 className="mt-4 text-sm font-extrabold text-qc-navy">
+                      <h3 className="text-sm font-extrabold text-qc-navy">
                         No records found
                       </h3>
 
                       <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-                        Adjust the current
-                        filters or search term
-                        to view more
-                        examinations.
+                        Adjust the current filters or search term
+                        to view more examinations.
                       </p>
 
                       <button
                         type="button"
-                        onClick={
-                          handleResetFilters
-                        }
-                        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#DDE3F2] bg-white px-3 py-2 text-xs font-extrabold text-qc-blue shadow-sm transition-all hover:-translate-y-0.5 hover:bg-qc-blue/[0.04]"
+                        onClick={handleResetFilters}
+                        className="mt-4 inline-flex items-center rounded-xl border border-[#DDE3F2] bg-white px-3 py-2 text-xs font-extrabold text-qc-blue shadow-sm transition-all hover:-translate-y-0.5 hover:bg-qc-blue/[0.04]"
                       >
-                        <RotateCcw className="h-3.5 w-3.5" />
-
                         Reset filters
                       </button>
                     </div>
@@ -1690,10 +1508,7 @@ export function ExaminationsHub({
         <div className="flex flex-col gap-2 border-t border-[#E8EBF2] bg-[#FBFCFE] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-xs font-semibold text-muted-foreground">
             {items.length}{" "}
-            {items.length === 1
-              ? "record"
-              : "records"}{" "}
-            shown
+            {items.length === 1 ? "record" : "records"} shown
           </span>
 
           <div className="flex items-center gap-4">
@@ -1703,9 +1518,6 @@ export function ExaminationsHub({
                 {slaAlerts.join(" · ")}
               </span>
             )}
-
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-            </span>
           </div>
         </div>
       </section>

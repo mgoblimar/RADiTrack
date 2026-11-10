@@ -10,8 +10,8 @@ export interface TwelveMonthTrendChartProps {
   onModalityChange: (modality: "ALL" | ModalityCode) => void;
 }
 
-export const QC_NAVY = "#050E40";
-export const QC_BLUE = "#18298C";
+export const QC_NAVY = "#00357a";
+export const QC_BLUE = "#2d3e9d";
 export const QC_PURPLE = "#7652B8";
 export const QC_MUTED = "#64748B";
 export const QC_GRID = "#E2E8F0";
@@ -26,14 +26,47 @@ export interface ModalityConfig {
 }
 
 export const MODALITIES: ModalityConfig[] = [
-  { code: ModalityCode.XRAY, label: "X-ray", color: "#2563EB", lightColor: "#93C5FD", dotClass: "bg-blue-500" },
-  { code: ModalityCode.MAMMO, label: "Mammogram", color: "#DB2777", lightColor: "#F9A8D4", dotClass: "bg-pink-500" },
-  { code: ModalityCode.US, label: "Ultrasound", color: "#059669", lightColor: "#6EE7B7", dotClass: "bg-emerald-500" },
-  { code: ModalityCode.CT, label: "CT-Scan", color: "#D97706", lightColor: "#FCD34D", dotClass: "bg-amber-500" },
-  { code: ModalityCode.MRI, label: "MRI", color: "#7C3AED", lightColor: "#C4B5FD", dotClass: "bg-purple-500" },
+  {
+    code: ModalityCode.XRAY,
+    label: "X-ray",
+    color: "#2563EB",
+    lightColor: "#93C5FD",
+    dotClass: "bg-blue-500",
+  },
+  {
+    code: ModalityCode.MAMMO,
+    label: "Mammogram",
+    color: "#DB2777",
+    lightColor: "#F9A8D4",
+    dotClass: "bg-pink-500",
+  },
+  {
+    code: ModalityCode.US,
+    label: "Ultrasound",
+    color: "#059669",
+    lightColor: "#6EE7B7",
+    dotClass: "bg-emerald-500",
+  },
+  {
+    code: ModalityCode.CT,
+    label: "CT-Scan",
+    color: "#D97706",
+    lightColor: "#FCD34D",
+    dotClass: "bg-amber-500",
+  },
+  {
+    code: ModalityCode.MRI,
+    label: "MRI",
+    color: "#7C3AED",
+    lightColor: "#C4B5FD",
+    dotClass: "bg-purple-500",
+  },
 ];
 
-export const TRIAGE_OPTIONS: ReadonlyArray<{ value: "ALL" | TriageLevel; label: string }> = [
+export const TRIAGE_OPTIONS: ReadonlyArray<{
+  value: "ALL" | TriageLevel;
+  label: string;
+}> = [
   { value: "ALL", label: "All patient categories" },
   { value: TriageLevel.OPD, label: "Outpatient (OPD)" },
   { value: TriageLevel.IN, label: "Inpatient (IN)" },

@@ -114,21 +114,23 @@ function GuideNav({ active }: { active: SectionId }) {
 
       {/* Desktop: sticky "On this page" list */}
       <nav aria-label="Guide sections" className="sticky top-6 hidden self-start lg:block">
-        <p className="mb-2 px-3 text-xs font-extrabold uppercase tracking-[0.16em] text-muted-foreground">On this page</p>
+        <p className="mb-2 px-3 text-xs font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
+          On this page
+        </p>
+
         <ul className="space-y-0.5 border-l-2 border-[#E4E8F1]">
-          {GUIDE_SECTIONS.map(({ id, label, icon: Icon }) => (
+          {GUIDE_SECTIONS.map(({ id, label }) => (
             <li key={id}>
               <button
                 type="button"
                 onClick={() => scrollToSection(id)}
                 aria-current={active === id ? "true" : undefined}
-                className={`-ml-0.5 flex w-full items-center gap-2 border-l-2 px-3 py-2 text-left text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-yellow ${
+                className={`-ml-0.5 flex w-full items-center border-l-2 px-3 py-2 text-left text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-yellow ${
                   active === id
                     ? "border-qc-yellow bg-qc-yellow/10 text-qc-navy"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-qc-navy"
                 }`}
               >
-                <Icon className={`h-4 w-4 shrink-0 ${active === id ? "text-qc-navy" : "text-slate-500"}`} />
                 {label}
               </button>
             </li>
@@ -157,48 +159,6 @@ function Section({ id, index, title, intro, children }: { id: SectionId; index: 
 }
 
 const cardBase = "rounded-[20px] border border-[#E4E8F1] bg-white shadow-[0_2px_10px_rgba(24,41,140,0.04)]";
-
-/**
- * Everyday use case: checking the department's average TAT.
- * The card is an illustration (sample numbers), styled like the real KPI card.
- */
-function AverageTatUseCase() {
-  const steps = [
-    "Open the Dashboard",
-    "Pick a time window, e.g. Rolling 7 days",
-    "Read the Average Turnaround Time card",
-  ];
-  return (
-    <figure className="rounded-[18px] border border-white/10 bg-white/[0.06] p-4 sm:p-5">
-      <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-qc-yellow">
-        Example: &ldquo;How fast is our department this week?&rdquo;
-      </p>
-      <div className="mt-3 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-        <ol className="space-y-2">
-          {steps.map((step, i) => (
-            <li key={step} className="flex items-center gap-2.5 text-[13px] font-bold text-white/85">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 text-[13px] font-black text-white">{i + 1}</span>
-              {step}
-            </li>
-          ))}
-        </ol>
-
-        {/* Sample KPI card */}
-        <div aria-hidden className="rounded-2xl bg-white px-5 py-4 text-center text-qc-navy shadow-[0_8px_20px_rgba(0,0,0,0.25)] sm:min-w-[190px]">
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-slate-500">Average turnaround time</p>
-          <p className="mt-1 text-3xl font-black tracking-tight">
-            26.4<span className="ml-1 text-sm font-extrabold text-slate-500">hrs</span>
-          </p>
-          <p className="text-[13px] font-semibold text-slate-500">Median 16.7 hrs</p>
-          <p className="mt-2 inline-flex rounded-full bg-qc-blue/10 px-2.5 py-0.5 text-xs font-extrabold text-qc-blue">30% faster than last week</p>
-        </div>
-      </div>
-      <figcaption className="mt-3 text-[13px] text-white/60">
-        Sample numbers. Narrow it down with the modality or patient category filters, or press Generate report for a PDF.
-      </figcaption>
-    </figure>
-  );
-}
 
 /* ---------------------------------------------------------------------------
    Guide
@@ -230,26 +190,18 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-[26px] bg-qc-navy p-5 text-white shadow-[0_12px_32px_rgba(5,14,64,0.18)] sm:p-7">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-qc-yellow/15 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-qc-blue/40 blur-3xl" />
-        <div className="relative grid items-center gap-6 lg:grid-cols-[1.1fr_1fr]">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-qc-yellow">{governance.department}</p>
-            <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">How to use RADiTrack</h2>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/75">
-              See at a glance how quickly the department turns completed scans into signed reports, for any period,
-              modality or patient category, and spot delays before they pile up.
-            </p>
-            <ul className="mt-4 flex flex-wrap gap-2 text-[13px] font-bold">
-              <li className="rounded-full bg-white/10 px-3 py-1.5">Average report turnaround</li>
-              <li className="rounded-full bg-white/10 px-3 py-1.5">Reading backlog</li>
-              <li className="rounded-full bg-qc-yellow px-3 py-1.5 text-qc-navy">Compare with last period</li>
-            </ul>
-          </div>
-          <AverageTatUseCase />
-        </div>
-      </section>
+<section className="relative overflow-hidden rounded-[26px] border border-white/70 bg-qc-navy px-5 py-7 text-white shadow-[0_12px_32px_rgba(5,14,64,0.12)] sm:px-7 sm:py-8">
+  <div className="relative max-w-4xl">
+    <h2 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+      How to use RADiTrack
+    </h2>
+
+    <p className="mt-2 max-w-4xl text-sm leading-relaxed text-white/80">
+      Learn how to review examinations, track turnaround time,
+      and understand department performance.
+    </p>
+  </div>
+</section>
 
       <div className="lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-8">
         <GuideNav active={active} />
