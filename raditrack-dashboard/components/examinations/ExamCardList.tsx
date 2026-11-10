@@ -98,7 +98,7 @@ function SignButton({
         type="submit"
         className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-qc-yellow px-4 text-sm font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.18)] transition-colors hover:bg-[#eac13d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qc-navy"
       >
-        Sign report
+        Sign Off
       </button>
     </form>
   );

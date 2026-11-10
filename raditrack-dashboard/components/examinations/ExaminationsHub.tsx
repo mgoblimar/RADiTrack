@@ -1329,9 +1329,9 @@ export function ExaminationsHub({
 
                             <button
                               type="submit"
-                              className="group inline-flex items-center gap-1.5 rounded-xl bg-qc-yellow px-3 py-2 text-xs font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.12)] transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] hover:shadow-[0_5px_12px_rgba(242,203,73,0.18)] active:translate-y-0"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-qc-yellow px-3 py-2 text-xs font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.12)] transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] hover:shadow-[0_5px_12px_rgba(242,203,73,0.18)] active:translate-y-0"
                             >
-                              Sign
+                              Sign Off
                             </button>
                           </form>
                         </div>
@@ -1456,7 +1456,7 @@ export function ExaminationsHub({
                               type="submit"
                               className="inline-flex items-center gap-1.5 rounded-xl bg-qc-yellow px-3 py-2 text-xs font-extrabold text-qc-navy shadow-[0_3px_8px_rgba(242,203,73,0.12)] transition-all hover:-translate-y-0.5 hover:bg-[#eac13d] hover:shadow-[0_5px_12px_rgba(242,203,73,0.18)] active:translate-y-0"
                             >
-                              Sign
+                              Sign Off
                             </button>
                           </form>
                         )}
