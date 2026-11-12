@@ -1,202 +1,92 @@
-# 🏥 RADiTrack — Radiology Operations Intelligence & Turnaround Time (TAT) Analytics
+<div align="center">
 
-> **Course:** CS 128.1 — Software Engineering / Health Informatics  
-> **Institution:** University of the Philippines Manila  
-> **Team:** Group O(n) point  
-> **Privacy Specification:** **100% De-identified & Exam-Centric (Strict Zero-PII Policy)**  
-> **Stack:** Next.js 16 (App Router) • React 19 • Prisma 7 ORM • Supabase (PostgreSQL) • Tailwind CSS v4 • shadcn/ui • Recharts v3 • TypeScript  
+<img src="raditrack-dashboard/public/qcgh-hospital-logo.png" alt="Quezon City General Hospital logo" width="120" />
 
----
+# RADiTrack
 
-## ⚡ Quickstart Guide (Run Locally in 2 Minutes)
+**Radiology workload and turnaround-time monitoring for the QCGH Department of Radiology**
 
-### 1. Prerequisites
-Ensure your development environment has:
-* **Node.js:** `v20.x` or `v22.x` (`node -v`)
-* **npm:** `v10.x` or higher (`npm -v`)
-* **Git**
-* **Supabase Project Credentials** (or team `.env`)
+[**Open RADiTrack →**](https://raditrack.vercel.app)
+
+</div>
 
 ---
 
-### 2. Setup & Installation (Step-by-Step)
+## About
 
-#### Step 1: Clone & Navigate into the Project Directory
-```bash
-# Clone the repository
-git clone <repository-url>
+RADiTrack shows the Department of Radiology at Quezon City General Hospital how fast imaging reports are being read and signed. Each completed exam is tracked from the moment the scan finishes to the moment the radiologist signs the report. That time is the **Turnaround Time (TAT)**, and RADiTrack checks it against the department's **SLA targets** for each modality and patient category.
 
-# Navigate into the Next.js dashboard directory
-cd raditrack-dashboard
-```
+The department head sees backlog, SLA compliance and trends at a glance. Radiologists see what is waiting for them. Patients in the waiting area see the queue on a TV display.
 
-#### Step 2: Configure Environment Variables (`.env`)
-Copy `.env.example` to create your local `.env` file:
-```bash
-# Windows:
-copy .env.example .env
+RADiTrack stores **no patient names or identifying details**. Every exam is identified only by its accession number.
 
-# Mac / Linux:
-cp .env.example .env
-```
-Ensure your Supabase connection strings are configured:
-```env
-# Supabase Transaction Pooler (Port 6543) - used by Next.js app at runtime
-DATABASE_URL="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true"
+## Tech stack
 
-# Supabase Direct Connection (Port 5432) - used for Prisma schema push
-DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres"
-```
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,prisma,postgres,supabase,vercel" alt="Next.js, React, TypeScript, Tailwind CSS, Prisma, PostgreSQL, Supabase, Vercel" />
+</p>
 
-#### Step 3: Install Dependencies
-```bash
-npm install
-```
+| Layer | Tools |
+|---|---|
+| App | Next.js 16 (App Router, server actions), React 19, TypeScript |
+| Interface | Tailwind CSS 4, shadcn/ui, Lucide icons, Recharts 3 |
+| Data | Prisma 7, PostgreSQL on Supabase |
+| Sign-in | Encrypted session cookies (jose), bcrypt password hashing |
+| Hosting | Vercel |
 
-#### Step 4: Generate Prisma 7 Client Types
-Compiles PostgreSQL client bindings into `./generated/prisma`:
-```bash
-npx prisma generate
-```
+## Main users
 
-#### Step 5: Sync Schema & Seed Data (First-time setup only)
-> *Note: If connecting to the shared team Supabase instance where tables and data already exist, you can skip straight to Step 6!*
-```bash
-# Push schema to Supabase:
-npx prisma db push
+| User | What they use RADiTrack for |
+|---|---|
+| **Department head and administrators** | Monitor TAT, SLA compliance and backlog; generate reports; manage SLA targets, modality rooms and staff accounts |
+| **Radiologists and residents** | See the reading backlog for their assigned modalities and sign off reports |
+| **Patients and families** | Watch the queue on the waiting-area TV display, which shows no personal details |
 
-# (Optional) Seed baseline data:
-npx prisma db seed
-```
+## Main features
 
-#### Step 6: Launch the Next.js Server
-```bash
-npm run dev
-```
+- **Dashboard:** KPI cards for total scans, average and median TAT, SLA compliance and reading backlog, each compared with the previous period. Filter by time window, modality and patient category.
+- **Charts:** TAT by modality against SLA targets, a 7-day breakdown, and a 12-month trend.
+- **PDF reports:** choose the period, scope and sections, then save a printable summary.
+- **Examinations:** backlog and finalized lists, accession search, sign-off, and Excel/CSV import and export.
+- **Configurations:** SLA targets per modality and patient category, modality rooms and status, and staff accounts with assigned modalities.
+- **Patient TV display:** a live, de-identified queue for the waiting area.
+- **RIS Simulator:** log test scans and load a validation dataset for demonstrations (administrators only).
+- **In-app guide:** explains every term, formula and time window used in the numbers.
 
-Open your browser to:
-👉 **`http://localhost:3000`**
+## Quick start
 
----
+You need [Node.js](https://nodejs.org) 20 or 22, Git, and the team's Supabase connection details.
 
-## 📌 Project Overview
+1. **Clone the project and open the app folder:**
+   ```bash
+   git clone https://github.com/mgoblimar/RADiTrack.git
+   cd RADiTrack/raditrack-dashboard
+   ```
+2. **Create your `.env` file** from the template:
+   ```bash
+   cp .env.example .env
+   ```
+   On Windows Command Prompt, use `copy .env.example .env`. Then fill in `DATABASE_URL` and `DIRECT_URL` (ask the team), and set `SESSION_SECRET` to a random string of at least 32 characters:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+   ```
+3. **Install and prepare:**
+   ```bash
+   npm install
+   npx prisma generate
+   ```
+4. **Start the app:**
+   ```bash
+   npm run dev
+   ```
+   Open http://localhost:3000 and sign in with the account your administrator gave you.
 
-**RADiTrack** is a clinical operations intelligence platform designed to eliminate diagnostic delays in hospital radiology departments. It monitors the complete imaging workflow lifecycle, computes real-time **Turnaround Times (TAT)**, flags **Service Level Agreement (SLA)** breaches, and displays live interpretation queues and modality backlog metrics without handling patient personal demographic data.
+> The team database is shared with the live site. Don't run `prisma db push` or load test data without checking with the team first.
 
-### Core Extracted RIS Fields:
-* **Accession Identifier:** Unique RIS examination code (`examination_identifier`)
-* **Modality:** `CT`, `XRAY`, `MRI`, `US`, `MAMMO`
-* **Workflow Timestamps:** Exam Completion ($T_1$) and Consultant Sign-off ($T_2$)
-* **Turnaround Time (TAT):** $\text{TAT} = T_2 (\text{Report Signed}) - T_1 (\text{Exam Completed})$
-* **Triage & Urgency:** `ER`, `OPD`, `IN` / `STAT`, `ROUTINE`
-
----
-
-## 📂 Repository Structure
-
-```
-RADiTrack/
-├── DIAGRAMS/                      # 📊 PlantUML diagrams & visual specifications
-│   ├── System_Architecture_V1.puml
-│   ├── Data_Flow.puml
-│   └── ERD.puml
-├── raditrack-dashboard/           # 💻 Next.js 16 Web Application & Database
-│   ├── app/                       # App Router (pages & server actions)
-│   ├── components/                # shadcn/ui & Recharts visualizations
-│   ├── generated/prisma/          # Compiled Prisma 7 PostgreSQL Client
-│   ├── lib/                       # Prisma client, enums, broadcast helpers
-│   ├── prisma/                    # Zero-PII Prisma 7 schema & seed script
-│   └── .env.example               # Environment template
-└── README.md                      # 📖 Project documentation & setup guide
-```
+To ship changes, follow the branch and release steps in [docs/RELEASING.md](raditrack-dashboard/docs/RELEASING.md).
 
 ---
 
-## 🏗️ System Architecture & Zero-PII Data Flow
-
-```mermaid
-flowchart TD
-    subgraph Cloud ["☁️ Cloud Database (Supabase PostgreSQL)"]
-        DB[("Supabase PostgreSQL\nZero-PII Exam & Report Records")]
-    end
-
-    subgraph Backend ["⚙️ Next.js Server & Analytical Engine"]
-        ADAPTER["@prisma/adapter-pg (pg.Pool)\n(Prisma 7 Driver Adapter with SSL)"]
-        TAT["⏱️ TAT & SLA Calculation Engine\n• TAT = (ReportSigned - ExamCompleted)\n• Auto SLA Breach Detection\n• Dynamic Sitting Time Latency"]
-        ACTIONS["Server Actions (app/actions.ts)\n• createExaminationAction()\n• signOffReportAction()\n• getDashboardData()"]
-    end
-
-    subgraph UI ["🖥️ Operations Dashboard (http://localhost:3000)"]
-        KPIS["📊 KPI Summary Cards\n(Volume, Avg/Median TAT, % On-Time, Backlog)"]
-        CHART["📈 Interactive Recharts Visualization\n(Modality TAT vs Target, STAT/Routine Filters)"]
-        FORM["📝 Quick Manual Exam Ingestion\n(Accession, Modality, Triage, Urgency)"]
-        QUEUE["📋 Live Reading Queue Table\n(Sitting Latency Timers, 1-Click Sign-Off)"]
-    end
-
-    FORM --> ACTIONS
-    ACTIONS --> TAT
-    TAT --> ADAPTER
-    ADAPTER --> DB
-    DB --> ADAPTER
-    ADAPTER --> ACTIONS
-    ACTIONS --> KPIS & CHART & QUEUE
-```
-
----
-
-## 🧪 Live Dashboard Verification Walkthrough
-
-Once running on `http://localhost:3000`, test the full end-to-end workflow:
-
-1. **Log an Examination:**
-   * Enter Accession: `ACC-2026-001`
-   * Select Modality: `CT Scan`
-   * Select Triage: `ER (Emergency)`
-   * Select Urgency: `STAT (Emergency)`
-   * Click **`Log Examination`**
-   * *Observed Result:* `Total Volume` increments, `Reading Backlog` increments, and `ACC-2026-001` appears in the **Active Reading Queue** with a live sitting latency timer.
-
-2. **Sign Off the Report:**
-   * On the row for `ACC-2026-001`, click the green **`Mark Signed`** button.
-   * *Observed Result:* TAT duration is calculated against the 60-minute ER STAT SLA target, the exam moves out of the reading queue, and `Average TAT` and `SLA Compliance %` cards update live!
-
-3. **Interact with the Visualization:**
-   * Toggle between `All Scans`, `STAT / ER`, and `Routine` buttons on the **Modality TAT Chart** to inspect dynamic performance bars and hover tooltips.
-
----
-
-## 🗄️ Database Schema & Data Model (Zero-PII)
-
-The database schema is 100% exam-centric and strictly adheres to hospital privacy standards:
-
-| Model / Table | Role / Purpose | Key Fields |
-| :--- | :--- | :--- |
-| **`Modality`** (`modalities`) | Equipment catalog & maintenance state | `modalityCode` (PK), `modalityName`, `departmentRoom`, `isActive` |
-| **`ExaminationStatus`** (`examination_statuses`) | Workflow progression milestones | `statusCode` (PK), `statusName`, `stageCategory`, `sequenceOrder` |
-| **`Radiologist`** (`radiologists`) | Licensed physician directory | `radiologistId` (PK), `fullName`, `subspecialty`, `licenseNumber` |
-| **`SlaConfiguration`** (`sla_configurations`) | TAT target rules by priority | `slaId` (PK), `modalityCode`, `triageLevel`, `urgencyLevel`, `targetTatMinutes` |
-| **`Examination`** (`examinations`) | Core study entity (Zero-PII) | `examId` (PK), `examinationIdentifier` (Accession), `studyDate`, `examCompletedAt` ($T_1$) |
-| **`RadiologyReport`** (`radiology_reports`) | Final signed report (1:1 with Exam) | `reportId` (PK), `reportSignedAt` ($T_2$), `tatExamToSignMinutes`, `isSlaBreached` |
-
----
-
-## 🛠️ Helpful Commands
-
-| Action | Command |
-| :--- | :--- |
-| **Start Dev Server** | `npm run dev` |
-| **Push Schema to Supabase** | `npx prisma db push` |
-| **Regenerate Prisma Client** | `npx prisma generate` |
-| **Format Prisma Schema** | `npx prisma format` |
-| **Re-seed Database** | `npx prisma db seed` |
-| **Prisma Visual Studio** | `npx prisma studio` *(inspect tables locally in browser)* |
-| **Supabase Dashboard** | Inspect live tables via **Supabase Studio Table Editor** |
-| **Port Conflict Fallback** | `npm run dev -- -p 3001` |
-
----
-
-## 👥 Project Team
-
-* **Course:** CS 128.1 — Software Engineering / Health Informatics
-* **Institution:** Department of Physical Sciences and Mathematics, College of Arts and Sciences, University of the Philippines Manila
-* **Team:** Group O(n) point
+<div align="center">
+<sub>CS 128.1 · University of the Philippines Manila · Group O(n) point</sub>
+</div>
