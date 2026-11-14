@@ -4,5 +4,7 @@
  * Never set RADITRACK_LOCAL_SCRIPT in .env or for the web server.
  */
 process.env.RADITRACK_LOCAL_SCRIPT = "1";
+// Same Manila days as the web server, whatever the laptop's own time zone.
+process.env.TZ = "Asia/Manila";
 
 export {};
