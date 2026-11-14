@@ -104,13 +104,42 @@ export const TERMS: [string, string][] = [
   ["Cancelled", "An exam with status Cancelled. Left out of every count and average."],
 ];
 
-export const FORMULAS = [
-  { name: "Turnaround Time (TAT)", formula: "Report signed − Exam completed", example: "Completed 6 Nov 08:10, signed 7 Nov 09:40 → 25 h 30 min (25.5 h)." },
-  { name: "SLA breach", formula: "TAT > SLA target", example: "ER target 48 h: exactly 48 h is within SLA; 48 h 1 min is a breach." },
-  { name: "SLA compliance", formula: "(Finalized − Breached) ÷ Finalized × 100", example: "25 signed, 4 breached → 21 ÷ 25 × 100 = 84%." },
-  { name: "Average TAT", formula: "Sum of TATs ÷ signed reports", example: "600 + 1,500 + 2,000 + 4,400 min → 8,500 ÷ 4 = 2,125 min (35.4 h)." },
-  { name: "Median TAT", formula: "Middle TAT (average of the middle two if even)", example: "Same four reports → (1,500 + 2,000) ÷ 2 = 1,750 min." },
-  { name: "Change vs previous period", formula: "(Current − Previous) ÷ Previous × 100", example: "26.4 h now vs 37.8 h before → −30%, shown as '30% faster'." },
+/** A formula or example: plain text, with divisions written as fractions. */
+export type MathPart = string | { num: string; den: string };
+
+const frac = (num: string, den: string): MathPart => ({ num, den });
+
+export const FORMULAS: { name: string; formula: MathPart[]; example: [string, ...MathPart[]] }[] = [
+  {
+    name: "Turnaround Time (TAT)",
+    formula: ["Report signed − Exam completed"],
+    example: ["Completed 6 Nov 08:10, signed 7 Nov 09:40 → 25 h 30 min (25.5 h)."],
+  },
+  {
+    name: "SLA breach",
+    formula: ["TAT > SLA target"],
+    example: ["ER target 48 h: exactly 48 h is within SLA; 48 h 1 min is a breach."],
+  },
+  {
+    name: "SLA compliance",
+    formula: [frac("Finalized − Breached", "Finalized"), "× 100"],
+    example: ["25 signed, 4 breached:", frac("21", "25"), "× 100 = 84%"],
+  },
+  {
+    name: "Average TAT",
+    formula: [frac("Sum of TATs", "Signed reports")],
+    example: ["Four reports of 600, 1,500, 2,000 and 4,400 min, 8,500 min in total:", frac("8,500", "4"), "= 2,125 min (35.4 h)"],
+  },
+  {
+    name: "Median TAT",
+    formula: ["Middle TAT (average of the middle two if even)"],
+    example: ["Same four reports, sorted; the middle two are 1,500 and 2,000:", frac("1,500 + 2,000", "2"), "= 1,750 min"],
+  },
+  {
+    name: "Change vs previous period",
+    formula: [frac("Current − Previous", "Previous"), "× 100"],
+    example: ["26.4 h now vs 37.8 h before, shown as '30% faster':", frac("26.4 − 37.8", "37.8"), "× 100 = −30%"],
+  },
 ];
 
 export const FORMULA_NOTES = [

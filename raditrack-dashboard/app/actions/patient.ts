@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { TriageLevel, ModalityCode } from "@/lib/enums";
+import { APP_TIME_ZONE } from "@/lib/app-time-zone";
 
 // ============================================================================
 // QUERY: Public Patient Activity Display Data (/patient)
@@ -108,12 +109,14 @@ export async function getPublicActivityData() {
 
   return {
     asOfDate: now.toLocaleDateString("en-US", {
+      timeZone: APP_TIME_ZONE,
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
     }),
     lastUpdatedTime: now.toLocaleTimeString("en-US", {
+      timeZone: APP_TIME_ZONE,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
