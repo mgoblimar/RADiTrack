@@ -16,6 +16,7 @@ import {
   ROUTINE,
   TERMS,
   WINDOWS,
+  type MathPart,
 } from "./guide-content";
 
 interface Governance {
@@ -32,6 +33,25 @@ interface RaditrackGuideProps {
 }
 
 type SectionId = (typeof GUIDE_SECTIONS)[number]["id"];
+
+/** Renders text and stacked fractions (numerator over a line over denominator). */
+function MathLine({ parts, ruleClass }: { parts: MathPart[]; ruleClass: string }) {
+  return (
+    <>
+      {parts.map((part, i) =>
+        typeof part === "string" ? (
+          // Short text beside a fraction ("× 100") stays on one line; a lone sentence may wrap.
+          <span key={i} className={parts.length > 1 ? "whitespace-nowrap" : undefined}>{part}</span>
+        ) : (
+          <span key={i} className="inline-flex shrink-0 flex-col items-center whitespace-nowrap px-0.5 align-middle leading-tight" aria-label={`${part.num} divided by ${part.den}`}>
+            <span className={`w-full border-b ${ruleClass} px-1 pb-0.5 text-center`}>{part.num}</span>
+            <span className="px-1 pt-0.5 text-center">{part.den}</span>
+          </span>
+        ),
+      )}
+    </>
+  );
+}
 
 const CATEGORIES = [
   { code: "OPD", label: "Outpatient", chip: "border-slate-200 bg-slate-50 text-slate-600" },
@@ -249,8 +269,17 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
               {FORMULAS.map((f) => (
                 <article key={f.name} className={`${cardBase} flex flex-col p-4`}>
                   <h4 className="text-[13px] font-extrabold uppercase tracking-wider text-qc-blue">{f.name}</h4>
-                  <p className="mt-2.5 rounded-xl bg-qc-navy px-3 py-2.5 text-center font-mono text-[13px] font-bold leading-snug text-white">{f.formula}</p>
-                  <p className="mt-2.5 text-xs leading-relaxed text-slate-500"><span className="font-extrabold text-slate-700">Example: </span>{f.example}</p>
+                  <p className="mt-2.5 flex items-center justify-center gap-x-1.5 rounded-xl bg-qc-navy px-3 py-2.5 text-center text-[13px] font-bold leading-snug text-white">
+                    <MathLine parts={f.formula} ruleClass="border-white" />
+                  </p>
+                  <div className="mt-2.5 text-xs leading-relaxed text-slate-500">
+                    <p><span className="font-extrabold text-slate-700">Example: </span>{f.example[0]}</p>
+                    {f.example.length > 1 && (
+                      <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-semibold text-slate-700">
+                        <MathLine parts={f.example.slice(1)} ruleClass="border-slate-500" />
+                      </p>
+                    )}
+                  </div>
                 </article>
               ))}
             </div>
