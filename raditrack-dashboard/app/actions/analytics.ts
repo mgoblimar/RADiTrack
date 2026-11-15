@@ -10,6 +10,7 @@ import {
   sortByModalityOrder,
 } from "@/lib/enums";
 import { calculatedMedian } from "./utils";
+import { sevenDayFilterKey } from "@/lib/seven-day-filter";
 
 // ============================================================================
 // 5. QUERY: 7-Day Retrospective Staff & Management Analytics (Proposal Page 6)
@@ -106,11 +107,13 @@ export async function getSevenDayStaffAnalytics(options?: SevenDayAnalyticsOptio
     orderBy: { studyDate: "desc" },
   });
 
-  // Helper function to build 7-day table data for a given modality filter (or 'ALL')
-  const computeTableForModality = (filterCode?: string) => {
-    const filteredExams = filterCode && filterCode !== "ALL"
-      ? all14DayExams.filter((e) => e.modalityCode === filterCode)
-      : all14DayExams;
+  // Builds the 7-day table for one modality and one patient category ("ALL" = no filter).
+  const computeTableForModality = (filterCode = "ALL", triage = "ALL") => {
+    const filteredExams = all14DayExams.filter(
+      (e) =>
+        (filterCode === "ALL" || e.modalityCode === filterCode) &&
+        (triage === "ALL" || e.triageLevel === triage),
+    );
 
     const buildDayRows = (dayList: Date[]) =>
       dayList.map((dayDate) => {
@@ -234,15 +237,22 @@ export async function getSevenDayStaffAnalytics(options?: SevenDayAnalyticsOptio
     };
   };
 
+  // Every modality x patient category pair, so the dashboard filters can pick one.
+  const modalityKeys = ["ALL", ...Object.values(ModalityCode)];
+  const triageKeys = ["ALL", ...Object.values(TriageLevel)];
+  const byFilter: Record<string, ReturnType<typeof computeTableForModality>> = {};
+  for (const modality of modalityKeys) {
+    for (const triage of triageKeys) {
+      byFilter[sevenDayFilterKey(modality, triage)] = computeTableForModality(modality, triage);
+    }
+  }
+
   return {
-    all: computeTableForModality("ALL"),
-    byModality: {
-      [ModalityCode.XRAY]: computeTableForModality(ModalityCode.XRAY),
-      [ModalityCode.US]: computeTableForModality(ModalityCode.US),
-      [ModalityCode.CT]: computeTableForModality(ModalityCode.CT),
-      [ModalityCode.MRI]: computeTableForModality(ModalityCode.MRI),
-      [ModalityCode.MAMMO]: computeTableForModality(ModalityCode.MAMMO),
-    },
+    all: byFilter[sevenDayFilterKey("ALL", "ALL")],
+    byModality: Object.fromEntries(
+      Object.values(ModalityCode).map((code) => [code, byFilter[sevenDayFilterKey(code, "ALL")]]),
+    ) as Record<ModalityCode, ReturnType<typeof computeTableForModality>>,
+    byFilter,
   };
 }
 

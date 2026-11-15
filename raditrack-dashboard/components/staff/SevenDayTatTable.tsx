@@ -7,7 +7,11 @@ import {
   useTransition,
 } from "react";
 
-import { ModalityCode } from "@/lib/enums";
+import { ModalityCode, TRIAGE_CONFIG } from "@/lib/enums";
+import {
+  pickSevenDayAnalytics,
+  sevenDayScopeLabel,
+} from "@/lib/seven-day-filter";
 import { fetchSevenDayAnalyticsAction } from "@/app/actions";
 import type { DashboardFilters } from "@/lib/dashboard-types";
 import { toIsoDate } from "@/lib/kpi-range";
@@ -50,8 +54,9 @@ interface Props {
   analytics: {
     all: ModalityAnalytics;
     byModality: Record<string, ModalityAnalytics>;
+    byFilter?: Record<string, ModalityAnalytics>;
   };
-  /** Dashboard filter bar: only the modality applies (the window is always the latest 7 days). */
+  /** Dashboard filter bar: modality and patient category apply (the window is always the latest 7 days). */
   filters: DashboardFilters;
 }
 
@@ -184,6 +189,7 @@ export function SevenDayTatTable({
 
   // Modality comes from the dashboard filter bar.
   const activeTab: string = filters.modality;
+  const activeTriage: string = filters.triage;
 
   const [mode, setMode] =
     useState<AnalyticsMode>("rolling");
@@ -255,19 +261,20 @@ export function SevenDayTatTable({
      CURRENT MODALITY DATA
   ========================================================= */
 
-  const currentData: ModalityAnalytics =
-    activeTab === "ALL"
-      ? analytics.all
-      : analytics.byModality[activeTab] ?? analytics.all;
+  const currentData: ModalityAnalytics = pickSevenDayAnalytics(
+    analytics,
+    activeTab,
+    activeTriage,
+  );
 
   const currentTabLabel =
     MODALITY_TABS.find((tab) => tab.key === activeTab)
       ?.label ?? "All";
 
-  const modalityScopeLabel =
-    activeTab === "ALL"
-      ? "For all Modalities"
-      : `${currentTabLabel} only`;
+  const modalityScopeLabel = sevenDayScopeLabel(
+    activeTab === "ALL" ? null : currentTabLabel,
+    filters.triage === "ALL" ? null : TRIAGE_CONFIG[filters.triage].label,
+  );
 
   const previousLabel =
     mode === "rolling" ? "Previous 7 days" : "Previous week";
@@ -733,7 +740,7 @@ export function SevenDayTatTable({
 
             <span
               className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-extrabold ${
-                activeTab === "ALL"
+                activeTab === "ALL" && activeTriage === "ALL"
                   ? "border-[#00357a]/10 bg-[#00357a]/[0.06] text-[#00357a]"
                   : "border-[#ffd230]/50 bg-[#ffd230]/15 text-[#6b5200]"
               }`}

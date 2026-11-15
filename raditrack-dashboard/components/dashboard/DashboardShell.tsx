@@ -26,6 +26,7 @@ import type {
 } from "@/lib/dashboard-types";
 
 import { capAtToday, resolveKpiRange, toIsoDate } from "@/lib/kpi-range";
+import { pickSevenDayAnalytics, sevenDayScopeLabel } from "@/lib/seven-day-filter";
 import { usePersistedBoolean } from "@/hooks/use-persisted-boolean";
 import { ReportBuilderDialog } from "@/components/report/ReportBuilderDialog";
 import { MyModalitiesBar } from "@/components/dashboard/MyModalitiesBar";
@@ -526,7 +527,19 @@ export function DashboardShell({
      Recent analytics and date range
   ========================================================= */
 
-  const recentAnalytics = sevenDayAnalytics?.all;
+  // Follows the modality and patient category filters, like the table below.
+  const recentAnalytics = sevenDayAnalytics
+    ? pickSevenDayAnalytics(sevenDayAnalytics, selectedModality, selectedTriage)
+    : undefined;
+
+  const recentScopeLabel = sevenDayScopeLabel(
+    selectedModality === "ALL"
+      ? null
+      : MODALITY_CONFIG[selectedModality]?.shortName || selectedModality,
+    selectedTriage === "ALL"
+      ? null
+      : TRIAGE_CONFIG[selectedTriage]?.label || selectedTriage,
+  );
 
   const recentDateRange = useMemo(() => {
     const rows = recentAnalytics?.dayRows ?? [];
@@ -1088,7 +1101,7 @@ export function DashboardShell({
                     </span>
 
                     <span className="inline-flex items-center rounded-lg bg-qc-blue/[0.06] px-2.5 py-1.5 text-[13px] font-bold text-qc-blue">
-                      For all Modalities
+                      {recentScopeLabel}
                     </span>
                   </div>
 
