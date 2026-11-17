@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -53,12 +54,12 @@ export function Sidebar({
 }: SidebarProps) {
   const canUseSimulator = isAdmin(currentUser);
 
+  const [isMobileOpen, setIsMobileOpen] =
+    useState(false);
+
   const accountType = canUseSimulator
     ? "Administrator"
     : "Staff account";
-
-  const [isMobileOpen, setIsMobileOpen] =
-    useState(false);
 
   const navItems = [
     {
@@ -90,9 +91,23 @@ export function Sidebar({
       ===================================================== */}
 
       <div className="sticky top-0 z-40 flex h-[64px] items-center justify-center border-b border-white/10 bg-qc-blue px-4 lg:hidden">
-        <h1 className="text-[23px] font-black tracking-[-0.055em] text-white">
-          RADiTrack
-        </h1>
+
+        <div className="flex items-center gap-2.5">
+
+          <Image
+            src="/brand/raditrack-logo.png"
+            alt="RADiTrack logo"
+            width={48}
+            height={48}
+            priority
+            className="h-9 w-9 rounded-lg bg-white object-contain p-0.5"
+          />
+
+          <h1 className="text-[23px] font-black tracking-[-0.055em] text-white">
+            RADiTrack
+          </h1>
+
+        </div>
 
         <button
           type="button"
@@ -143,6 +158,7 @@ export function Sidebar({
             : "lg:w-[248px]"
         }`}
       >
+
         {/* Background accents */}
 
         <div
@@ -160,24 +176,48 @@ export function Sidebar({
         =================================================== */}
 
         <div
-          className={`relative flex shrink-0 items-center justify-center border-b border-white/[0.15] ${
+          className={`relative flex shrink-0 items-center border-b border-white/[0.15] ${
             isCollapsed
-              ? "h-[76px] px-2"
-              : "h-[88px] px-4"
+              ? "h-[76px] justify-center px-2"
+              : "h-[88px] justify-start px-4"
           }`}
         >
+
           {isCollapsed ? (
-            <span
+
+            /* COLLAPSED: ORIGINAL LOGO */
+
+            <Image
+              src="/brand/raditrack-logo.png"
+              alt="RADiTrack"
               title="RADiTrack"
-              aria-label="RADiTrack"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.09] text-xl font-black tracking-tighter text-white"
-            >
-              R
-            </span>
+              width={56}
+              height={56}
+              priority
+              className="h-[48px] w-[48px] rounded-lg bg-white object-contain p-0.5"
+            />
+
           ) : (
-            <h2 className="text-center text-[25px] font-black tracking-[-0.065em] text-white sm:text-[27px]">
-              RADiTrack
-            </h2>
+
+            /* EXPANDED: LOGO BESIDE EXISTING TEXT */
+
+            <div className="flex min-w-0 items-center gap-2.5">
+
+              <Image
+                src="/brand/raditrack-logo.png"
+                alt="RADiTrack logo"
+                width={64}
+                height={64}
+                priority
+                className="h-[52px] w-[52px] shrink-0 rounded-lg bg-white object-contain p-0.5"
+              />
+
+              <h2 className="whitespace-nowrap text-[25px] font-black tracking-[-0.065em] text-white sm:text-[27px]">
+                RADiTrack
+              </h2>
+
+            </div>
+
           )}
 
           {/* Desktop collapse button */}
@@ -206,6 +246,7 @@ export function Sidebar({
               <X className="h-4 w-4" />
             </button>
           )}
+
         </div>
 
         {/* ===================================================
@@ -214,6 +255,7 @@ export function Sidebar({
 
         {isCollapsed && onToggleCollapse && (
           <div className="relative flex justify-center border-b border-white/[0.12] px-2 py-2">
+
             <button
               type="button"
               onClick={onToggleCollapse}
@@ -223,6 +265,7 @@ export function Sidebar({
             >
               <PanelLeftOpen className="h-4 w-4" />
             </button>
+
           </div>
         )}
 
@@ -231,6 +274,7 @@ export function Sidebar({
         =================================================== */}
 
         <div className="relative flex-1 overflow-y-auto px-3 py-6">
+
           <nav
             className="space-y-2.5"
             aria-label="Primary navigation"
@@ -258,6 +302,7 @@ export function Sidebar({
                       : "border-transparent text-white/75 hover:border-white/[0.09] hover:bg-white/[0.07] hover:text-white"
                   }`}
                 >
+
                   {/* Active indicator */}
 
                   {isActive && (
@@ -334,6 +379,7 @@ export function Sidebar({
                         {pendingCount}
                       </span>
                     )}
+
                 </button>
               );
             })}
@@ -356,6 +402,7 @@ export function Sidebar({
           )}
 
           <div className="space-y-2.5">
+
             {/* Patient TV */}
 
             <Link
@@ -378,6 +425,7 @@ export function Sidebar({
                 }`}
               >
                 <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.09] text-white/75 transition-all duration-200 group-hover:bg-white/[0.16] group-hover:text-qc-yellow group-active:scale-95">
+
                   <Tv
                     className="h-[19px] w-[19px]"
                     strokeWidth={2.1}
@@ -386,6 +434,7 @@ export function Sidebar({
                   {!isCollapsed && (
                     <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-qc-yellow shadow-[0_0_7px_rgba(255,210,48,0.45)]" />
                   )}
+
                 </div>
 
                 {!isCollapsed && (
@@ -397,11 +446,13 @@ export function Sidebar({
 
               {!isCollapsed && (
                 <span className="flex items-center gap-2">
+
                   <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 transition-colors group-hover:text-qc-yellow">
                     Live
                   </span>
 
                   <ChevronRight className="h-4 w-4 text-white/50 transition-transform duration-200 group-hover:translate-x-0.5" />
+
                 </span>
               )}
             </Link>
@@ -419,6 +470,7 @@ export function Sidebar({
                     : "justify-between px-3 py-2.5"
                 }`}
               >
+
                 <div
                   className={`flex min-w-0 items-center ${
                     isCollapsed
@@ -426,6 +478,7 @@ export function Sidebar({
                       : "gap-3"
                   }`}
                 >
+
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.09] text-white/75 transition-all duration-200 group-hover:bg-white/[0.16] group-hover:text-qc-yellow group-active:scale-95">
                     <Radio
                       className="h-[19px] w-[19px]"
@@ -438,13 +491,16 @@ export function Sidebar({
                       RIS Simulator
                     </span>
                   )}
+
                 </div>
 
                 {!isCollapsed && (
                   <ChevronRight className="h-4 w-4 text-white/50 transition-transform duration-200 group-hover:translate-x-0.5" />
                 )}
+
               </Link>
             )}
+
           </div>
         </div>
 
@@ -453,9 +509,13 @@ export function Sidebar({
         =================================================== */}
 
         <div className="relative shrink-0 border-t border-white/[0.15] bg-black/[0.10] p-3">
+
           {isCollapsed ? (
+
             /* COLLAPSED PROFILE */
+
             <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.12] bg-white/[0.045] py-2.5">
+
               <button
                 type="button"
                 onClick={() => handleTabChange("settings")}
@@ -463,17 +523,21 @@ export function Sidebar({
                 aria-label="Open profile settings"
                 className="group relative"
               >
+
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow transition-all duration-200 group-hover:border-qc-yellow group-hover:bg-white/[0.16] group-active:scale-95">
+
                   <User
                     className="h-[19px] w-[19px]"
                     strokeWidth={2}
                   />
+
                 </div>
 
                 <span
                   className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-qc-blue"
                   aria-label="Signed in"
                 />
+
               </button>
 
               <div className="h-px w-8 bg-white/[0.12]" />
@@ -504,13 +568,19 @@ export function Sidebar({
                   />
                 </button>
               </form>
+
             </div>
+
           ) : (
+
             /* EXPANDED PROFILE */
+
             <div className="rounded-2xl border border-white/[0.15] bg-white/[0.07] p-3 transition-colors hover:bg-white/[0.10]">
 
               {/* Account identity */}
+
               <div className="flex min-w-0 items-center gap-3">
+
                 <button
                   type="button"
                   onClick={() => handleTabChange("settings")}
@@ -518,15 +588,18 @@ export function Sidebar({
                   aria-label={`Open profile settings for ${currentUser.fullName}`}
                   className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/[0.10] text-qc-yellow shadow-[0_4px_12px_rgba(0,0,0,0.10)] transition-all duration-200 hover:border-qc-yellow hover:bg-white/[0.16] active:scale-95"
                 >
+
                   <User
                     className="h-5 w-5"
                     strokeWidth={2}
                   />
 
                   <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-qc-blue" />
+
                 </button>
 
                 <div className="min-w-0 flex-1">
+
                   <p
                     className="line-clamp-2 break-words text-[13px] font-extrabold leading-snug text-white"
                     title={currentUser.fullName}
@@ -537,11 +610,14 @@ export function Sidebar({
                   <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.10em] text-white/60">
                     {accountType}
                   </p>
+
                 </div>
               </div>
 
               {/* Profile actions */}
+
               <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/[0.12] pt-2.5">
+
                 <button
                   type="button"
                   onClick={() => handleTabChange("settings")}
@@ -570,6 +646,7 @@ export function Sidebar({
                     Sign out
                   </button>
                 </form>
+
               </div>
             </div>
           )}
