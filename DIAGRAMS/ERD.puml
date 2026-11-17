@@ -2,6 +2,8 @@
 ' ============================================================================
 ' PlantUML Entity-Relationship Diagram: RADiTrack RIS Operations & TAT Schema
 ' Zero-PII / Exam-Centric Architecture
+' Matches raditrack-dashboard/prisma/schema.prisma (PostgreSQL on Supabase).
+' Column types are the PostgreSQL types Prisma creates.
 ' ============================================================================
 
 !theme plain
@@ -20,39 +22,39 @@ skinparam entity {
 }
 
 entity "modalities" as modalities {
-    * modality_code : VARCHAR(10) <<PK>>
+    * modality_code : TEXT <<PK>>
     --
-    * modality_name : VARCHAR(100)
-    department_room : VARCHAR(50)
+    * modality_name : TEXT
+    department_room : TEXT
     * is_active : BOOLEAN = true
-    * created_at : TIMESTAMPTZ = now()
 }
 
 entity "examination_statuses" as statuses {
-    * status_code : VARCHAR(50) <<PK>>
+    * status_code : TEXT <<PK>>
     --
-    * status_name : VARCHAR(100)
-    * stage_category : VARCHAR(30)
+    * status_name : TEXT
+    * stage_category : TEXT
     * sequence_order : INT = 1
 }
 
 entity "radiologists" as radiologists {
     * radiologist_id : UUID <<PK>>
     --
-    * full_name : VARCHAR(150)
-    subspecialty : VARCHAR(100)
-    license_number : VARCHAR(50) <<UK>>
+    * full_name : TEXT
+    subspecialty : TEXT
+    license_number : TEXT <<UK>>
     * is_active : BOOLEAN = true
-    * created_at : TIMESTAMPTZ = now()
+    * created_at : TIMESTAMP = now()
 }
 
 entity "sla_configurations" as sla {
     * sla_id : UUID <<PK>>
     --
-    * modality_code : VARCHAR(10) <<FK>>
-    * triage_level : VARCHAR(10) = 'OPD'
-    * urgency_level : VARCHAR(20) = 'ROUTINE'
+    * modality_code : TEXT <<FK>>
+    * triage_level : TEXT = 'OPD'
+    * urgency_level : TEXT = 'ROUTINE'
     * target_tat_minutes : INT
+    * created_at : TIMESTAMP = now()
     --
     <<UK(modality_code, triage_level, urgency_level)>>
 }
@@ -60,16 +62,15 @@ entity "sla_configurations" as sla {
 entity "examinations" as examinations {
     * exam_id : UUID <<PK>>
     --
-    * examination_identifier : VARCHAR(50) <<UK>>
-    * modality_code : VARCHAR(10) <<FK>>
-    * status_code : VARCHAR(50) <<FK>>
-    * triage_level : VARCHAR(10) = 'OPD'
-    * urgency_level : VARCHAR(20) = 'ROUTINE'
-    * study_date : DATE
-    exam_completed_at : TIMESTAMPTZ
+    * examination_identifier : TEXT <<UK>>
+    * modality_code : TEXT <<FK>>
+    * status_code : TEXT <<FK>>
+    * triage_level : TEXT = 'OPD'
+    * study_date : TIMESTAMP
+    exam_completed_at : TIMESTAMP
     notes : TEXT
-    * created_at : TIMESTAMPTZ = now()
-    * updated_at : TIMESTAMPTZ = now()
+    * created_at : TIMESTAMP = now()
+    * updated_at : TIMESTAMP
 }
 
 entity "radiology_reports" as reports {
@@ -77,13 +78,31 @@ entity "radiology_reports" as reports {
     --
     * exam_id : UUID <<FK, UK>>
     radiologist_id : UUID <<FK>>
-    report_started_at : TIMESTAMPTZ
-    report_signed_at : TIMESTAMPTZ
-    * report_status : VARCHAR(50) = 'FINALIZED'
-    tat_exam_to_sign_minutes : NUMERIC(10,2)
+    report_started_at : TIMESTAMP
+    report_signed_at : TIMESTAMP
+    * report_status : TEXT = 'FINALIZED'
+    tat_exam_to_sign_minutes : DOUBLE PRECISION
     * is_sla_breached : BOOLEAN = false
-    * created_at : TIMESTAMPTZ = now()
-    * updated_at : TIMESTAMPTZ = now()
+    * created_at : TIMESTAMP = now()
+    * updated_at : TIMESTAMP
+}
+
+entity "user_accounts" as users {
+    * user_id : UUID <<PK>>
+    --
+    * username : TEXT <<UK>>
+    * full_name : TEXT
+    * role : TEXT = 'RADIOLOGIST'
+    * password_hash : TEXT
+    * assigned_modalities : TEXT[] = {}
+    * must_change_password : BOOLEAN = true
+    * is_active : BOOLEAN = true
+    * session_version : INT = 0
+    * failed_login_count : INT = 0
+    locked_until : TIMESTAMP
+    last_login_at : TIMESTAMP
+    * created_at : TIMESTAMP = now()
+    * updated_at : TIMESTAMP
 }
 
 ' ============================================================================
@@ -94,6 +113,19 @@ modalities ||--o{ examinations : "categorizes (1:N)"
 statuses ||--o{ examinations : "tracks_lifecycle (1:N)"
 modalities ||--o{ sla : "defines_targets (1:N)"
 examinations ||--o| reports : "produces (1:0..1)"
-radiologists ||--o{ reports : "dictates_and_signs (1:N)"
+radiologists |o--o{ reports : "dictates_and_signs (0..1:N)"
+
+note right of users
+  Staff sign-in accounts (role = RADIOLOGIST, RESIDENT or ADMIN).
+  assigned_modalities holds modality codes; the first one is the
+  dashboard's starting filter. Not linked by foreign key, and
+  never used to rank individual doctors.
+end note
+
+note bottom of examinations
+  While test data is loaded, real rows are kept in
+  examinations_backup and radiology_reports_backup
+  (same columns), and restored when test mode ends.
+end note
 
 @enduml

@@ -7,35 +7,54 @@ skinparam defaultFontName Arial
 
 title RADiTrack — System Architecture & Component Diagram (Zero-PII)
 
-package "Hospital RIS & Clinical Ingestion" as IngestionBoundary {
-    [Radiology Information System (RIS)] as ExtRIS
-    [Manual Exam Entry / Webhook Listener] as IngestionHook
+package "Data sources" as Sources {
+    [Radiology Information System (RIS)\n<<pending hospital approval>>] as ExtRIS
+    [RIS Sync Agent\n(read-only view raditrack.vw_exams,\nevery 5 min — branch feat/ris-sync-agent)] as SyncAgent
+    [Spreadsheet file\n(.xlsx / .csv)] as SpreadsheetFile
 }
 
-package "Next.js Application Layer (Localhost:3000 / Intranet)" as AppLayer {
-    
-    package "Frontend Presentation Layer (React 19 / Tailwind)" as UI {
-        [Staff Operations Dashboard\n(/)] as StaffDashboard
-        [Public Masked Kiosk View\n(/kiosk)] as PublicKiosk
-        [SLA Configuration & Audit Panel\n(/admin/sla)] as AdminPanel
+package "Users' browsers" as Browsers {
+    [Staff workstation\n(Radiologist, Resident, Administrator)] as StaffBrowser
+    [Waiting-area TV\n(public, no sign-in)] as TvBrowser
+}
+
+package "RADiTrack web application (Next.js 16 on Vercel)" as AppLayer {
+
+    [Sign-in check\n(proxy.ts, encrypted session cookie)] as Proxy
+
+    package "Pages (React 19, Tailwind CSS 4)" as UI {
+        [Staff dashboard  /\n(Dashboard, Examinations, Configuration,\nRIS Simulator, Guide)] as StaffDashboard
+        [Patient TV  /patient] as PatientTv
+        [PDF report  /report] as ReportPage
+        [Sign in  /login\nChange password  /change-password] as AuthPages
     }
 
-    package "Server & Analytics Engine (TypeScript)" as Backend {
-        [Next.js Server Actions\n(actions.ts)] as ServerActions
-        [Turnaround Time (TAT) & SLA Engine\n(radiologyService.ts)] as TatEngine
-        [7-Day Comparative & Backlog Aggregator] as Aggregator
-        [Prisma ORM Client Singleton\n(lib/prisma.ts)] as PrismaClient
+    package "Server actions (app/actions)" as Actions {
+        [dashboard · analytics\n(KPIs, TAT by modality,\n7-day table, 12-month trend)] as Analytics
+        [examinations\n(log, sign off, edit, cancel,\ndelete, search, CSV export)] as ExamActions
+        [dataset\n(import preview & commit,\ntest data load & restore)] as DatasetActions
+        [configurations · accounts · auth\n(SLA targets, rooms, users, sign-in)] as ConfigActions
+        [patient\n(today's public counts)] as PatientActions
+        [simulator\n(RIS Simulator scenarios)] as SimulatorActions
+    }
+
+    package "Shared logic (lib)" as Lib {
+        [Spreadsheet reader & import rules\n(spreadsheet-rows, exam-import)] as ImportLib
+        [Date windows in Manila time\n(kpi-range, app-time-zone)] as TimeLib
+        [Prisma 7 client\n(lib/prisma.ts)] as PrismaClient
     }
 }
 
-package "Data Persistence Layer" as DataLayer {
-    database "SQLite (Local Dev: radiology.db)\nOR Supabase PostgreSQL (Prod)" as Database {
+package "Data layer (Supabase)" as DataLayer {
+    database "PostgreSQL" as Database {
         [examinations] as TblExams
         [radiology_reports] as TblReports
         [modalities] as TblModalities
         [examination_statuses] as TblStatuses
         [sla_configurations] as TblSla
         [radiologists] as TblStaff
+        [user_accounts] as TblUsers
+        [examinations_backup ·\nradiology_reports_backup\n(only while test data is loaded)] as TblBackup
     }
 }
 
@@ -43,23 +62,47 @@ package "Data Persistence Layer" as DataLayer {
 ' CONNECTIONS & DATA FLOW
 ' ==============================================================================
 
-ExtRIS --> IngestionHook : Push Exam Completed (T1) & Signed (T2)
-IngestionHook --> ServerActions : Ingest Accession & Timestamps
-StaffDashboard <--> ServerActions : Manual Log / Mark Signed
-PublicKiosk <-- Aggregator : Sanitized Public Modality Load
-AdminPanel <--> ServerActions : Update SLA Targets (Minutes)
+ExtRIS ..> SyncAgent : read-only SELECT (planned)
+SyncAgent ..> Database : add / update exams by accession (planned)
+SpreadsheetFile --> StaffDashboard : Import exams (admin)
 
-ServerActions --> TatEngine : Trigger TAT & SLA Evaluation
-TatEngine --> Aggregator : Recalculate Avg/Median TAT & 7-Day Trend
-TatEngine --> PrismaClient : Read/Write Records
-Aggregator --> PrismaClient : Query Queue Dwell & Carry-over Scans
+StaffBrowser --> Proxy : HTTPS
+TvBrowser --> PatientTv : HTTPS (public page)
+Proxy --> StaffDashboard
+Proxy --> ReportPage
+Proxy --> AuthPages
 
-PrismaClient --> Database : SQL CRUD & Transactions
-Database --> TblExams
-Database --> TblReports
-Database --> TblModalities
-Database --> TblStatuses
-Database --> TblSla
-Database --> TblStaff
+StaffDashboard --> Analytics : filters (time window, modality, category)
+StaffDashboard --> ExamActions
+StaffDashboard --> DatasetActions
+StaffDashboard --> ConfigActions
+StaffDashboard --> SimulatorActions
+ReportPage --> Analytics
+AuthPages --> ConfigActions
+PatientTv --> PatientActions
+
+DatasetActions --> ImportLib
+Analytics --> TimeLib
+PatientActions --> TimeLib
+
+Analytics --> PrismaClient
+ExamActions --> PrismaClient
+DatasetActions --> PrismaClient
+ConfigActions --> PrismaClient
+PatientActions --> PrismaClient
+SimulatorActions --> PrismaClient
+
+PrismaClient --> Database : SQL queries & transactions
+
+note bottom of Database
+  No patient names, hospital numbers or images are stored.
+  Each exam is identified only by its accession number.
+end note
+
+note right of StaffDashboard
+  Open pages refresh every 10 s and
+  at once when another tab changes data
+  (BroadcastChannel "raditrack_sync").
+end note
 
 @enduml

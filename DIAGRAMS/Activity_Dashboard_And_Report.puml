@@ -14,10 +14,10 @@ title RADiTrack — Activity Diagram: Reviewing Turnaround Time & Generating a P
 
 |Department Head / Staff|
 start
-:Open the staff dashboard;
+:Sign in and open the staff dashboard;
 
 |RADiTrack|
-:Load default view\n(Rolling 7 days, all modalities,\nall patient categories);
+:Load default view\n(Rolling 7 days, the doctor's first\nassigned modality — or all modalities —\nall patient categories);
 
 |Department Head / Staff|
 repeat

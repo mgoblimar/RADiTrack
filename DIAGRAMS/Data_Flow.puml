@@ -1,4 +1,4 @@
-@startuml raditrack_automated_data_flow
+@startuml raditrack_data_flow
 !theme plain
 autonumber
 skinparam responseMessageBelowArrow true
@@ -7,99 +7,68 @@ skinparam defaultFontName Arial
 skinparam shadowing false
 skinparam roundcorner 8
 
-title RADiTrack — Automated Data Flow & Event-Driven TAT Calculation (Updated Zero-PII Model)
+title RADiTrack — Data Flow & TAT Calculation (Zero-PII)
 
-actor "Radiologic Technologist\n(RadTech)" as RadTech
-actor "Radiologist\n(Doctor)" as Radiologist
-participant "Radiology Information\nSystem (RIS)" as RIS
-participant "RADiTrack Ingestion\n& Server Actions" as Ingestion
-participant "RADiTrack Analytics\n& TAT Engine" as Engine
-database "RADiTrack Datastore\n(Prisma SQLite / Supabase)" as DB
-participant "Public Waiting Kiosk UI\n(Zero-PII Workload)" as PublicUI
-participant "Management Dashboard UI\n(Staff & Doctors)" as StaffUI
+actor "Administrator\n(prototype data entry)" as Admin
+actor "Radiologist /\nResident" as Doctor
+participant "RIS Simulator /\nImport exams\n(staff dashboard)" as Intake
+participant "RADiTrack\nserver actions" as Server
+database "Supabase\nPostgreSQL" as DB
+participant "Staff dashboard\n(other open tabs)" as StaffUI
+participant "Patient TV\n(/patient)" as PublicUI
 
-' ==============================================================================
-== 1. EXAMINATION COMPLETION EVENT (Image Acquired / Backlog Enqueued) ==
-' ==============================================================================
-
-RadTech -> RIS: Complete Examination Acquisition\n(e.g., Modality: CT, Triage: ER, Urgency: STAT)
-activate RIS
-RIS -> RIS: Set Status = "EXAM_COMPLETED"\nRecord ExamCompletionTimestamp (T1 / exam_completed_at)
-
-RIS -> Ingestion: Push Event: {\n  examination_identifier: "ACC-2026-001",\n  modality_code: "CT",\n  triage_level: "ER",\n  urgency_level: "STAT",\n  study_date: "2026-09-25",\n  exam_completed_at: "2026-09-25 08:30:00"\n}
-activate Ingestion
-
-Ingestion -> Engine: Process Completed Exam
-activate Engine
-
-Engine -> DB: 1. INSERT INTO examinations (examination_identifier, modality_code, status_code: 'EXAM_COMPLETED', exam_completed_at: T1)\n2. Enqueue to Active Reading Queue (Start Live Dwell Timer from T1)
-activate DB
-DB --> Engine: Examination Record Persisted
-deactivate DB
-
-Engine -> PublicUI: Broadcast Live Modality Census Count\n(e.g., CT: +1 Active Scan, Masked / Zero-PII)
-PublicUI --> PublicUI: Re-render Modality Queue Counts
-
-Engine -> StaffUI: Push Live Interpretation Worklist Update\n(New ER STAT CT sitting at 0.0 mins dwell)
-StaffUI --> StaffUI: Render Exam in Unread Table with Yellow Active Timer
-
-deactivate Engine
-deactivate Ingestion
-deactivate RIS
-
-' ==============================================================================
-== 2. REPORT SIGN-OFF EVENT & AUTOMATED TAT CALCULATION ==
-' ==============================================================================
-
-Radiologist -> RIS: Interpret Images & Electronically Sign Report
-activate RIS
-RIS -> RIS: Set Status = "COMPLETED_SIGNED_OFF"\nRecord ReportSignedTimestamp (T2 / report_signed_at)
-
-RIS -> Ingestion: Push Event: {\n  examination_identifier: "ACC-2026-001",\n  status_code: "COMPLETED_SIGNED_OFF",\n  report_signed_at: "2026-09-25 09:15:00"\n}
-activate Ingestion
-
-Ingestion -> Engine: Process Final Sign-off & Calculate TAT
-activate Engine
-
-note over Engine
-  **Automated Turnaround Time (TAT) Calculation:**
-  T1 = exam_completed_at = 2026-09-25 08:30:00
-  T2 = report_signed_at  = 2026-09-25 09:15:00
-  tat_exam_to_sign_minutes = (T2 - T1) = **45.00 Minutes**
-
-  **SLA Compliance Rule Match:**
-  Query sla_configurations WHERE modality='CT' AND triage='ER' AND urgency='STAT'
-  Target TAT = 60 Minutes
-  Actual TAT (45m) <= Target (60m) ==> **is_sla_breached = FALSE (ON-TIME)**
+note over Admin, Intake
+  Until the hospital approves RIS access, exams enter through the RIS Simulator
+  or a spreadsheet import. The planned RIS Sync Agent would add exams the same way,
+  reading the read-only view raditrack.vw_exams every 5 minutes.
 end note
 
-Engine -> DB: BEGIN TRANSACTION:\n1. INSERT INTO radiology_reports (exam_id, report_signed_at: T2, tat_exam_to_sign_minutes: 45.0, is_sla_breached: false)\n2. UPDATE examinations SET status_code = 'COMPLETED_SIGNED_OFF'\n3. Recalculate Modality Avg TAT, Median TAT & 7-Day Rolling Comparison\nCOMMIT;
-activate DB
-DB --> Engine: Report Finalized & Analytics Updated
-deactivate DB
-
-Engine -> StaffUI: Push Updated Metrics & Worklist Dequeue
-activate StaffUI
-StaffUI -> StaffUI: Refresh UI Widgets:\n- Remove ACC-2026-001 from Active Reading Queue\n- Update Today's Average TAT & Median TAT\n- Update % Meeting SLA Target (On-Time)\n- Update 7-Day Comparative Trendline (+% vs prev 7 days)
-deactivate StaffUI
-
-deactivate Engine
-deactivate Ingestion
-deactivate RIS
-
 ' ==============================================================================
-== 3. REAL-TIME SITTING LATENCY & PRIOR-DAY CARRY-OVER AUDIT ==
+== 1. Examination completed (enters the backlog) ==
 ' ==============================================================================
 
-Engine -> DB: Query Unread Exams: (NOW() - exam_completed_at)\nFilter: exam_completed_at < CURRENT_DATE (Carry-Over Backlog)
-activate Engine
-activate DB
-DB --> Engine: Return Aging Pending Exams
-deactivate DB
+Admin -> Intake: Log completed exam\n(accession no., modality, patient category)\nor upload an .xlsx / .csv file
+Intake -> Server: createExaminationAction (T1 = time logged)\nor import: previewExamImportAction, then commitExamImportAction
+activate Server
+Server -> Server: Import only: validate every row\n(known modality & category, times in order,\nnot in the future, accession not already used)
+Server -> DB: INSERT examinations\n(status EXAM_COMPLETED, exam_completed_at = T1;\nimported signed exams also get their report)
+DB --> Server: Saved
+Server --> Intake: Done
+deactivate Server
+Intake -> StaffUI: BroadcastChannel "DB_CHANGED"\n(other tabs refresh at once)
+PublicUI -> Server: Refresh every 10 s:\ngetPublicActivityData
+Server -> DB: Count today's exams by modality\nand category (Manila date)
+DB --> Server: Counts only
+Server --> PublicUI: Today's counts (no patient details)
 
-Engine -> Engine: Classify Queue Severity & Flags:\n• Normal: < 75% of Target SLA\n• Warning: > 75% of Target SLA\n• SLA Breached: > Target SLA Minutes\n• Carry-Over Flag: Study Date from previous calendar days
+' ==============================================================================
+== 2. Report signed off (TAT and SLA breach calculated) ==
+' ==============================================================================
 
-Engine -> StaffUI: Update Live Sitting Timers & Purple Carry-Over Badges
-deactivate Engine
+Doctor -> StaffUI: Examinations → Backlog → Sign off
+StaffUI -> Server: signOffReportAction(examId)
+activate Server
+Server -> DB: Read exam + SLA targets for its modality
+DB --> Server: exam_completed_at (T1), targets
+Server -> Server: T2 = now\nTAT = T2 − T1 (minutes)\nbreach = TAT > target for the exam's\nmodality + patient category
+Server -> DB: In one transaction:\nUPSERT radiology_reports (report_signed_at = T2,\ntat_exam_to_sign_minutes, is_sla_breached)\nUPDATE examinations (status COMPLETED_SIGNED_OFF)
+DB --> Server: Saved
+Server --> StaffUI: Done (page revalidated)
+deactivate Server
+
+' ==============================================================================
+== 3. Dashboard and report read the figures ==
+' ==============================================================================
+
+Doctor -> StaffUI: Choose time window,\nmodality, patient category
+StaffUI -> Server: fetchFilteredExecutiveKpiAction,\nfetchModalityTatDataAction,\nfetchSevenDayAnalyticsAction,\nfetchYearlyTrendAction
+Server -> DB: Query exams and reports in the window
+DB --> Server: Rows
+Server -> Server: Count, average and median TAT,\nSLA %, backlog, prior-period change
+Server --> StaffUI: KPI cards, TAT by modality,\n7-day table, 12-month trend
+note right of StaffUI
+  The PDF report (/report) calls the same
+  functions, so its numbers match the screen.
+end note
 
 @enduml

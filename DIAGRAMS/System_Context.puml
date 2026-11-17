@@ -1,0 +1,34 @@
+@startuml raditrack_system_context
+!theme plain
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+
+title RADiTrack — System Context (SRS 2.1 Product Perspective)
+
+[Radiology Information System (RIS)\nSource of examination data] as RIS
+[Spreadsheet import\nand RIS Simulator (stand-in)] as Import
+
+package "RADiTrack web application (Next.js on Vercel)" {
+    [Data intake\nValidation, no duplicates] as Intake
+    database "PostgreSQL database\nSupabase, no patient data" as DB
+    [Computation\nTAT, SLA, 7-day, trends] as Compute
+}
+
+[Public Activity Display\nToday's counts, no sign-in] as PublicView
+[Staff and Management Dashboard\n7-day TAT, backlog, SLA, trends] as StaffView
+
+RIS ..> Intake : pending approval
+Import --> Intake
+Intake -right-> DB
+DB -right-> Compute
+Compute --> PublicView
+Compute --> StaffView
+
+note bottom
+  The RIS connection (dashed) is pending approval; until then data enters
+  through import or the RIS Simulator. Both views read the same computed figures.
+end note
+
+@enduml

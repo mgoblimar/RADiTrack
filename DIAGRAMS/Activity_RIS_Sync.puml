@@ -8,6 +8,11 @@ skinparam ActivityBorderColor #334155
 
 title RADiTrack — Activity Diagram: RIS Sync Agent (Read-Only SQL Server View)
 
+note
+  **Planned.** The sync agent is on branch //feat/ris-sync-agent// and is not in
+  the deployed system. It goes live only after the hospital approves RIS access.
+end note
+
 ' ==============================================================================
 ' SWIMLANES
 ' ==============================================================================

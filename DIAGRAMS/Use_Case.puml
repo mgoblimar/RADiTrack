@@ -145,6 +145,8 @@ legend bottom
   for the exam's modality and patient category (exactly on target is within SLA).
   **Sync Exams from RIS View:** reads only the read-only view //raditrack.vw_exams// (no patient names or IDs),
   matches exams by accession number, and is skipped while test data is loaded.
+  **RIS Integration (planned):** the sync agent is on branch //feat/ris-sync-agent// and goes live only after the
+  hospital approves RIS access. Until then exams enter through Import Exams and the RIS Simulator.
 endlegend
 
 @enduml

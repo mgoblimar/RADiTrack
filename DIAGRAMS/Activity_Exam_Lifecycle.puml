@@ -17,9 +17,10 @@ start
 :Complete the imaging examination;
 :Log the completed exam\n(accession no., modality, patient category);
 note right
-  From the RIS (via the sync agent),
-  Import exams, or RIS Simulator →
-  Log Completed Scan
+  Prototype: an Administrator logs it through
+  Import exams or RIS Simulator → Log Completed Scan.
+  Planned: from the RIS via the sync agent
+  (after the hospital approves RIS access).
 end note
 
 |RADiTrack|
