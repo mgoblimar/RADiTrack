@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="raditrack-dashboard/public/qcgh-hospital-logo.png" alt="Quezon City General Hospital logo" width="120" />
-
-# RADiTrack
+<img src="raditrack-dashboard/public/brand/raditrack-branding.png" alt="RADiTrack" width="240" />
 
 **Radiology workload and turnaround-time monitoring for the QCGH Department of Radiology**
 
