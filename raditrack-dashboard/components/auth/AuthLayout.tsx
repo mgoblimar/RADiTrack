@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import type { ReactNode } from "react";
 
@@ -47,10 +48,7 @@ export function AuthLayout({
 
         <div className="relative z-10 flex min-h-screen w-full flex-col justify-between px-10 py-10 xl:px-12 xl:py-12">
 
-          {/* =================================================
-              HOSPITAL IDENTITY
-          ================================================= */}
-
+          {/* HOSPITAL IDENTITY */}
           <header className="flex items-center gap-4 xl:gap-5">
             <Image
               src="/qcgh-hospital-logo.png"
@@ -81,15 +79,8 @@ export function AuthLayout({
             </div>
           </header>
 
-          {/* =================================================
-              PROJECT INTRODUCTION
-          ================================================= */}
-
+          {/* PROJECT INTRODUCTION */}
           <div className="max-w-xl py-12">
-            <p className="text-sm font-extrabold tracking-[0.04em] text-qc-yellow">
-              RADiTrack
-            </p>
-
             <h2 className="mt-4 max-w-xl text-4xl font-extrabold leading-[1.16] tracking-tight text-white xl:text-[44px]">
               Improving the efficiency and timeliness of radiology reporting.
             </h2>
@@ -103,10 +94,7 @@ export function AuthLayout({
             </p>
           </div>
 
-          {/* =================================================
-              FOOTER
-          ================================================= */}
-
+          {/* FOOTER */}
           <footer className="flex items-center justify-between gap-4 border-t border-white/[0.15] pt-5">
             <p className="text-xs font-medium text-white/60">
               For Department of Radiology staff only.
@@ -120,7 +108,7 @@ export function AuthLayout({
           SIGN-IN PANEL
       ===================================================== */}
 
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(145deg,#F9FAFD_0%,#F4F6FA_65%,#FFF9F0_100%)] px-5 py-10 sm:px-8 lg:px-10 xl:px-14">
+      <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(145deg,#F9FAFD_0%,#F4F6FA_65%,#FFF9F0_100%)] px-5 py-5 sm:px-8 sm:py-6 lg:px-10 lg:py-5 xl:px-14">
 
         {/* Background accents */}
         <div
@@ -140,11 +128,8 @@ export function AuthLayout({
 
         <div className="relative z-10 w-full max-w-[450px]">
 
-          {/* =================================================
-              MOBILE HOSPITAL BRANDING
-          ================================================= */}
-
-          <div className="mb-7 flex items-center gap-3 lg:hidden">
+          {/* MOBILE HOSPITAL BRANDING */}
+          <div className="mb-4 flex items-center gap-3 lg:hidden">
             <Image
               src="/qcgh-hospital-logo.png"
               alt="Quezon City General Hospital"
@@ -176,43 +161,88 @@ export function AuthLayout({
               SIGN-IN CARD
           ================================================= */}
 
-          <div className="relative overflow-hidden rounded-[28px] border border-[#E4E8F1] bg-white shadow-[0_16px_48px_rgba(0,53,122,0.07)]">
+          <div className="relative overflow-hidden rounded-[28px] border border-[#E4E8F1] bg-white shadow-[0_16px_48px_rgba(0,53,122,0.09)]">
 
-            {/* Blue, yellow and red top accent */}
+            {/* Brand accent */}
             <div
               aria-hidden="true"
               className="h-[4px] w-full bg-[linear-gradient(90deg,#00357a_0%,#2d3e9d_40%,#ffd230_72%,#7a0000_100%)]"
             />
 
-            <div className="px-6 py-8 sm:px-9 sm:py-10">
+            {/* =================================================
+                FEATURED RADITRACK BRANDING
+            ================================================= */}
 
-              {/* Page heading */}
+            <div className="relative isolate overflow-hidden bg-[linear-gradient(135deg,#002858_0%,#00357A_55%,#164A8B_100%)] px-6 py-4 sm:px-9 sm:py-5">
+
+              {/* Decorative glow */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-12 -top-20 h-48 w-48 rounded-full bg-qc-yellow/[0.16] blur-3xl"
+              />
+
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -bottom-24 -left-12 h-40 w-40 rounded-full bg-white/[0.08] blur-2xl"
+              />
+
+              
+{/* Main RADiTrack branding */}
+<div className="relative mx-auto flex h-[82px] w-[262px] items-center justify-center rounded-[20px] border border-white/70 bg-white p-1 shadow-[0_8px_24px_rgba(0,0,0,0.16)] sm:h-[90px] sm:w-[292px]">
+
+  <Image
+    src="/brand/raditrack-branding.png"
+    alt="RADiTrack — Radiology Activity, Turnaround-Time and Workload Monitoring"
+    width={380}
+    height={120}
+    priority
+    className="h-[72px] w-[252px] object-contain sm:h-[80px] sm:w-[282px]"
+  />
+
+</div>
+
+
+              {/* System identification */}
+              <p className="relative mt-3 text-center text-[9px] font-bold uppercase tracking-[0.2em] text-white/75 sm:text-[10px]">
+                Radiology Activity • Turnaround Time • Workload Monitoring System
+              </p>
+
+            </div>
+
+            {/* =================================================
+                LOGIN CONTENT
+            ================================================= */}
+
+            <div className="px-6 py-5 sm:px-9 sm:py-6">
+
+              {/* FORM HEADING */}
               <div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-qc-navy sm:text-[34px]">
+                <h1 className="text-center text-3xl font-extrabold tracking-tight text-qc-navy sm:text-[34px]">
                   {title}
                 </h1>
 
-                <div className="mt-3 flex items-center gap-2">
+                {/* Brand-colored accent */}
+                <div className="mt-2 flex items-center justify-center gap-2">
                   <span className="h-1 w-7 rounded-full bg-qc-yellow" />
                   <span className="h-1 w-3 rounded-full bg-qc-blue" />
                   <span className="h-1 w-2 rounded-full bg-qc-red" />
                 </div>
 
-                <p className="mt-4 text-sm leading-relaxed text-slate-500">
+                <p className="mt-3 text-center text-sm leading-relaxed text-slate-500">
                   {subtitle}
                 </p>
               </div>
 
-              {/* Existing authentication form */}
-              <div className="mt-8">
+              {/* AUTHENTICATION FORM */}
+              <div className="mt-5">
                 {children}
               </div>
 
             </div>
           </div>
 
-          {/* Mobile footer */}
-          <p className="mt-5 text-center text-[11px] font-medium text-slate-400 lg:hidden">
+          {/* MOBILE FOOTER */}
+          <p className="mt-4 text-center text-[11px] font-medium text-slate-400 lg:hidden">
             For Department of Radiology staff only.
           </p>
 
