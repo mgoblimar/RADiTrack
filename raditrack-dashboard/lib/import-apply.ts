@@ -18,6 +18,7 @@ export interface StoredExam extends ExistingExam {
     lastAmendedAt: Date | null;
     tatExamToSignMinutes: number | null;
     isSlaBreached: boolean;
+    radiologistId: string | null;
   } | null;
 }
 
@@ -38,7 +39,7 @@ export async function loadExistingExams(db: Tx, accessions: readonly string[]): 
     select: {
       examId: true, examinationIdentifier: true, modalityCode: true, triageLevel: true, statusCode: true,
       studyDate: true, examCompletedAt: true, notes: true,
-      report: { select: { reportSignedAt: true, lastAmendedAt: true, tatExamToSignMinutes: true, isSlaBreached: true } },
+      report: { select: { reportSignedAt: true, lastAmendedAt: true, tatExamToSignMinutes: true, isSlaBreached: true, radiologistId: true } },
     },
   });
   return new Map(exams.map((e) => [e.examinationIdentifier, e]));
@@ -82,6 +83,7 @@ export async function applyUpdate(
       tatExamToSignMinutes: tat,
       isSlaBreached: isBreached(tat, targetFor(record.modalityCode, record.triageLevel)),
       reportStatus: ReportStatusCode.FINALIZED,
+      radiologistId: record.radiologistId ?? exam.report?.radiologistId ?? null,
     };
     await tx.radiologyReport.upsert({ where: { examId: exam.examId }, update: report, create: { examId: exam.examId, ...report } });
     reportChanges = diffFields(exam.report, report, ["tatExamToSignMinutes", "isSlaBreached"]);
@@ -117,6 +119,7 @@ export async function applyAmendment(
     tatExamToSignMinutes: tat,
     isSlaBreached: isBreached(tat, targetFor(record.modalityCode, record.triageLevel)),
     lastAmendedAt: fileSigned.getTime() === firstSigned.getTime() ? null : fileSigned,
+    radiologistId: record.radiologistId ?? exam.report!.radiologistId,
   };
   await tx.radiologyReport.update({ where: { examId: exam.examId }, data: report });
 

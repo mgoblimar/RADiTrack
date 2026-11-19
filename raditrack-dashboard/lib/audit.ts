@@ -142,4 +142,5 @@ export const AUDITED_REPORT_FIELDS = [
   "tatExamToSignMinutes",
   "isSlaBreached",
   "lastAmendedAt",
+  "radiologistId",
 ] as const;

@@ -27,7 +27,7 @@ export interface ExistingExam {
   studyDate: Date;
   examCompletedAt: Date | null;
   notes: string | null;
-  report: { reportSignedAt: Date | null; lastAmendedAt: Date | null } | null;
+  report: { reportSignedAt: Date | null; lastAmendedAt: Date | null; radiologistId: string | null } | null;
 }
 
 export type PlanKind = "insert" | "update" | "unchanged" | "amend" | "refused";
@@ -50,8 +50,8 @@ export interface ImportPlan {
   counts: Record<PlanKind, number>;
 }
 
-const UNSIGNED_FIELDS = ["modalityCode", "triageLevel", "statusCode", "studyDate", "examCompletedAt", "reportSignedAt", "notes"] as const;
-const SIGNED_FIELDS = ["modalityCode", "triageLevel", "studyDate", "examCompletedAt", "reportSignedAt", "notes"] as const;
+const UNSIGNED_FIELDS = ["modalityCode", "triageLevel", "statusCode", "studyDate", "examCompletedAt", "reportSignedAt", "notes", "radiologistId"] as const;
+const SIGNED_FIELDS = ["modalityCode", "triageLevel", "studyDate", "examCompletedAt", "reportSignedAt", "notes", "radiologistId"] as const;
 
 const time = (value: string | Date | null | undefined) => (value ? new Date(value).getTime() : null);
 
@@ -66,10 +66,14 @@ function storedValues(exam: ExistingExam) {
     examCompletedAt: exam.examCompletedAt,
     reportSignedAt: signed,
     notes: exam.notes,
+    radiologistId: exam.report?.radiologistId ?? null,
   };
 }
 
-/** File values; a blank optional field (notes) never erases a stored value. */
+/**
+ * File values; a blank optional field (notes, radiologist) never erases a stored value.
+ * The radiologist is stored on the report, so it only counts for rows signed off in the file.
+ */
 function fileValues(record: ExamImportRecord, exam: ExistingExam) {
   return {
     modalityCode: record.modalityCode,
@@ -79,6 +83,7 @@ function fileValues(record: ExamImportRecord, exam: ExistingExam) {
     examCompletedAt: record.examCompletedAt ? new Date(record.examCompletedAt) : null,
     reportSignedAt: record.reportSignedAt ? new Date(record.reportSignedAt) : null,
     notes: record.notes ?? exam.notes,
+    radiologistId: record.reportSignedAt && record.radiologistId ? record.radiologistId : exam.report?.radiologistId ?? null,
   };
 }
 

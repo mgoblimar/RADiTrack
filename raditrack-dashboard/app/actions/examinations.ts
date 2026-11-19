@@ -20,6 +20,7 @@ import {
   AUDITED_REPORT_FIELDS,
 } from "@/lib/audit";
 import type { CurrentUser } from "@/lib/auth/roles";
+import { csvLine } from "@/lib/csv";
 
 /** Result of an action the screen reports back to the user. */
 export interface ExamActionResult {
@@ -166,7 +167,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
   await requireUser();
   const exams = await prisma.examination.findMany({
     include: {
-      report: true,
+      report: { include: { radiologist: { select: { fullName: true } } } },
       modality: { include: { slaConfigs: true } },
     },
     orderBy: { studyDate: "desc" },
@@ -184,6 +185,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
     "Target_SLA_Minutes",
     "SLA_Breach_Status",
     "Workflow_Status",
+    "Radiologist",
   ];
   const rows = exams.map((e) => {
     const targetRule = e.modality.slaConfigs.find(
@@ -192,7 +194,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
     const tatMinutes = e.report?.tatExamToSignMinutes ?? "";
     const tatHours = tatMinutes !== "" ? (Number(tatMinutes) / 60).toFixed(2) : "";
     const isBreached = e.report ? (e.report.isSlaBreached ? "BREACHED" : "MET_SLA") : "PENDING";
-    return [
+    return csvLine([
       e.examinationIdentifier,
       e.modalityCode,
       e.triageLevel,
@@ -205,9 +207,10 @@ export async function exportExaminationsCSVAction(): Promise<string> {
       targetRule?.targetTatMinutes ?? "",
       isBreached,
       e.statusCode,
-    ].join(",");
+      e.report?.radiologist?.fullName ?? "",
+    ]);
   });
-  return [headers.join(","), ...rows].join("\n");
+  return [csvLine(headers), ...rows].join("\n");
 }
 
 // ============================================================================

@@ -157,6 +157,13 @@ New test cases for the plan:
 
 ### Phase 3 — Import validation and radiologist (Def-UPL-05, Def-UPL-02, UPL-47, Def-UPL-08 data part)
 
+**Status: ✅ Built on branch `feat/import-validation` (on top of `feat/reupload-rules`), 19 Nov 2026, not yet merged.** No database change.
+Checked on a throwaway PGlite database: Phase 3 checks 17/17, Phase 2 regression 23/23, planner 15/15, `test-data:verify` 1406/1406; the client's UPL-23 and UPL-47 files are now flagged; the unknown-radiologist box and "Add as new radiologist" checked in Chrome.
+Also done here: CSV export quotes every cell and neutralises formulas (most of UPL-28), and adds a Radiologist column.
+Rule chosen: the radiologist is stored on signed reports only; a file without the column never erases it; changing it on a signed exam is an amendment like any other field.
+
+**New bug found while testing (not fixed yet):** a sign-in cookie that is still valid but whose account was deleted, deactivated or had its password reset causes an endless redirect between `/` and `/login` ("too many redirects"), so that person cannot reach the sign-in page until the cookie expires. Fix: send such requests to a small route that clears the cookie, then to `/login`.
+
 - `lib/exam-import.ts`: a cell that is **filled but not a valid number/date** is a row error (today `"abc"` in `TAT_Min` silently becomes "pending" and in `Completed_After_Min` becomes 0).
 - `lib/spreadsheet-rows.ts`: Excel error cells (`#N/A`, `#REF!`, `#VALUE!`) become row errors, not blanks.
 - Optional `Radiologist` column → matched to an active radiologist by name (case and spacing ignored) → stored on the report. Unknown name = row error; the preview lists each unknown name once (with its row count) and offers **Add as new radiologist**, which creates it (logged) and makes those rows valid. Added to the CSV export and the template.
