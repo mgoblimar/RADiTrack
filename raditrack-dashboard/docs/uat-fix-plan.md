@@ -62,7 +62,24 @@ Each phase is one branch and one PR, in this order. Phases 0 and 4 do not depend
 - `errorMessage()`: show only messages RADiTrack throws itself; database errors get the plain fallback (also stops raw Prisma text, Def-UPL-06).
 - **Retest UPL-32:** replay the preview request (DevTools → Copy as fetch) signed in as a radiologist and signed out → refused; admin → preview works.
 
+**Status: ✅ Done — released to production 19 Nov 2026 (merge `c6e44fd`, tag v0.1.3).**
+
+Retest record (enter into the test plan):
+
+| Sheet | ID | Status | Tester | Date | Remark |
+|---|---|---|---|---|---|
+| RIS Upload | UPL-32 | Pass | Developer retest | 2026-11-19 | Retested on production (v0.1.3): a signed-in radiologist calling the import preview directly is refused (500, no data returned). Before the fix the same call on production returned the full preview (200 with fileName, totalRows, records). Admin preview still works. |
+| Defect Log | Def-UPL-09 | Fixed | — | 2026-11-19 | Admin check moved to the first line of `previewExamImportAction`; also removed a second unauthenticated endpoint (`calculatedMedian`) and hid raw database errors. |
+
+Evidence: production before fix — 200 with `RETEST-001` preview; `main` preview after fix — 500 `digest 1876578928`; production after release — 500 `digest 3503007668`.
+Still to check: signed-out direct call (expect redirect or refusal, no data).
+Release notes: the first production build of `c6e44fd` failed on a stale Turbopack build cache (Google font resolution); redeploying with the build cache off fixed it. No code change was needed.
+
 ### Phase 1 — Upload log and examination audit log (Def-UPL-01, UPL-08, UPL-33, ADD-03)
+
+**Status: ✅ Built on branch `feat/audit-logs` (19 Nov 2026), not yet merged.** `002_audit_logs.sql` is applied to Supabase.
+Checked on a throwaway PGlite copy of the schema: 18/18 audit and upload-log checks pass, `test-data:verify` 1406/1406, upload history renders in the Import dialog.
+Notes: test-data loads are logged as one batch (no per-exam entries, since test exams are discarded on restore); restoring real data is not itself logged.
 
 New tables, applied with a new SQL file `prisma/sql/002_audit_logs.sql` (same style as `001_user_accounts.sql`, safe to re-run) plus matching Prisma models.
 
@@ -98,6 +115,11 @@ New tables, applied with a new SQL file `prisma/sql/002_audit_logs.sql` (same st
 - Applying the SQL to the shared Supabase database: **approved** (19 Nov).
 
 ### Phase 2 — Re-upload rules and the signed-off lock (Def-UPL-03, Def-UPL-04, Def-UPL-06, UPL-13, added case)
+
+**Status: ✅ Built on branch `feat/reupload-rules` (on top of `feat/audit-logs`), 19 Nov 2026, not yet merged.** No database change (uses the Phase 1 tables).
+Checked on a throwaway PGlite database: planner unit checks 15/15, end-to-end checks 23/23 (UPL-11, UPL-12, UPL-15, UPL-16, UPL-27, window setting, signed-off lock incl. two simultaneous sign-offs), `test-data:verify` 1406/1406.
+Checked in Chrome on a local server with the throwaway database: first upload (4 new, success message with file / time / user), re-upload preview (1 new, 1 updated, 1 unchanged, 1 amendment, 1 refused), amendment tick box applied, upload history counts, and Configuration → Amendment window saved and kept after reload. No console errors.
+Extra rule found while building: a cancelled exam is never changed by a file (listed as refused) unless the file matches it.
 
 **Rule (business reply on UPL-11, decisions of 19 Nov):** unsigned exams can be updated freely; a signed-off exam can be **amended for 7 days after its first sign-off**, only when the admin confirms; after that it is final. TAT always uses the **first** sign-off.
 
@@ -135,6 +157,13 @@ New test cases for the plan:
 
 ### Phase 3 — Import validation and radiologist (Def-UPL-05, Def-UPL-02, UPL-47, Def-UPL-08 data part)
 
+**Status: ✅ Built on branch `feat/import-validation` (on top of `feat/reupload-rules`), 19 Nov 2026, not yet merged.** No database change.
+Checked on a throwaway PGlite database: Phase 3 checks 17/17, Phase 2 regression 23/23, planner 15/15, `test-data:verify` 1406/1406; the client's UPL-23 and UPL-47 files are now flagged; the unknown-radiologist box and "Add as new radiologist" checked in Chrome.
+Also done here: CSV export quotes every cell and neutralises formulas (most of UPL-28), and adds a Radiologist column.
+Rule chosen: the radiologist is stored on signed reports only; a file without the column never erases it; changing it on a signed exam is an amendment like any other field.
+
+**New bug found while testing (not fixed yet):** a sign-in cookie that is still valid but whose account was deleted, deactivated or had its password reset causes an endless redirect between `/` and `/login` ("too many redirects"), so that person cannot reach the sign-in page until the cookie expires. Fix: send such requests to a small route that clears the cookie, then to `/login`.
+
 - `lib/exam-import.ts`: a cell that is **filled but not a valid number/date** is a row error (today `"abc"` in `TAT_Min` silently becomes "pending" and in `Completed_After_Min` becomes 0).
 - `lib/spreadsheet-rows.ts`: Excel error cells (`#N/A`, `#REF!`, `#VALUE!`) become row errors, not blanks.
 - Optional `Radiologist` column → matched to an active radiologist by name (case and spacing ignored) → stored on the report. Unknown name = row error; the preview lists each unknown name once (with its row count) and offers **Add as new radiologist**, which creates it (logged) and makes those rows valid. Added to the CSV export and the template.
@@ -142,6 +171,11 @@ New test cases for the plan:
 - Test-mode banner count: pass `activeCount` instead of the fixed "100-exam" text (one prop; UI team can do it if preferred).
 
 ### Phase 4 — Calculations (CAL-18, Def-CAL-02, Def-CAL-01 data part)
+
+**Status: ✅ Built on branch `feat/calc-backlog-timezone` (on top of `feat/import-validation`), 19 Nov 2026, not yet merged.** No database change.
+Checked on a throwaway PGlite database: `test-data:verify` 1460/1460 (1406 + 54 new backlog-age checks, all six groups populated), age-group boundaries 12/12, partial-period fields, browser date maths identical in Manila, Kiritimati, New York and London; dashboard hover panel, Examinations backlog card and the 12-month trend (now opening on "Last 12 months") checked in Chrome.
+Note for the UI team: the age groups count the backlog **now** (all dates), while the dashboard card counts the backlog **in the chosen window**, so the two totals can differ; the list is headed "Backlog now".
+Def-CAL-01: `isPartialPeriod` / `asOfDate` are returned by the KPI action; the "to date, as of …" label itself is for the UI team.
 
 **CAL-18 backlog age groups.** Age = now − exam completed time (24-hour days, Manila clock). Only completed, unsigned, not-cancelled exams.
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { manilaIsoDate } from "@/lib/app-time-zone";
 import {
   useEffect,
   useMemo,
@@ -14,7 +15,6 @@ import {
 } from "@/lib/seven-day-filter";
 import { fetchSevenDayAnalyticsAction } from "@/app/actions";
 import type { DashboardFilters } from "@/lib/dashboard-types";
-import { toIsoDate } from "@/lib/kpi-range";
 import { SegmentedToggle } from "@/components/common/SegmentedToggle";
 import { CompareToggle } from "@/components/common/CompareToggle";
 
@@ -204,7 +204,7 @@ export function SevenDayTatTable({
      window as Recent Pulse. The date filter does not move it.
   ========================================================= */
 
-  const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const todayIso = useMemo(() => manilaIsoDate(), []);
 
   const requestKey = `${todayIso}|${mode}`;
   const isInitialRequest = mode === "rolling";

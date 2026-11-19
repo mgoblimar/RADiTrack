@@ -65,6 +65,7 @@ async function loadedRecords(): Promise<ExamImportRecord[]> {
     examCompletedAt: e.examCompletedAt?.toISOString() ?? null,
     reportSignedAt: e.report?.reportSignedAt?.toISOString() ?? null,
     notes: e.notes,
+    radiologistName: null,
   }));
 }
 
@@ -83,6 +84,38 @@ async function verifyKpis(ref: ReturnType<typeof toRefExams>, now: Date) {
     const exp = expectedKpi(ref, s, now);
     const act = await fetchFilteredExecutiveKpiAction({ preset: s.preset, modalityCode: s.modality, triageLevel: s.triage });
     for (const metric of KPI_METRICS) add("KPI cards", scenarioLabel(s), metric, exp[metric], act[metric]);
+  }
+}
+
+/**
+ * CAL-18 backlog age groups. Expected values are counted straight from the database rows
+ * with the agreed hour limits written out here (not with lib/backlog-age.ts), then compared
+ * with what the dashboard returns, for every modality and patient category.
+ */
+async function verifyBacklogAges() {
+  const pending = await prisma.examination.findMany({
+    where: { statusCode: { notIn: ["CANCELLED", "COMPLETED_SIGNED_OFF", "FINALIZED"] }, examCompletedAt: { not: null }, report: { is: null } },
+    select: { modalityCode: true, triageLevel: true, examCompletedAt: true },
+  });
+  const limits: [string, number][] = [["under1d", 24], ["d1to3", 72], ["d3to7", 168], ["d7to15", 360], ["d15to30", 720], ["d30plus", Infinity]];
+  const scenarios = [
+    { modality: "ALL", triage: "ALL" },
+    ...MODALITY_ORDER.map((m) => ({ modality: m as string, triage: "ALL" })),
+    ...Object.values(TriageLevel).map((t) => ({ modality: "ALL", triage: t as string })),
+  ];
+  for (const s of scenarios) {
+    const act = await fetchFilteredExecutiveKpiAction({ preset: "ALL", modalityCode: s.modality, triageLevel: s.triage });
+    const now = Date.now();
+    const expected = Object.fromEntries(limits.map(([key]) => [key, 0])) as Record<string, number>;
+    for (const e of pending) {
+      if (s.modality !== "ALL" && e.modalityCode !== s.modality) continue;
+      if (s.triage !== "ALL" && e.triageLevel !== s.triage) continue;
+      const hours = Math.max(0, now - e.examCompletedAt!.getTime()) / 3_600_000;
+      expected[limits.find(([, max]) => hours < max)![0]]++;
+    }
+    for (const [key] of limits) {
+      add("Backlog age (CAL-18)", `${s.modality} · ${s.triage}`, key, expected[key], act.backlogAges[key as keyof typeof act.backlogAges]);
+    }
   }
 }
 
@@ -192,6 +225,7 @@ async function main() {
   await verifyModalityTat(ref, now);
   await verifySevenDay(ref, now);
   await verifyTwelveMonth(ref, now);
+  await verifyBacklogAges();
 
   const out = await writeReport(now, records.length, isTestActive);
   const failed = checks.filter((c) => !passes(c));

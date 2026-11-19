@@ -546,7 +546,8 @@ export function SimulatorHub({
               <form
                 className="mt-3"
                 action={async (formData: FormData) => {
-                  await signOffReportAction(formData);
+                  const result = await signOffReportAction(formData);
+                  if (!result.success) window.alert(result.error ?? "The report could not be signed off.");
                   notifyDatabaseChanged();
                 }}
               >
@@ -681,7 +682,8 @@ export function SimulatorHub({
                   <td className="px-5 py-4 text-right">
                     <form
                       action={async (formData: FormData) => {
-                        await signOffReportAction(formData);
+                        const result = await signOffReportAction(formData);
+                        if (!result.success) window.alert(result.error ?? "The report could not be signed off.");
                         notifyDatabaseChanged();
                       }}
                     >

@@ -1,5 +1,6 @@
 "use client";
 
+import { manilaNow } from "@/lib/app-time-zone";
 import {
   useEffect,
   useRef,
@@ -444,7 +445,7 @@ export function DateRangeFilter({
 
   const customRangeLabel = resolveKpiRange(
     "CUSTOM",
-    new Date(),
+    manilaNow(),
     startDate,
     endDate,
   ).dateRangeFormatted;
@@ -533,8 +534,8 @@ export function DateRangeFilter({
   ========================================================= */
 
   const handleQuickPastDays = (days: number) => {
-    const end = new Date();
-    const start = new Date();
+    const end = manilaNow();
+    const start = manilaNow();
 
     start.setDate(end.getDate() - days + 1);
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { manilaIsoDate } from "@/lib/app-time-zone";
+import { BACKLOG_AGE_GROUPS, type BacklogAgeKey } from "@/lib/backlog-age";
 import {
   useState,
   useTransition,
@@ -72,11 +74,6 @@ const ALL_CATEGORIES: TriageLevel[] = [
   TriageLevel.IN,
 ];
 
-/** Local "YYYY-MM-DD" for date inputs. */
-function toLocalIsoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export function ExaminationsHub({
   queue,
   finalizedCount: initialFinalizedCount,
@@ -98,7 +95,7 @@ export function ExaminationsHub({
   const [datePreset, setDatePreset] =
     useState<DatePreset>("all");
 
-  const todayStr = toLocalIsoDate(new Date());
+  const todayStr = manilaIsoDate();
 
   const [startDate, setStartDate] =
     useState<string>(todayStr);
@@ -114,6 +111,10 @@ export function ExaminationsHub({
 
   const [searchTerm, setSearchTerm] =
     useState<string>("");
+
+  // CAL-18: show only exams that have waited this long since completion.
+  const [backlogAge, setBacklogAge] =
+    useState<BacklogAgeKey | "all">("all");
 
   const [result, setResult] =
     useState<FilteredExaminationsResult | null>(null);
@@ -238,6 +239,7 @@ export function ExaminationsHub({
             ? ["ALL"]
             : selectedCategories,
           searchTerm,
+          backlogAge,
         });
 
         setResult(data);
@@ -258,6 +260,7 @@ export function ExaminationsHub({
     isAllCategoriesSelected,
     selectedCategories,
     searchTerm,
+    backlogAge,
   ]);
 
   useEffect(() => {
@@ -273,6 +276,7 @@ export function ExaminationsHub({
     setSelectedModalities(ALL_MODALITIES);
     setSelectedCategories(ALL_CATEGORIES);
     setSearchTerm("");
+    setBacklogAge("all");
     setStartDate(todayStr);
     setEndDate(todayStr);
     setIsFilterOpen(false);
@@ -337,18 +341,22 @@ export function ExaminationsHub({
   const isModalityFiltered = !isAllModalitiesSelected;
   const isCategoryFiltered = !isAllCategoriesSelected;
   const isSearchFiltered = searchTerm.trim() !== "";
+  const isAgeFiltered = backlogAge !== "all";
+  const ageCounts = result?.summary.backlogAges;
 
   const hasActiveFilters =
     isDateFiltered ||
     isModalityFiltered ||
     isCategoryFiltered ||
-    isSearchFiltered;
+    isSearchFiltered ||
+    isAgeFiltered;
 
   const activeFilterCount =
     (isDateFiltered ? 1 : 0) +
     (isModalityFiltered ? 1 : 0) +
     (isCategoryFiltered ? 1 : 0) +
-    (isSearchFiltered ? 1 : 0);
+    (isSearchFiltered ? 1 : 0) +
+    (isAgeFiltered ? 1 : 0);
 
   const datePresets: {
     id: DatePreset;
@@ -569,7 +577,7 @@ export function ExaminationsHub({
                             </p>
 
                             <p className="text-xs text-muted-foreground">
-                              Filter by modality, patient category & date
+                              Filter by date, modality, patient category & waiting time
                             </p>
                           </div>
 
@@ -767,7 +775,44 @@ export function ExaminationsHub({
                           </div>
                         </div>
 
-                        {/* 4. Custom dates */}
+                        {/* 4. Waiting time (CAL-18) */}
+                        <div className="border-t border-[#EAEFF8] pt-3.5">
+                          <div className="mb-1">
+                            <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                              Waiting time
+                            </span>
+                          </div>
+                          <p className="mb-2 text-xs text-muted-foreground">
+                            Time since the exam was completed, for exams still waiting for a report.
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {[{ key: "all" as const, label: "Any waiting time", description: "No waiting-time filter" }, ...BACKLOG_AGE_GROUPS].map((group) => {
+                              const isSelected = backlogAge === group.key;
+                              const count = group.key === "all" ? undefined : ageCounts?.[group.key];
+                              return (
+                                <button
+                                  key={group.key}
+                                  type="button"
+                                  title={group.description}
+                                  aria-pressed={isSelected}
+                                  onClick={() => setBacklogAge(group.key)}
+                                  className={`flex items-center justify-between gap-2 rounded-xl border px-2.5 py-2 text-left text-xs font-bold transition-all ${
+                                    isSelected
+                                      ? "border-qc-blue/30 bg-qc-blue/10 text-qc-blue"
+                                      : "border-border/80 bg-[#FAFBFD] text-slate-600 hover:border-qc-blue/15 hover:bg-qc-blue/[0.02]"
+                                  }`}
+                                >
+                                  <span>{group.label}</span>
+                                  {count !== undefined && (
+                                    <span className={`font-extrabold ${count > 0 ? "text-qc-orange" : "text-muted-foreground"}`}>{count}</span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 5. Custom dates */}
                         {datePreset === "custom" && (
                           <div className="grid grid-cols-2 gap-2 border-t border-[#EAEFF8] pt-3.5">
                             <label className="space-y-1.5">
@@ -839,6 +884,23 @@ export function ExaminationsHub({
                 <span className="text-xs font-extrabold uppercase tracking-[0.13em] text-muted-foreground">
                   Active
                 </span>
+
+                {isAgeFiltered && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-qc-orange/20 bg-orange-50 px-2.5 py-1 text-xs font-bold text-qc-orange">
+                    <span>
+                      Waiting {BACKLOG_AGE_GROUPS.find((group) => group.key === backlogAge)?.label.toLowerCase()}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setBacklogAge("all")}
+                      className="hover:text-qc-navy"
+                      title="Clear waiting-time filter"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
 
                 {isDateFiltered && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-qc-blue/15 bg-qc-blue/5 px-2.5 py-1 text-xs font-bold text-qc-blue">
@@ -1028,6 +1090,7 @@ export function ExaminationsHub({
                 pending
               </span>
             </div>
+
           </div>
         </div>
 
@@ -1314,7 +1377,8 @@ export function ExaminationsHub({
 
                           <form
                             action={async (formData) => {
-                              await signOffReportAction(formData);
+                              const result = await signOffReportAction(formData);
+                              if (!result.success) window.alert(result.error ?? "The report could not be signed off.");
 
                               loadExaminations();
                               notifyDatabaseChanged();
@@ -1439,7 +1503,8 @@ export function ExaminationsHub({
                         {!item.isFinalized && (
                           <form
                             action={async (formData) => {
-                              await signOffReportAction(formData);
+                              const result = await signOffReportAction(formData);
+                              if (!result.success) window.alert(result.error ?? "The report could not be signed off.");
 
                               loadExaminations();
                               notifyDatabaseChanged();

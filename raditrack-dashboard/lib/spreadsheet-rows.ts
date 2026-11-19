@@ -10,6 +10,8 @@ type CellValue = ExcelJS.CellValue;
 function plainCellValue(value: CellValue): RawRow[string] {
   if (value === null || value === undefined) return undefined;
   if (value instanceof Date || typeof value !== "object") return value as RawRow[string];
+  // An Excel error (#N/A, #REF!...) is kept as its text so the importer can flag the row.
+  if ("error" in value) return String(value.error);
   if ("result" in value) return plainCellValue(value.result as CellValue);
   if ("richText" in value) return value.richText.map((part) => part.text).join("");
   if ("text" in value) return String(value.text);

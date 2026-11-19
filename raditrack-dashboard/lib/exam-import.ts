@@ -31,6 +31,10 @@ export interface ExamImportRecord {
   examCompletedAt: string | null;
   reportSignedAt: string | null;
   notes: string | null;
+  /** Radiologist name as written in the file (optional column). */
+  radiologistName: string | null;
+  /** Filled in by the server after matching radiologistName (never trusted from the browser). */
+  radiologistId?: string | null;
 }
 
 export interface ImportRowError {
@@ -57,6 +61,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   category: ["patient_category", "triage_level", "category"],
   status: ["status", "status_code"],
   notes: ["notes", "clinical_indication"],
+  radiologist: ["radiologist", "radiologist_name", "reading_radiologist", "signed_by", "reported_by"],
   studyDate: ["study_date", "study_datetime"],
   completedAt: ["exam_completed_at", "completed_at"],
   signedAt: ["report_signed_at", "signed_at"],
@@ -136,6 +141,31 @@ function parseNumber(value: RawValue): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+const isBlank = (value: RawValue) => value === undefined || value === null || text(value) === "";
+
+/**
+ * A number column: blank -> null, a number -> the number, anything else ("abc") -> an error message.
+ * Text in a number column must never be read as "blank" (it would silently change the exam).
+ */
+function numberCell(row: RawRow, key: keyof typeof COLUMN_ALIASES, label: string): number | null | { error: string } {
+  const raw = pick(row, key);
+  if (isBlank(raw)) return null;
+  const n = parseNumber(raw);
+  return n === null ? { error: `${label} must be a number, not "${text(raw).slice(0, 40)}".` } : n;
+}
+
+/** Excel error values (formulas that failed). They are never data. */
+const EXCEL_ERROR = /^#(N\/A|REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!|SPILL!|CALC!|FIELD!|GETTING_DATA|BLOCKED!|CONNECT!|BUSY!|UNKNOWN!)$/i;
+
+/** The first cell holding an Excel error, as a row error message. */
+function excelErrorIn(row: RawRow): string | null {
+  for (const [column, value] of Object.entries(row)) {
+    const cell = text(value);
+    if (EXCEL_ERROR.test(cell)) return `Column "${column}" has the Excel error ${cell}. Fix the formula or clear the cell.`;
+  }
+  return null;
+}
+
 interface ResolvedTimes {
   studyDate: Date;
   examCompletedAt: Date | null;
@@ -145,20 +175,26 @@ interface ResolvedTimes {
 function resolveRelativeTimes(row: RawRow, now: Date): ResolvedTimes | string {
   const anchor = (text(pick(row, "anchor")).toUpperCase() || "TODAY") as DateAnchor;
   if (!ANCHORS.includes(anchor)) return `Anchor must be one of ${ANCHORS.join(", ")}.`;
-  const monthOffset = parseNumber(pick(row, "monthOffset")) ?? 0;
+  const monthCell = numberCell(row, "monthOffset", "Month_Offset");
+  if (monthCell !== null && typeof monthCell === "object") return monthCell.error;
+  const monthOffset = monthCell ?? 0;
   if (!Number.isInteger(monthOffset)) return "Month_Offset must be a whole number of months.";
   if (monthOffset !== 0 && anchor !== "MONTH_START") return "Month_Offset only works with Anchor MONTH_START.";
-  const offset = parseNumber(pick(row, "dayOffset"));
+  const offset = numberCell(row, "dayOffset", "Day_Offset");
+  if (offset !== null && typeof offset === "object") return offset.error;
   if (offset === null || !Number.isInteger(offset)) return "Day_Offset must be a whole number of days.";
   const minuteOfDay = parseTimeOfDay(pick(row, "studyTime"));
   if (minuteOfDay === null) return "Study_Time must be HH:MM (24-hour).";
 
   const base = anchorDate(anchor, now, monthOffset);
   const studyDate = new Date(base.getFullYear(), base.getMonth(), base.getDate() + offset, 0, minuteOfDay);
-  const completedAfter = parseNumber(pick(row, "completedAfterMin")) ?? 0;
+  const completedCell = numberCell(row, "completedAfterMin", "Completed_After_Min");
+  if (completedCell !== null && typeof completedCell === "object") return completedCell.error;
+  const completedAfter = completedCell ?? 0;
   if (completedAfter < 0) return "Completed_After_Min cannot be negative.";
   const examCompletedAt = new Date(studyDate.getTime() + completedAfter * 60_000);
-  const tat = parseNumber(pick(row, "tatMin"));
+  const tat = numberCell(row, "tatMin", "TAT_Min");
+  if (tat !== null && typeof tat === "object") return tat.error;
   if (tat !== null && tat <= 0) return "TAT_Min must be greater than 0 (leave blank for pending).";
   const reportSignedAt = tat === null ? null : new Date(examCompletedAt.getTime() + tat * 60_000);
   return { studyDate, examCompletedAt, reportSignedAt };
@@ -177,6 +213,9 @@ function resolveAbsoluteTimes(row: RawRow): ResolvedTimes | string {
 }
 
 function parseRow(row: RawRow, rowNumber: number, now: Date): ExamImportRecord | string {
+  const excelError = excelErrorIn(row);
+  if (excelError) return excelError;
+
   const examinationIdentifier = text(pick(row, "accession"));
   if (!examinationIdentifier) return "Accession is required.";
   if (examinationIdentifier.length > 64) return "Accession must be 64 characters or fewer.";
@@ -222,6 +261,7 @@ function parseRow(row: RawRow, rowNumber: number, now: Date): ExamImportRecord |
     examCompletedAt: times.examCompletedAt?.toISOString() ?? null,
     reportSignedAt: times.reportSignedAt?.toISOString() ?? null,
     notes: text(pick(row, "notes")).slice(0, 500) || null,
+    radiologistName: text(pick(row, "radiologist")).slice(0, 150) || null,
   };
 }
 

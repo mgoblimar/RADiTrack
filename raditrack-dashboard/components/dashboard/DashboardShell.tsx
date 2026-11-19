@@ -1,5 +1,7 @@
 "use client";
 
+import { manilaIsoDate, manilaNow } from "@/lib/app-time-zone";
+import { BacklogAgeList } from "@/components/common/BacklogAgeList";
 import {
   useEffect,
   useMemo,
@@ -111,8 +113,9 @@ export function DashboardShell({
      Date defaults
   ========================================================= */
 
+  // Manila's date, whatever the viewer's device time zone is (Def-CAL-02).
   const todayIso = useMemo(() => {
-    const now = new Date();
+    const now = manilaNow();
 
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");
@@ -122,7 +125,7 @@ export function DashboardShell({
   }, []);
 
   const defaultStartIso = useMemo(() => {
-    const now = new Date();
+    const now = manilaNow();
 
     now.setDate(now.getDate() - 6);
 
@@ -166,7 +169,7 @@ export function DashboardShell({
 
   // Same dates the server uses, for card subtitles and the instant estimate.
   const kpiRange = useMemo(
-    () => resolveKpiRange(filterPreset, new Date(), customStart, customEnd),
+    () => resolveKpiRange(filterPreset, manilaNow(), customStart, customEnd),
     [filterPreset, customStart, customEnd],
   );
 
@@ -268,14 +271,15 @@ export function DashboardShell({
     // loads. It uses the same date window, so the cards never flash
     // all-time numbers under a 7-day label.
     const all = data.allExamsSummary;
-    const rangeStartMs = kpiRange.start.getTime();
-    const rangeEndMs = kpiRange.end.getTime();
+    // Compared as Manila calendar dates: the range is Manila's, not the device's.
+    const rangeStartIso = toIsoDate(kpiRange.start);
+    const rangeEndIso = toIsoDate(kpiRange.end);
 
     // Window + patient category (what the per-modality breakdowns use).
     const inWindowAndCategory = all.filter((e) => {
       if (!kpiRange.isAllTime) {
-        const studyMs = new Date(e.studyDate).getTime();
-        if (studyMs < rangeStartMs || studyMs > rangeEndMs) {
+        const studyIso = manilaIsoDate(new Date(e.studyDate));
+        if (studyIso < rangeStartIso || studyIso > rangeEndIso) {
           return false;
         }
       }
@@ -494,7 +498,7 @@ export function DashboardShell({
       preset: filterPreset,
       rangeStart: toIsoDate(kpiRange.start),
       // Capped at today so time-shaped charts never end on empty future days.
-      rangeEnd: toIsoDate(capAtToday(kpiRange.end, kpiRange.isAllTime)),
+      rangeEnd: toIsoDate(capAtToday(kpiRange.end, kpiRange.isAllTime, manilaNow())),
       isAllTime: kpiRange.isAllTime,
       modality: selectedModality,
       triage: selectedTriage,
@@ -1048,6 +1052,11 @@ export function DashboardShell({
                           );
                         })}
                       </div>
+
+                      <BacklogAgeList
+                        counts={kpiData?.backlogAges ?? data.backlogAges}
+                        title="Backlog now, by time waiting"
+                      />
 
                       <div className="mt-2.5 flex items-center justify-between border-t border-border/80 pt-2 text-xs text-muted-foreground">
                         <span>Click row to filter</span>
