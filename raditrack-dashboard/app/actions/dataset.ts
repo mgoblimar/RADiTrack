@@ -19,6 +19,17 @@ import {
 } from "@/lib/exam-import";
 import { readSpreadsheetRows } from "@/lib/spreadsheet-rows";
 import { UserError, userMessage } from "@/lib/user-error";
+import {
+  actorOf,
+  diffFields,
+  isTestModeActive,
+  recordExamChanges,
+  recordImportBatch,
+  AUDITED_EXAM_FIELDS,
+  AUDITED_REPORT_FIELDS,
+  type Actor,
+  type ExamChange,
+} from "@/lib/audit";
 import { testDatasetRows } from "@/data/test-dataset";
 
 const EXAMS_TABLE = "examinations";
@@ -47,24 +58,41 @@ export interface ImportPreview {
 
 export type ImportMode = "append" | "test";
 
+/** One upload as shown on screen (upload history and the success message). */
+export interface ImportBatchSummary {
+  batchId: string;
+  fileName: string;
+  mode: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  rowsInFile: number;
+  inserted: number;
+  errorRows: number;
+  status: string;
+  message: string | null;
+  testMode: boolean;
+}
+
+/** What the browser knows about the file when the user presses Import. */
+export interface ImportFileInfo {
+  fileName: string;
+  rowsInFile: number;
+  errorRows: number;
+}
+
 interface ActionResult {
   success: boolean;
   count?: number;
   error?: string;
+  batch?: ImportBatchSummary;
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function backupExists(db: Tx | typeof prisma): Promise<boolean> {
-  const rows = await db.$queryRaw<{ exists: boolean }[]>`
-    SELECT EXISTS (
-      SELECT FROM information_schema.tables
-      WHERE table_schema = current_schema() AND table_name = ${EXAMS_BACKUP}
-    ) AS "exists"`;
-  return rows[0]?.exists ?? false;
-}
+/** Test mode is ON exactly while the backup table exists. */
+const backupExists = (db: Tx) => isTestModeActive(db);
 
 /** Copies backup rows into a live table using the columns both tables share. */
 async function restoreTable(tx: Tx, table: string, backup: string): Promise<void> {
@@ -80,8 +108,11 @@ async function restoreTable(tx: Tx, table: string, backup: string): Promise<void
   await tx.$executeRawUnsafe(`INSERT INTO "${table}" (${list}) SELECT ${list} FROM "${backup}"`);
 }
 
-/** Inserts exams (and signed reports) computing TAT and SLA breach exactly like sign-off does. */
-async function insertRecords(tx: Tx, records: ExamImportRecord[]): Promise<void> {
+/**
+ * Inserts exams (and signed reports) computing TAT and SLA breach exactly like sign-off does.
+ * Returns one IMPORT_INSERT audit entry per exam (the caller decides whether to record them).
+ */
+async function insertRecords(tx: Tx, records: ExamImportRecord[]): Promise<ExamChange[]> {
   const slaConfigs = await tx.slaConfiguration.findMany();
   const targetFor = (modality: string, triage: string) =>
     slaConfigs.find((s) => s.modalityCode === modality && s.triageLevel === triage)?.targetTatMinutes;
@@ -112,11 +143,26 @@ async function insertRecords(tx: Tx, records: ExamImportRecord[]): Promise<void>
     }];
   });
   if (reports.length > 0) await tx.radiologyReport.createMany({ data: reports });
+
+  const reportByExam = new Map(reports.map((r) => [r.examId, r]));
+  return exams.map((exam) => ({
+    examId: exam.examId,
+    accession: exam.examinationIdentifier,
+    action: "IMPORT_INSERT" as const,
+    changes: {
+      ...diffFields(null, exam, AUDITED_EXAM_FIELDS),
+      ...diffFields(null, reportByExam.get(exam.examId) ?? null, AUDITED_REPORT_FIELDS),
+    },
+  }));
 }
 
-/** Backs up real data (first time only), then replaces all exams with `records`. */
-async function replaceWithTestData(records: ExamImportRecord[]): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+/**
+ * Backs up real data (first time only), then replaces all exams with `records`.
+ * Logged as one upload batch (mode "test"); test exams get no per-exam audit entries,
+ * since they are thrown away when the real data is restored.
+ */
+async function replaceWithTestData(records: ExamImportRecord[], actor: Actor, file: ImportFileInfo) {
+  return prisma.$transaction(async (tx) => {
     if (!(await backupExists(tx))) {
       await tx.$executeRawUnsafe(`CREATE TABLE "${EXAMS_BACKUP}" AS SELECT * FROM "${EXAMS_TABLE}"`);
       await tx.$executeRawUnsafe(`CREATE TABLE "${REPORTS_BACKUP}" AS SELECT * FROM "${REPORTS_TABLE}"`);
@@ -124,7 +170,55 @@ async function replaceWithTestData(records: ExamImportRecord[]): Promise<void> {
     await tx.radiologyReport.deleteMany();
     await tx.examination.deleteMany();
     await insertRecords(tx, records);
+    return recordImportBatch(tx, {
+      batchId: crypto.randomUUID(),
+      fileName: file.fileName,
+      mode: "test",
+      actor,
+      rowsInFile: file.rowsInFile,
+      inserted: records.length,
+      errorRows: file.errorRows,
+      status: "SUCCESS",
+      testMode: true,
+    });
   }, TX_OPTIONS);
+}
+
+type BatchRow = Awaited<ReturnType<typeof recordImportBatch>>;
+
+function toSummary(batch: BatchRow): ImportBatchSummary {
+  return {
+    batchId: batch.batchId,
+    fileName: batch.fileName,
+    mode: batch.mode,
+    uploadedAt: batch.uploadedAt.toISOString(),
+    uploadedBy: batch.uploadedByUsername,
+    rowsInFile: batch.rowsInFile,
+    inserted: batch.inserted,
+    errorRows: batch.errorRows,
+    status: batch.status,
+    message: batch.message,
+    testMode: batch.testMode,
+  };
+}
+
+/** Logs a failed upload attempt. Never throws: a logging problem must not hide the real error. */
+async function recordFailedBatch(actor: Actor, file: ImportFileInfo, mode: ImportMode, message: string) {
+  try {
+    await recordImportBatch(prisma, {
+      batchId: crypto.randomUUID(),
+      fileName: file.fileName,
+      mode,
+      actor,
+      rowsInFile: file.rowsInFile,
+      errorRows: file.errorRows,
+      status: "FAILED",
+      message,
+      testMode: await isTestModeActive(prisma),
+    });
+  } catch (logError) {
+    console.error("Could not log the failed upload:", logError);
+  }
 }
 
 function revalidateAll() {
@@ -198,44 +292,76 @@ export async function previewExamImportAction(formData: FormData): Promise<Impor
 }
 
 /** Saves previewed records: append to current data, or load them as test data (backing up real data). */
-export async function commitExamImportAction(records: ExamImportRecord[], mode: ImportMode): Promise<ActionResult> {
-  await requireAdmin();
+export async function commitExamImportAction(
+  records: ExamImportRecord[],
+  mode: ImportMode,
+  file: ImportFileInfo,
+): Promise<ActionResult> {
+  const user = await requireAdmin();
+  const actor = actorOf(user);
   if (records.length === 0) return { success: false, error: "There are no valid rows to import." };
   const invalid = revalidateRecords(records);
   if (invalid.length > 0) return { success: false, error: invalid[0].message };
 
   try {
-    if (mode === "test") {
-      await replaceWithTestData(records);
-    } else {
-      await prisma.$transaction(async (tx) => {
-        const clash = await tx.examination.findFirst({
-          where: { examinationIdentifier: { in: records.map((r) => r.examinationIdentifier) } },
-          select: { examinationIdentifier: true },
-        });
-        if (clash) throw new UserError(`Accession "${clash.examinationIdentifier}" already exists. Nothing was imported.`);
-        await insertRecords(tx, records);
-      }, TX_OPTIONS);
-    }
+    const batch = mode === "test"
+      ? await replaceWithTestData(records, actor, file)
+      : await prisma.$transaction(async (tx) => {
+          const clash = await tx.examination.findFirst({
+            where: { examinationIdentifier: { in: records.map((r) => r.examinationIdentifier) } },
+            select: { examinationIdentifier: true },
+          });
+          if (clash) throw new UserError(`Accession "${clash.examinationIdentifier}" already exists. Nothing was imported.`);
+          const testMode = await isTestModeActive(tx);
+          const created = await recordImportBatch(tx, {
+            batchId: crypto.randomUUID(),
+            fileName: file.fileName,
+            mode: "append",
+            actor,
+            rowsInFile: file.rowsInFile,
+            inserted: records.length,
+            errorRows: file.errorRows,
+            status: "SUCCESS",
+            testMode,
+          });
+          const entries = await insertRecords(tx, records);
+          await recordExamChanges(tx, entries, { actor, source: "IMPORT", batchId: created.batchId, testMode });
+          return created;
+        }, TX_OPTIONS);
     revalidateAll();
-    return { success: true, count: records.length };
+    return { success: true, count: records.length, batch: toSummary(batch) };
   } catch (error) {
     console.error("Exam import failed:", error);
-    return { success: false, error: errorMessage(error, "Import failed. Nothing was saved.") };
+    const message = errorMessage(error, "Import failed. Nothing was saved.");
+    await recordFailedBatch(actor, file, mode, message);
+    return { success: false, error: message };
   }
+}
+
+/** The most recent uploads, newest first (administrators only). */
+export async function listImportBatchesAction(limit = 20): Promise<ImportBatchSummary[]> {
+  await requireAdmin();
+  const take = Math.min(Math.max(Math.trunc(limit) || 20, 1), 100);
+  const batches = await prisma.importBatch.findMany({ orderBy: { uploadedAt: "desc" }, take });
+  return batches.map(toSummary);
 }
 
 /** Loads the bundled 100-exam validation dataset (dates relative to now) as test data. */
 export async function loadTestDatasetAction(): Promise<ActionResult> {
-  await requireAdmin();
-  const { records, errors } = parseExamRows(testDatasetRows());
+  const user = await requireAdmin();
+  const rows = testDatasetRows();
+  const { records, errors } = parseExamRows(rows);
   if (errors.length > 0) {
     return { success: false, error: `Test dataset row ${errors[0].rowNumber}: ${errors[0].message}` };
   }
   try {
-    await replaceWithTestData(records);
+    const batch = await replaceWithTestData(records, actorOf(user), {
+      fileName: "Built-in validation dataset",
+      rowsInFile: rows.length,
+      errorRows: 0,
+    });
     revalidateAll();
-    return { success: true, count: records.length };
+    return { success: true, count: records.length, batch: toSummary(batch) };
   } catch (error) {
     console.error("Loading test dataset failed:", error);
     return { success: false, error: errorMessage(error, "Failed to load the test dataset. Nothing changed.") };

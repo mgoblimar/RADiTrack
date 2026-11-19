@@ -4,6 +4,14 @@ import { requireAdmin } from "@/lib/auth/dal";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import {
+  actorOf,
+  diffFields,
+  isTestModeActive,
+  recordExamChanges,
+  AUDITED_EXAM_FIELDS,
+  AUDITED_REPORT_FIELDS,
+} from "@/lib/audit";
+import {
   TriageLevel,
   UrgencyLevel,
   ModalityCode,
@@ -18,7 +26,7 @@ import {
 export async function simulateScenarioAction(
   scenario: "stat_ct" | "stat_xray" | "opd_us" | "in_mri"
 ) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const count = await prisma.examination.count();
   const nextId = `ACC-QCGH-${1000 + count + 1}`;
   const now = new Date();
@@ -41,16 +49,23 @@ export async function simulateScenarioAction(
         notes = "Simulated Inpatient Brain MRI Scan";
   }
 
-  await prisma.examination.create({
-    data: {
-      examinationIdentifier: nextId,
-      modalityCode,
-      statusCode: ExaminationStatusCode.EXAM_COMPLETED,
-      triageLevel,
-      studyDate: now,
-      examCompletedAt: now,
-      notes,
-    },
+  await prisma.$transaction(async (tx) => {
+    const exam = await tx.examination.create({
+      data: {
+        examinationIdentifier: nextId,
+        modalityCode,
+        statusCode: ExaminationStatusCode.EXAM_COMPLETED,
+        triageLevel,
+        studyDate: now,
+        examCompletedAt: now,
+        notes,
+      },
+    });
+    await recordExamChanges(
+      tx,
+      [{ examId: exam.examId, accession: nextId, action: "CREATE", changes: diffFields(null, exam, AUDITED_EXAM_FIELDS) }],
+      { actor: actorOf(user), source: "SIMULATOR", testMode: await isTestModeActive(tx) },
+    );
   });
 
   revalidatePath("/");
@@ -60,7 +75,7 @@ export async function simulateScenarioAction(
 }
 
 export async function autoSignOldestBacklogAction() {
-  await requireAdmin();
+  const user = await requireAdmin();
   const oldest = await prisma.examination.findFirst({
     where: {
       statusCode: { not: "CANCELLED" },
@@ -87,8 +102,8 @@ export async function autoSignOldestBacklogAction() {
   );
   const isBreached = targetRule ? tatMinutes > targetRule.targetTatMinutes : false;
 
-  await prisma.$transaction([
-    prisma.radiologyReport.create({
+  await prisma.$transaction(async (tx) => {
+    const report = await tx.radiologyReport.create({
       data: {
         examId: oldest.examId,
         reportStatus: ReportStatusCode.FINALIZED,
@@ -96,12 +111,22 @@ export async function autoSignOldestBacklogAction() {
         tatExamToSignMinutes: tatMinutes,
         isSlaBreached: isBreached,
       },
-    }),
-    prisma.examination.update({
+    });
+    const updated = await tx.examination.update({
       where: { examId: oldest.examId },
       data: { statusCode: ExaminationStatusCode.COMPLETED_SIGNED_OFF },
-    }),
-  ]);
+    });
+    await recordExamChanges(
+      tx,
+      [{
+        examId: oldest.examId,
+        accession: oldest.examinationIdentifier,
+        action: "SIGN_OFF",
+        changes: { ...diffFields(oldest, updated, ["statusCode"]), ...diffFields(null, report, AUDITED_REPORT_FIELDS) },
+      }],
+      { actor: actorOf(user), source: "SIMULATOR", testMode: await isTestModeActive(tx) },
+    );
+  });
 
   revalidatePath("/");
   revalidatePath("/simulator");

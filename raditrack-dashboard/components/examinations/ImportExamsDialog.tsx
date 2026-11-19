@@ -3,10 +3,12 @@
 import { useEffect, useState, useTransition, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, FileUp, Upload, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileUp, History, Upload, X } from "lucide-react";
 import {
   commitExamImportAction,
+  listImportBatchesAction,
   previewExamImportAction,
+  type ImportBatchSummary,
   type ImportMode,
   type ImportPreview,
 } from "@/app/actions";
@@ -42,6 +44,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [mode, setMode] = useState<ImportMode>("append");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -73,14 +76,23 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
       `Back up all current exams and reports, then replace them with these ${preview.records.length} exams as test data? Restore the real data from the RIS Simulator page when you finish.`,
     )) return;
     startTransition(async () => {
-      const result = await commitExamImportAction(preview.records, mode);
+      const result = await commitExamImportAction(preview.records, mode, {
+        fileName: preview.fileName,
+        rowsInFile: preview.totalRows,
+        errorRows: preview.errors.length,
+      });
+      setHistoryVersion((v) => v + 1);
       if (!result.success) {
         setMessage({ tone: "error", text: result.error ?? "Import failed. Nothing was saved." });
         return;
       }
-      setMessage({ tone: "ok", text: mode === "test"
+      const done = mode === "test"
         ? `Loaded ${result.count} exams as test data. Real data is backed up.`
-        : `Imported ${result.count} exams.` });
+        : `Imported ${result.count} exams.`;
+      const source = result.batch
+        ? ` File: ${result.batch.fileName} · ${fmt(result.batch.uploadedAt)} · by ${result.batch.uploadedBy}.`
+        : "";
+      setMessage({ tone: "ok", text: done + source });
       setPreview(null);
       notifyDatabaseChanged();
       router.refresh();
@@ -166,6 +178,8 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
               {message.text}
             </p>
           )}
+
+          <UploadHistory version={historyVersion} />
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3.5">
@@ -204,5 +218,60 @@ function ModeOption({ checked, onChange, title, text }: { checked: boolean; onCh
         <span className="block text-[13px] text-muted-foreground">{text}</span>
       </span>
     </label>
+  );
+}
+
+const HISTORY_ROWS = 10;
+
+/** The latest uploads (successful and failed), newest first. Reloads after every import. */
+function UploadHistory({ version }: { version: number }) {
+  const [batches, setBatches] = useState<ImportBatchSummary[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    listImportBatchesAction(HISTORY_ROWS)
+      .then((rows) => { if (!cancelled) { setBatches(rows); setFailed(false); } })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [version]);
+
+  return (
+    <section aria-labelledby="upload-history-title" className="rounded-xl border border-border">
+      <h3 id="upload-history-title" className="flex items-center gap-1.5 border-b border-border px-3 py-2 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+        <History className="h-3.5 w-3.5" /> Upload history
+      </h3>
+      {failed ? (
+        <p className="px-3 py-2 text-xs text-red-700">Could not load the upload history.</p>
+      ) : batches === null ? (
+        <p className="px-3 py-2 text-xs text-muted-foreground">Loading…</p>
+      ) : batches.length === 0 ? (
+        <p className="px-3 py-2 text-xs text-muted-foreground">No uploads yet.</p>
+      ) : (
+        <div className="max-h-48 overflow-auto">
+          <table className="w-full text-[13px]">
+            <thead className="bg-background text-left text-muted-foreground">
+              <tr>{["When", "File", "By", "Mode", "Rows", "Imported", "Result"].map((h) => <th key={h} className="px-2.5 py-1.5 font-bold">{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {batches.map((b) => (
+                <tr key={b.batchId} className="border-t border-border align-top">
+                  <td className="whitespace-nowrap px-2.5 py-1.5">{fmt(b.uploadedAt)}</td>
+                  <td className="max-w-[14rem] break-words px-2.5 py-1.5 font-bold text-qc-navy">{b.fileName}</td>
+                  <td className="px-2.5 py-1.5">{b.uploadedBy}</td>
+                  <td className="px-2.5 py-1.5">{b.mode === "test" ? "Test data" : "Added"}{b.testMode && b.mode !== "test" ? " (test mode)" : ""}</td>
+                  <td className="px-2.5 py-1.5">{b.rowsInFile}</td>
+                  <td className="px-2.5 py-1.5">{b.inserted}</td>
+                  <td className={`px-2.5 py-1.5 font-bold ${b.status === "SUCCESS" ? "text-emerald-700" : "text-red-700"}`} title={b.message ?? undefined}>
+                    {b.status === "SUCCESS" ? "Success" : "Failed"}
+                    {b.status !== "SUCCESS" && b.message && <span className="block font-normal text-red-900">{b.message}</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
