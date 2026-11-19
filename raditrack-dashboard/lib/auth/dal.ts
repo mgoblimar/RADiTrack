@@ -104,9 +104,19 @@ export async function requireAdmin(): Promise<CurrentUser> {
 // Pages: redirect instead of throwing.
 // ---------------------------------------------------------------------------
 
+/**
+ * Sends someone who is not (or no longer) signed in to the sign-in page.
+ * If they still carry a sign-in cookie, it goes through /session-ended first, which
+ * clears it: otherwise the proxy would send them from /login straight back here.
+ */
+export async function redirectToSignIn(): Promise<never> {
+  const cookieStore = await cookies();
+  redirect(cookieStore.get(SESSION_COOKIE) ? "/session-ended" : "/login");
+}
+
 export async function requirePageUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) return redirectToSignIn();
   if (user.mustChangePassword) redirect("/change-password");
   return user;
 }
