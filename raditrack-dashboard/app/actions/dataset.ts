@@ -18,6 +18,7 @@ import {
   type ImportRowError,
 } from "@/lib/exam-import";
 import { readSpreadsheetRows } from "@/lib/spreadsheet-rows";
+import { UserError, userMessage } from "@/lib/user-error";
 import { testDatasetRows } from "@/data/test-dataset";
 
 const EXAMS_TABLE = "examinations";
@@ -130,8 +131,17 @@ function revalidateAll() {
   for (const path of ["/", "/simulator", "/patient", "/report"]) revalidatePath(path);
 }
 
-const errorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
+/** Two imports saved the same accession at once: the database refused the second one. */
+const isDuplicateAccession = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+
+/** Shows RADiTrack's own messages; database and library errors get `fallback` (no raw error text on screen). */
+const errorMessage = (error: unknown, fallback: string) => {
+  if (isDuplicateAccession(error)) {
+    return "Some of these accessions were saved by another import a moment ago. Nothing from this file was saved. Upload it again to see which rows already exist.";
+  }
+  return userMessage(error, fallback);
+};
 
 /** Re-validates records sent back from the client before writing them. */
 function revalidateRecords(records: ExamImportRecord[]): ImportRowError[] {
@@ -163,6 +173,8 @@ export async function getDatasetStatusAction(): Promise<DatasetStatus> {
 
 /** Reads and validates an uploaded .xlsx/.csv without saving anything. */
 export async function previewExamImportAction(formData: FormData): Promise<ImportPreview | { error: string }> {
+  // First line on purpose: server actions are reachable by direct POST, not only through the Import button.
+  await requireAdmin();
   const file = formData.get("file");
   if (!(file instanceof File)) return { error: "Choose a file to import." };
   try {
@@ -181,8 +193,7 @@ export async function previewExamImportAction(formData: FormData): Promise<Impor
 
     return { fileName: file.name, totalRows: rows.length, records, errors, conflicts };
   } catch (error) {
-  await requireAdmin();
-    return { error: errorMessage(error, "Could not read the file.") };
+    return { error: errorMessage(error, "Could not read the file. Check that it is a valid .xlsx or .csv file and try again.") };
   }
 }
 
@@ -202,7 +213,7 @@ export async function commitExamImportAction(records: ExamImportRecord[], mode: 
           where: { examinationIdentifier: { in: records.map((r) => r.examinationIdentifier) } },
           select: { examinationIdentifier: true },
         });
-        if (clash) throw new Error(`Accession "${clash.examinationIdentifier}" already exists. Nothing was imported.`);
+        if (clash) throw new UserError(`Accession "${clash.examinationIdentifier}" already exists. Nothing was imported.`);
         await insertRecords(tx, records);
       }, TX_OPTIONS);
     }
@@ -236,7 +247,7 @@ export async function restoreRealDataAction(): Promise<ActionResult> {
   await requireAdmin();
   try {
     const count = await prisma.$transaction(async (tx) => {
-      if (!(await backupExists(tx))) throw new Error("Test mode is not active; there is no backup to restore.");
+      if (!(await backupExists(tx))) throw new UserError("Test mode is not active; there is no backup to restore.");
       await tx.radiologyReport.deleteMany();
       await tx.examination.deleteMany();
       await restoreTable(tx, EXAMS_TABLE, EXAMS_BACKUP);

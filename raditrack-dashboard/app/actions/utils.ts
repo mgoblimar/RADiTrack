@@ -1,7 +1,8 @@
-"use server";
-
 /**
  * Utility mathematical helper functions for analytics and metrics.
+ *
+ * Deliberately NOT a "use server" module: every export of such a module becomes
+ * a public endpoint, and these helpers have no sign-in check.
  */
 
 // Calculates the median of an array of numbers
