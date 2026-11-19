@@ -18,6 +18,16 @@ import {
   type ImportRowError,
 } from "@/lib/exam-import";
 import { readSpreadsheetRows } from "@/lib/spreadsheet-rows";
+import { planImport, type ImportPlan, type PlanKind, type PlanRow } from "@/lib/import-plan";
+import {
+  applyAmendment,
+  applyUpdate,
+  loadExistingExams,
+  lockImports,
+  notAppliedEntry,
+  slaTargets,
+} from "@/lib/import-apply";
+import { getAmendmentWindowDays } from "@/lib/settings";
 import { UserError, userMessage } from "@/lib/user-error";
 import {
   actorOf,
@@ -52,8 +62,13 @@ export interface ImportPreview {
   records: ExamImportRecord[];
   /** Rows that cannot be imported at all. */
   errors: ImportRowError[];
-  /** Accessions already in the database (blocks "add", irrelevant for test mode). */
-  conflicts: ImportRowError[];
+  /** What "Add or update" would do with each valid row (ignored by "Load as test data"). */
+  plan: {
+    counts: Record<PlanKind, number>;
+    /** Updates, amendments and refusals (first 200), for the preview list. */
+    rows: PlanRow[];
+    windowDays: number;
+  };
 }
 
 export type ImportMode = "append" | "test";
@@ -67,6 +82,10 @@ export interface ImportBatchSummary {
   uploadedBy: string;
   rowsInFile: number;
   inserted: number;
+  updated: number;
+  unchanged: number;
+  amended: number;
+  refused: number;
   errorRows: number;
   status: string;
   message: string | null;
@@ -163,6 +182,7 @@ async function insertRecords(tx: Tx, records: ExamImportRecord[]): Promise<ExamC
  */
 async function replaceWithTestData(records: ExamImportRecord[], actor: Actor, file: ImportFileInfo) {
   return prisma.$transaction(async (tx) => {
+    await lockImports(tx);
     if (!(await backupExists(tx))) {
       await tx.$executeRawUnsafe(`CREATE TABLE "${EXAMS_BACKUP}" AS SELECT * FROM "${EXAMS_TABLE}"`);
       await tx.$executeRawUnsafe(`CREATE TABLE "${REPORTS_BACKUP}" AS SELECT * FROM "${REPORTS_TABLE}"`);
@@ -195,6 +215,10 @@ function toSummary(batch: BatchRow): ImportBatchSummary {
     uploadedBy: batch.uploadedByUsername,
     rowsInFile: batch.rowsInFile,
     inserted: batch.inserted,
+    updated: batch.updated,
+    unchanged: batch.unchanged,
+    amended: batch.amended,
+    refused: batch.refused,
     errorRows: batch.errorRows,
     status: batch.status,
     message: batch.message,
@@ -275,20 +299,66 @@ export async function previewExamImportAction(formData: FormData): Promise<Impor
     const rows = await readSpreadsheetRows(file);
     if (rows.length === 0) return { error: "No exam rows found. The first row must be the column headers." };
     const { records, errors } = parseExamRows(rows);
+    const existing = await loadExistingExams(prisma, records.map((r) => r.examinationIdentifier));
+    const windowDays = await getAmendmentWindowDays(prisma);
+    const plan = planImport(records, existing, new Date(), windowDays);
+    const listed = plan.rows.filter((r) => r.kind === "update" || r.kind === "amend" || r.kind === "refused").slice(0, 200);
 
-    const existing = await prisma.examination.findMany({
-      where: { examinationIdentifier: { in: records.map((r) => r.examinationIdentifier) } },
-      select: { examinationIdentifier: true },
-    });
-    const taken = new Set(existing.map((e) => e.examinationIdentifier));
-    const conflicts = records
-      .filter((r) => taken.has(r.examinationIdentifier))
-      .map((r) => ({ rowNumber: r.rowNumber, message: `Accession "${r.examinationIdentifier}" already exists.` }));
-
-    return { fileName: file.name, totalRows: rows.length, records, errors, conflicts };
+    return { fileName: file.name, totalRows: rows.length, records, errors, plan: { counts: plan.counts, rows: listed, windowDays } };
   } catch (error) {
     return { error: errorMessage(error, "Could not read the file. Check that it is a valid .xlsx or .csv file and try again.") };
   }
+}
+
+/**
+ * "Add or update": plans the file against the exams stored NOW (inside the transaction,
+ * after taking the import lock), then inserts new exams, updates unsigned ones,
+ * applies confirmed amendments, and logs everything else that was not applied.
+ */
+async function appendOrUpdate(records: ExamImportRecord[], actor: Actor, file: ImportFileInfo, applyAmendments: boolean) {
+  return prisma.$transaction(async (tx) => {
+    await lockImports(tx);
+    const testMode = await isTestModeActive(tx);
+    const existing = await loadExistingExams(tx, records.map((r) => r.examinationIdentifier));
+    const plan: ImportPlan = planImport(records, existing, new Date(), await getAmendmentWindowDays(tx));
+    const byAccession = new Map(records.map((r) => [r.examinationIdentifier, r]));
+    const rowsOf = (kind: PlanKind) => plan.rows.filter((r) => r.kind === kind);
+    const amendments = rowsOf("amend");
+    const skipped = applyAmendments ? 0 : amendments.length;
+
+    const batch = await recordImportBatch(tx, {
+      batchId: crypto.randomUUID(),
+      fileName: file.fileName,
+      mode: "append",
+      actor,
+      rowsInFile: file.rowsInFile,
+      inserted: plan.counts.insert,
+      updated: plan.counts.update,
+      unchanged: plan.counts.unchanged,
+      amended: applyAmendments ? amendments.length : 0,
+      refused: plan.counts.refused,
+      errorRows: file.errorRows,
+      status: "SUCCESS",
+      message: skipped > 0 ? `${skipped} amendment(s) to signed-off exams were not confirmed and were skipped.` : null,
+      testMode,
+    });
+
+    const entries: ExamChange[] = await insertRecords(tx, rowsOf("insert").map((r) => byAccession.get(r.accession)!));
+    const targetFor = await slaTargets(tx);
+    for (const row of rowsOf("update")) {
+      entries.push(await applyUpdate(tx, row, byAccession.get(row.accession)!, existing.get(row.accession)!, targetFor));
+    }
+    for (const row of amendments) {
+      const exam = existing.get(row.accession)!;
+      entries.push(applyAmendments
+        ? await applyAmendment(tx, row, byAccession.get(row.accession)!, exam, targetFor)
+        : notAppliedEntry(row, exam));
+    }
+    for (const row of rowsOf("refused")) entries.push(notAppliedEntry(row, existing.get(row.accession)!));
+
+    await recordExamChanges(tx, entries, { actor, source: "IMPORT", batchId: batch.batchId, testMode });
+    return batch;
+  }, TX_OPTIONS);
 }
 
 /** Saves previewed records: append to current data, or load them as test data (backing up real data). */
@@ -296,6 +366,7 @@ export async function commitExamImportAction(
   records: ExamImportRecord[],
   mode: ImportMode,
   file: ImportFileInfo,
+  options: { applyAmendments?: boolean } = {},
 ): Promise<ActionResult> {
   const user = await requireAdmin();
   const actor = actorOf(user);
@@ -306,30 +377,11 @@ export async function commitExamImportAction(
   try {
     const batch = mode === "test"
       ? await replaceWithTestData(records, actor, file)
-      : await prisma.$transaction(async (tx) => {
-          const clash = await tx.examination.findFirst({
-            where: { examinationIdentifier: { in: records.map((r) => r.examinationIdentifier) } },
-            select: { examinationIdentifier: true },
-          });
-          if (clash) throw new UserError(`Accession "${clash.examinationIdentifier}" already exists. Nothing was imported.`);
-          const testMode = await isTestModeActive(tx);
-          const created = await recordImportBatch(tx, {
-            batchId: crypto.randomUUID(),
-            fileName: file.fileName,
-            mode: "append",
-            actor,
-            rowsInFile: file.rowsInFile,
-            inserted: records.length,
-            errorRows: file.errorRows,
-            status: "SUCCESS",
-            testMode,
-          });
-          const entries = await insertRecords(tx, records);
-          await recordExamChanges(tx, entries, { actor, source: "IMPORT", batchId: created.batchId, testMode });
-          return created;
-        }, TX_OPTIONS);
+      : await appendOrUpdate(records, actor, file, options.applyAmendments === true);
     revalidateAll();
-    return { success: true, count: records.length, batch: toSummary(batch) };
+    const summary = toSummary(batch);
+    const count = mode === "test" ? records.length : summary.inserted + summary.updated + summary.amended;
+    return { success: true, count, batch: summary };
   } catch (error) {
     console.error("Exam import failed:", error);
     const message = errorMessage(error, "Import failed. Nothing was saved.");

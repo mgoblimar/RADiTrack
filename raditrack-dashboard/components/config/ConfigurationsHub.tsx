@@ -1,5 +1,6 @@
 "use client";
 
+import { AmendmentWindowSetting } from "@/components/config/AmendmentWindowSetting";
 import { RaditrackGuide } from "@/components/config/RaditrackGuide";
 import { useState, useTransition, useMemo } from "react";
 import {
@@ -745,6 +746,8 @@ export function ConfigurationsHub({
               </div>
             </div>
           </section>
+
+          <AmendmentWindowSetting isAdmin={isAdmin} />
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {modalities.map((m) => {

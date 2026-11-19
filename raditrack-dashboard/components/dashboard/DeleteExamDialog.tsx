@@ -121,7 +121,11 @@ export function DeleteExamDialog({
                   setIsSubmitting(true);
 
                   try {
-                    await cancelExaminationAction(formData);
+                    const result = await cancelExaminationAction(formData);
+                    if (!result.success) {
+                      window.alert(result.error ?? "The exam could not be cancelled.");
+                      return;
+                    }
                     setIsOpen(false);
                   } finally {
                     setIsSubmitting(false);
@@ -172,7 +176,11 @@ export function DeleteExamDialog({
                   setIsSubmitting(true);
 
                   try {
-                    await deleteExaminationAction(formData);
+                    const result = await deleteExaminationAction(formData);
+                    if (!result.success) {
+                      window.alert(result.error ?? "The exam could not be deleted.");
+                      return;
+                    }
                     setIsOpen(false);
                   } finally {
                     setIsSubmitting(false);
