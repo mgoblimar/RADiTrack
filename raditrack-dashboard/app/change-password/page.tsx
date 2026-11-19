@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ChangePasswordForm } from "@/components/auth/AuthForms";
-import { getCurrentUser } from "@/lib/auth/dal";
+import { getCurrentUser, redirectToSignIn } from "@/lib/auth/dal";
 
 export const metadata: Metadata = { title: "Change password · RADiTrack" };
 export const dynamic = "force-dynamic";
 
 export default async function ChangePasswordPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) return redirectToSignIn();
 
   return (
     <AuthLayout
