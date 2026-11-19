@@ -95,7 +95,10 @@ export {
   commitExamImportAction,
   loadTestDatasetAction,
   restoreRealDataAction,
+  listImportBatchesAction,
   type DatasetStatus,
   type ImportPreview,
   type ImportMode,
+  type ImportBatchSummary,
+  type ImportFileInfo,
 } from "./actions/dataset";

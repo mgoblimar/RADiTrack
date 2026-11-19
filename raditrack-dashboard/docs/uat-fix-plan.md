@@ -62,7 +62,24 @@ Each phase is one branch and one PR, in this order. Phases 0 and 4 do not depend
 - `errorMessage()`: show only messages RADiTrack throws itself; database errors get the plain fallback (also stops raw Prisma text, Def-UPL-06).
 - **Retest UPL-32:** replay the preview request (DevTools → Copy as fetch) signed in as a radiologist and signed out → refused; admin → preview works.
 
+**Status: ✅ Done — released to production 19 Nov 2026 (merge `c6e44fd`, tag v0.1.3).**
+
+Retest record (enter into the test plan):
+
+| Sheet | ID | Status | Tester | Date | Remark |
+|---|---|---|---|---|---|
+| RIS Upload | UPL-32 | Pass | Developer retest | 2026-11-19 | Retested on production (v0.1.3): a signed-in radiologist calling the import preview directly is refused (500, no data returned). Before the fix the same call on production returned the full preview (200 with fileName, totalRows, records). Admin preview still works. |
+| Defect Log | Def-UPL-09 | Fixed | — | 2026-11-19 | Admin check moved to the first line of `previewExamImportAction`; also removed a second unauthenticated endpoint (`calculatedMedian`) and hid raw database errors. |
+
+Evidence: production before fix — 200 with `RETEST-001` preview; `main` preview after fix — 500 `digest 1876578928`; production after release — 500 `digest 3503007668`.
+Still to check: signed-out direct call (expect redirect or refusal, no data).
+Release notes: the first production build of `c6e44fd` failed on a stale Turbopack build cache (Google font resolution); redeploying with the build cache off fixed it. No code change was needed.
+
 ### Phase 1 — Upload log and examination audit log (Def-UPL-01, UPL-08, UPL-33, ADD-03)
+
+**Status: ✅ Built on branch `feat/audit-logs` (19 Nov 2026), not yet merged.** `002_audit_logs.sql` is applied to Supabase.
+Checked on a throwaway PGlite copy of the schema: 18/18 audit and upload-log checks pass, `test-data:verify` 1406/1406, upload history renders in the Import dialog.
+Notes: test-data loads are logged as one batch (no per-exam entries, since test exams are discarded on restore); restoring real data is not itself logged.
 
 New tables, applied with a new SQL file `prisma/sql/002_audit_logs.sql` (same style as `001_user_accounts.sql`, safe to re-run) plus matching Prisma models.
 
