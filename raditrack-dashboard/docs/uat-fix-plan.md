@@ -172,6 +172,11 @@ Rule chosen: the radiologist is stored on signed reports only; a file without th
 
 ### Phase 4 — Calculations (CAL-18, Def-CAL-02, Def-CAL-01 data part)
 
+**Status: ✅ Built on branch `feat/calc-backlog-timezone` (on top of `feat/import-validation`), 19 Nov 2026, not yet merged.** No database change.
+Checked on a throwaway PGlite database: `test-data:verify` 1460/1460 (1406 + 54 new backlog-age checks, all six groups populated), age-group boundaries 12/12, partial-period fields, browser date maths identical in Manila, Kiritimati, New York and London; dashboard hover panel, Examinations backlog card and the 12-month trend (now opening on "Last 12 months") checked in Chrome.
+Note for the UI team: the age groups count the backlog **now** (all dates), while the dashboard card counts the backlog **in the chosen window**, so the two totals can differ; the list is headed "Backlog now".
+Def-CAL-01: `isPartialPeriod` / `asOfDate` are returned by the KPI action; the "to date, as of …" label itself is for the UI team.
+
 **CAL-18 backlog age groups.** Age = now − exam completed time (24-hour days, Manila clock). Only completed, unsigned, not-cancelled exams.
 
 | Group | Rule |

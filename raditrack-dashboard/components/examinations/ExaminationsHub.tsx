@@ -1,5 +1,7 @@
 "use client";
 
+import { manilaIsoDate } from "@/lib/app-time-zone";
+import { BacklogAgeList } from "@/components/common/BacklogAgeList";
 import {
   useState,
   useTransition,
@@ -72,11 +74,6 @@ const ALL_CATEGORIES: TriageLevel[] = [
   TriageLevel.IN,
 ];
 
-/** Local "YYYY-MM-DD" for date inputs. */
-function toLocalIsoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export function ExaminationsHub({
   queue,
   finalizedCount: initialFinalizedCount,
@@ -98,7 +95,7 @@ export function ExaminationsHub({
   const [datePreset, setDatePreset] =
     useState<DatePreset>("all");
 
-  const todayStr = toLocalIsoDate(new Date());
+  const todayStr = manilaIsoDate();
 
   const [startDate, setStartDate] =
     useState<string>(todayStr);
@@ -1028,6 +1025,8 @@ export function ExaminationsHub({
                 pending
               </span>
             </div>
+
+            <BacklogAgeList counts={"backlogAges" in summary ? summary.backlogAges : null} />
           </div>
         </div>
 

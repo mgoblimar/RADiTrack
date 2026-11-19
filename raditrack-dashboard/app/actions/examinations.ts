@@ -21,6 +21,7 @@ import {
 } from "@/lib/audit";
 import type { CurrentUser } from "@/lib/auth/roles";
 import { csvLine } from "@/lib/csv";
+import { backlogAgeGroup, emptyBacklogAges, type BacklogAgeCounts } from "@/lib/backlog-age";
 
 /** Result of an action the screen reports back to the user. */
 export interface ExamActionResult {
@@ -406,6 +407,8 @@ export interface FilteredExaminationsResult {
     totalBreached: number;
     /** Unsigned exams already waiting longer than their SLA target. */
     totalOverdue: number;
+    /** CAL-18: completed, unsigned exams by how long they have waited (as of now). */
+    backlogAges: BacklogAgeCounts;
   };
 }
 
@@ -522,6 +525,7 @@ export async function fetchFilteredExaminationsAction(
   let totalOverdue = 0;
   let totalFinalized = 0;
   let totalBacklog = 0;
+  const backlogAges = emptyBacklogAges();
 
   const items: FilteredExaminationItem[] = exams.map((e) => {
     const isFinalized = Boolean(e.report && e.report.reportSignedAt);
@@ -558,6 +562,7 @@ export async function fetchFilteredExaminationsAction(
           ((now.getTime() - new Date(e.examCompletedAt).getTime()) / (1000 * 60)).toFixed(1)
         );
         dwellHours = Number((dwellMinutes / 60).toFixed(1));
+        backlogAges[backlogAgeGroup(now.getTime() / 60_000 - new Date(e.examCompletedAt).getTime() / 60_000)]++;
         if (targetTat && dwellMinutes > targetTat) {
           isBreached = true;
           totalOverdue++;
@@ -633,6 +638,7 @@ export async function fetchFilteredExaminationsAction(
       avgTatHours,
       totalBreached,
       totalOverdue,
+      backlogAges,
     },
   };
 }

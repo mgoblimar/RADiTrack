@@ -1,5 +1,6 @@
 "use client";
 
+import { manilaIsoDate, manilaNow } from "@/lib/app-time-zone";
 import {
   useEffect,
   useMemo,
@@ -13,7 +14,6 @@ import {
 } from "@/app/actions";
 
 import { ModalityCode } from "@/lib/enums";
-import { toIsoDate } from "@/lib/kpi-range";
 
 import {
   MODALITIES,
@@ -33,14 +33,14 @@ export function TwelveMonthTrendChart({
   filters,
   onModalityChange,
 }: TwelveMonthTrendChartProps) {
-  // Opens on the current calendar year; "rolling" = the last 12 months.
+  // Opens on "rolling" (the last 12 months, Def-CAL-01); a calendar year can be picked instead.
   const [selectedPeriod, setSelectedPeriod] =
-    useState<string>(initialData.selectedPeriod || String(new Date().getFullYear()));
+    useState<string>(initialData.selectedPeriod || String(manilaNow().getFullYear()));
 
   // Remembered while "Last 12 months" is on, so switching back keeps the year.
   const [calendarYear, setCalendarYear] = useState<number>(() => {
     const parsed = Number.parseInt(initialData.selectedPeriod, 10);
-    return Number.isNaN(parsed) ? new Date().getFullYear() : parsed;
+    return Number.isNaN(parsed) ? manilaNow().getFullYear() : parsed;
   });
 
   // Patient category and modality come from the dashboard filter bar.
@@ -72,7 +72,7 @@ export function TwelveMonthTrendChart({
      Data: rolling window ends on the filter bar's end month
   ========================================================= */
 
-  const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const todayIso = useMemo(() => manilaIsoDate(), []);
   const anchorDate = filters.isAllTime ? todayIso : filters.rangeEnd;
   const anchorMonth = anchorDate.slice(0, 7);
   const requestKey = `${selectedPeriod}|${selectedTriage}|${
