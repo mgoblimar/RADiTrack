@@ -41,7 +41,7 @@ export default async function DashboardPage() {
     <>
       <AutoRefresh intervalMs={10000} />
       {datasetStatus.isTestActive && (
-        <TestModeBanner backupCount={datasetStatus.backupCount} />
+        <TestModeBanner backupCount={datasetStatus.backupCount} activeCount={datasetStatus.activeCount} />
       )}
       <DashboardShell
         data={data}

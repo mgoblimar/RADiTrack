@@ -65,6 +65,7 @@ async function loadedRecords(): Promise<ExamImportRecord[]> {
     examCompletedAt: e.examCompletedAt?.toISOString() ?? null,
     reportSignedAt: e.report?.reportSignedAt?.toISOString() ?? null,
     notes: e.notes,
+    radiologistName: null,
   }));
 }
 

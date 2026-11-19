@@ -98,6 +98,7 @@ export {
   loadTestDatasetAction,
   restoreRealDataAction,
   listImportBatchesAction,
+  addImportRadiologistsAction,
   type DatasetStatus,
   type ImportPreview,
   type ImportMode,

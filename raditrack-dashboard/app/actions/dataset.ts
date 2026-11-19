@@ -28,6 +28,7 @@ import {
   slaTargets,
 } from "@/lib/import-apply";
 import { getAmendmentWindowDays } from "@/lib/settings";
+import { normalizeRadiologistName, resolveRadiologists, type UnknownRadiologist } from "@/lib/radiologists";
 import { UserError, userMessage } from "@/lib/user-error";
 import {
   actorOf,
@@ -69,6 +70,8 @@ export interface ImportPreview {
     rows: PlanRow[];
     windowDays: number;
   };
+  /** Radiologist names in the file that RADiTrack does not know, and id -> name for showing changes. */
+  radiologists: { unknown: UnknownRadiologist[]; names: Record<string, string> };
 }
 
 export type ImportMode = "append" | "test";
@@ -159,6 +162,7 @@ async function insertRecords(tx: Tx, records: ExamImportRecord[]): Promise<ExamC
       reportStatus: "FINALIZED",
       tatExamToSignMinutes: tatMinutes,
       isSlaBreached: target !== undefined ? tatMinutes > target : false,
+      radiologistId: r.radiologistId ?? null,
     }];
   });
   if (reports.length > 0) await tx.radiologyReport.createMany({ data: reports });
@@ -298,13 +302,23 @@ export async function previewExamImportAction(formData: FormData): Promise<Impor
   try {
     const rows = await readSpreadsheetRows(file);
     if (rows.length === 0) return { error: "No exam rows found. The first row must be the column headers." };
-    const { records, errors } = parseExamRows(rows);
+    const parsed = parseExamRows(rows);
+    const radiologists = await resolveRadiologists(prisma, parsed.records);
+    const records = radiologists.records;
+    const errors = [...parsed.errors, ...radiologists.errors].sort((a, b) => a.rowNumber - b.rowNumber);
     const existing = await loadExistingExams(prisma, records.map((r) => r.examinationIdentifier));
     const windowDays = await getAmendmentWindowDays(prisma);
     const plan = planImport(records, existing, new Date(), windowDays);
     const listed = plan.rows.filter((r) => r.kind === "update" || r.kind === "amend" || r.kind === "refused").slice(0, 200);
 
-    return { fileName: file.name, totalRows: rows.length, records, errors, plan: { counts: plan.counts, rows: listed, windowDays } };
+    return {
+      fileName: file.name,
+      totalRows: rows.length,
+      records,
+      errors,
+      plan: { counts: plan.counts, rows: listed, windowDays },
+      radiologists: { unknown: radiologists.unknown, names: radiologists.names },
+    };
   } catch (error) {
     return { error: errorMessage(error, "Could not read the file. Check that it is a valid .xlsx or .csv file and try again.") };
   }
@@ -375,9 +389,11 @@ export async function commitExamImportAction(
   if (invalid.length > 0) return { success: false, error: invalid[0].message };
 
   try {
+    const matched = await resolveRadiologists(prisma, records.map((r) => ({ ...r, radiologistId: null })));
+    if (matched.errors.length > 0) throw new UserError(`Row ${matched.errors[0].rowNumber}: ${matched.errors[0].message}`);
     const batch = mode === "test"
-      ? await replaceWithTestData(records, actor, file)
-      : await appendOrUpdate(records, actor, file, options.applyAmendments === true);
+      ? await replaceWithTestData(matched.records, actor, file)
+      : await appendOrUpdate(matched.records, actor, file, options.applyAmendments === true);
     revalidateAll();
     const summary = toSummary(batch);
     const count = mode === "test" ? records.length : summary.inserted + summary.updated + summary.amended;
@@ -387,6 +403,38 @@ export async function commitExamImportAction(
     const message = errorMessage(error, "Import failed. Nothing was saved.");
     await recordFailedBatch(actor, file, mode, message);
     return { success: false, error: message };
+  }
+}
+
+/**
+ * "Add as new radiologist" from the import preview: creates the named radiologists
+ * (active, name exactly as written) and logs each one. Names already known are skipped.
+ */
+export async function addImportRadiologistsAction(names: string[]): Promise<{ success: boolean; added?: string[]; error?: string }> {
+  const user = await requireAdmin();
+  const wanted = new Map<string, string>();
+  for (const raw of Array.isArray(names) ? names.slice(0, 50) : []) {
+    const name = String(raw ?? "").trim().replace(/\s+/g, " ").slice(0, 150);
+    if (name) wanted.set(normalizeRadiologistName(name), name);
+  }
+  if (wanted.size === 0) return { success: false, error: "No radiologist name to add." };
+  try {
+    const added = await prisma.$transaction(async (tx) => {
+      const existing = new Set((await tx.radiologist.findMany({ select: { fullName: true } })).map((r) => normalizeRadiologistName(r.fullName)));
+      const toAdd = [...wanted.entries()].filter(([key]) => !existing.has(key)).map(([, name]) => name);
+      for (const fullName of toAdd) await tx.radiologist.create({ data: { fullName, isActive: true } });
+      await recordExamChanges(
+        tx,
+        toAdd.map((fullName) => ({ examId: null, accession: "", action: "RADIOLOGIST_ADDED" as const, changes: { fullName: [null, fullName] } })),
+        { actor: actorOf(user), source: "IMPORT", testMode: await isTestModeActive(tx) },
+      );
+      return toAdd;
+    });
+    revalidatePath("/");
+    return { success: true, added };
+  } catch (error) {
+    console.error("Adding radiologists failed:", error);
+    return { success: false, error: errorMessage(error, "Could not add the radiologists.") };
   }
 }
 

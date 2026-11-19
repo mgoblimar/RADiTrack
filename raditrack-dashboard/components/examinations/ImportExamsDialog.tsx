@@ -3,8 +3,9 @@
 import { useEffect, useState, useTransition, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, FileUp, History, Upload, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileUp, History, Upload, UserPlus, X } from "lucide-react";
 import {
+  addImportRadiologistsAction,
   commitExamImportAction,
   listImportBatchesAction,
   previewExamImportAction,
@@ -43,6 +44,7 @@ export function ImportExamsButton() {
 function ImportDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<ImportMode>("append");
   const [applyAmendments, setApplyAmendments] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -55,14 +57,13 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setMessage(null);
+  /** Reads `chosen` and shows what importing it would do. Re-run after adding radiologists. */
+  const runPreview = (chosen: File, note?: string) => {
+    setMessage(note ? { tone: "ok", text: note } : null);
     setPreview(null);
     setApplyAmendments(false);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", chosen);
     startTransition(async () => {
       const result = await previewExamImportAction(formData);
       if ("error" in result) setMessage({ tone: "error", text: result.error });
@@ -70,7 +71,28 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
     });
   };
 
+  const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const chosen = event.target.files?.[0];
+    if (!chosen) return;
+    setFile(chosen);
+    runPreview(chosen);
+  };
+
+  const addRadiologists = (names: string[]) => {
+    if (!file) return;
+    startTransition(async () => {
+      const result = await addImportRadiologistsAction(names);
+      if (!result.success) {
+        setMessage({ tone: "error", text: result.error ?? "Could not add the radiologists." });
+        return;
+      }
+      const added = result.added ?? [];
+      runPreview(file, added.length ? `Added ${added.join(", ")} as radiologist(s). The file was checked again.` : "Already in RADiTrack. The file was checked again.");
+    });
+  };
+
   const blocking = preview ? preview.errors : [];
+  const hasRadiologist = !!preview?.records.some((r) => r.radiologistName);
   const counts = preview?.plan.counts;
   const hasWork = mode === "test"
     ? (preview?.records.length ?? 0) > 0
@@ -168,22 +190,55 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
                       TAT stays on the first sign-off. If unticked, they are skipped and logged.
                     </span>
                   </label>
-                  <PlanChanges rows={preview.plan.rows.filter((r) => r.kind === "amend")} />
+                  <PlanChanges rows={preview.plan.rows.filter((r) => r.kind === "amend")} names={preview.radiologists.names} />
                 </div>
               )}
 
               {mode === "append" && counts && counts.refused > 0 && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
                   <p className="mb-1 flex items-center gap-1.5 font-extrabold"><AlertTriangle className="h-3.5 w-3.5" /> Not applied (the rest of the file still imports; these are logged):</p>
-                  <PlanChanges rows={preview.plan.rows.filter((r) => r.kind === "refused")} />
+                  <PlanChanges rows={preview.plan.rows.filter((r) => r.kind === "refused")} names={preview.radiologists.names} />
                 </div>
               )}
 
               {mode === "append" && counts && counts.update > 0 && (
                 <details className="rounded-xl border border-border px-3 py-2 text-xs">
                   <summary className="cursor-pointer font-extrabold text-qc-navy">{counts.update} exam(s) not yet signed off will be updated</summary>
-                  <PlanChanges rows={preview.plan.rows.filter((r) => r.kind === "update")} />
+                  <PlanChanges rows={preview.plan.rows.filter((r) => r.kind === "update")} names={preview.radiologists.names} />
                 </details>
+              )}
+
+              {preview.radiologists.unknown.length > 0 && (
+                <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-950">
+                  <p className="mb-1.5 font-extrabold">
+                    {preview.radiologists.unknown.length} radiologist name(s) in this file are not in RADiTrack. Add them, or fix the spelling in the file and upload it again.
+                  </p>
+                  <ul className="space-y-1">
+                    {preview.radiologists.unknown.map((r) => (
+                      <li key={r.name} className="flex flex-wrap items-center justify-between gap-2">
+                        <span><span className="font-bold">{r.name}</span> · {r.rowCount} row(s)</span>
+                        <button
+                          type="button"
+                          onClick={() => addRadiologists([r.name])}
+                          disabled={isPending}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-sky-300 bg-white px-2.5 font-bold text-qc-navy hover:bg-sky-100 disabled:opacity-50"
+                        >
+                          <UserPlus className="h-3.5 w-3.5" /> Add as new radiologist
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {preview.radiologists.unknown.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => addRadiologists(preview.radiologists.unknown.map((r) => r.name))}
+                      disabled={isPending}
+                      className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-qc-navy px-2.5 font-bold text-white hover:bg-qc-blue disabled:opacity-50"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" /> Add all {preview.radiologists.unknown.length}
+                    </button>
+                  )}
+                </div>
               )}
 
               {blocking.length > 0 && (
@@ -198,7 +253,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
               <div className="overflow-x-auto rounded-xl border border-border">
                 <table className="w-full text-[13px]">
                   <thead className="bg-background text-left text-muted-foreground">
-                    <tr>{["Accession", "Modality", "Category", "Study", "Completed", "Signed"].map((h) => <th key={h} className="px-2.5 py-1.5 font-bold">{h}</th>)}</tr>
+                    <tr>{["Accession", "Modality", "Category", "Study", "Completed", "Signed", ...(hasRadiologist ? ["Radiologist"] : [])].map((h) => <th key={h} className="px-2.5 py-1.5 font-bold">{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {preview.records.slice(0, PREVIEW_ROWS).map((r) => (
@@ -209,6 +264,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
                         <td className="px-2.5 py-1.5">{fmt(r.studyDate)}</td>
                         <td className="px-2.5 py-1.5">{fmt(r.examCompletedAt)}</td>
                         <td className="px-2.5 py-1.5">{fmt(r.reportSignedAt)}</td>
+                        {hasRadiologist && <td className="px-2.5 py-1.5">{r.radiologistName ?? "—"}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -332,6 +388,7 @@ const FIELD_LABELS: Record<string, string> = {
   examCompletedAt: "Completed",
   reportSignedAt: "Signed",
   notes: "Notes",
+  radiologistId: "Radiologist",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -343,15 +400,16 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Cancelled",
 };
 
-const showValue = (field: string, value: string | number | boolean | null) => {
+const showValue = (field: string, value: string | number | boolean | null, names: Record<string, string> = {}) => {
   if (value === null || value === "") return "—";
+  if (field === "radiologistId") return names[String(value)] ?? "Unknown radiologist";
   if (field === "statusCode") return STATUS_LABELS[String(value)] ?? String(value);
   if (["studyDate", "examCompletedAt", "reportSignedAt"].includes(field)) return fmt(String(value));
   return String(value);
 };
 
 /** Rows of the re-upload plan with what would change, as "field: now → in file". */
-function PlanChanges({ rows }: { rows: PlanRow[] }) {
+function PlanChanges({ rows, names }: { rows: PlanRow[]; names: Record<string, string> }) {
   if (rows.length === 0) return null;
   return (
     <ul className="mt-1.5 max-h-40 space-y-1 overflow-y-auto">
@@ -362,7 +420,7 @@ function PlanChanges({ rows }: { rows: PlanRow[] }) {
           {row.reason && <span> · {row.reason}</span>}
           <span className="block text-[12px] opacity-90">
             {Object.entries(row.changes)
-              .map(([field, [from, to]]) => `${FIELD_LABELS[field] ?? field}: ${showValue(field, from)} → ${showValue(field, to)}`)
+              .map(([field, [from, to]]) => `${FIELD_LABELS[field] ?? field}: ${showValue(field, from, names)} → ${showValue(field, to, names)}`)
               .join(" · ")}
           </span>
         </li>
