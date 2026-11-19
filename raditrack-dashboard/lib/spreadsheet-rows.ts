@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { normalizeHeader, parseCsv, type RawRow } from "@/lib/exam-import";
+import { UserError } from "@/lib/user-error";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -42,11 +43,11 @@ async function rowsFromWorkbook(buffer: ArrayBuffer): Promise<RawRow[]> {
 
 /** Reads an uploaded .xlsx or .csv file into header-keyed rows. Throws a user-facing message on bad input. */
 export async function readSpreadsheetRows(file: File): Promise<RawRow[]> {
-  if (file.size === 0) throw new Error("The file is empty.");
-  if (file.size > MAX_FILE_BYTES) throw new Error("The file is larger than 5 MB.");
+  if (file.size === 0) throw new UserError("The file is empty.");
+  if (file.size > MAX_FILE_BYTES) throw new UserError("The file is larger than 5 MB.");
 
   const name = file.name.toLowerCase();
   if (name.endsWith(".xlsx")) return rowsFromWorkbook(await file.arrayBuffer());
   if (name.endsWith(".csv")) return parseCsv(await file.text());
-  throw new Error("Upload an Excel workbook (.xlsx) or a CSV file.");
+  throw new UserError("Upload an Excel workbook (.xlsx) or a CSV file.");
 }
