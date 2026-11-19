@@ -116,6 +116,11 @@ New tables, applied with a new SQL file `prisma/sql/002_audit_logs.sql` (same st
 
 ### Phase 2 — Re-upload rules and the signed-off lock (Def-UPL-03, Def-UPL-04, Def-UPL-06, UPL-13, added case)
 
+**Status: ✅ Built on branch `feat/reupload-rules` (on top of `feat/audit-logs`), 19 Nov 2026, not yet merged.** No database change (uses the Phase 1 tables).
+Checked on a throwaway PGlite database: planner unit checks 15/15, end-to-end checks 23/23 (UPL-11, UPL-12, UPL-15, UPL-16, UPL-27, window setting, signed-off lock incl. two simultaneous sign-offs), `test-data:verify` 1406/1406.
+Checked in Chrome on a local server with the throwaway database: first upload (4 new, success message with file / time / user), re-upload preview (1 new, 1 updated, 1 unchanged, 1 amendment, 1 refused), amendment tick box applied, upload history counts, and Configuration → Amendment window saved and kept after reload. No console errors.
+Extra rule found while building: a cancelled exam is never changed by a file (listed as refused) unless the file matches it.
+
 **Rule (business reply on UPL-11, decisions of 19 Nov):** unsigned exams can be updated freely; a signed-off exam can be **amended for 7 days after its first sign-off**, only when the admin confirms; after that it is final. TAT always uses the **first** sign-off.
 
 | Row in file | Exam in database | Result |

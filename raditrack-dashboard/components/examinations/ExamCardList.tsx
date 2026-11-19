@@ -83,7 +83,8 @@ function SignButton({
   return (
     <form
       action={async (formData) => {
-        await signOffReportAction(formData);
+        const result = await signOffReportAction(formData);
+        if (!result.success) window.alert(result.error ?? "The report could not be signed off.");
         onSigned();
       }}
       className="flex-1"

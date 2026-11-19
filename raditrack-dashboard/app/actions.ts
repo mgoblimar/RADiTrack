@@ -76,6 +76,8 @@ export {
   toggleModalityStatusAction,
   createRadiologistAction,
   toggleRadiologistStatusAction,
+  getAmendmentWindowAction,
+  updateAmendmentWindowAction,
   type SlaRuleItem,
   type ModalityConfigItem,
   type RadiologistItem,

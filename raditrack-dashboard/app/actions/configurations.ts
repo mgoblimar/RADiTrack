@@ -9,6 +9,7 @@ import {
   ModalityCode,
   sortByModalityOrder,
 } from "@/lib/enums";
+import { getAmendmentWindowDays, setAmendmentWindowDays, MAX_AMENDMENT_WINDOW_DAYS } from "@/lib/settings";
 
 // ============================================================================
 // CONFIGURATIONS & SLA BENCHMARKS SUITE
@@ -288,4 +289,22 @@ export async function toggleRadiologistStatusAction(radiologistId: string, isAct
 
   revalidatePath("/");
   return { success: true, radiologistId, isActive };
+}
+
+// ============================================================================
+// AMENDMENT WINDOW: how many days after the first sign-off a re-upload may amend an exam
+// ============================================================================
+
+export async function getAmendmentWindowAction(): Promise<number> {
+  await requireUser();
+  return getAmendmentWindowDays(prisma);
+}
+
+export async function updateAmendmentWindowAction(days: number): Promise<{ success: boolean; days?: number; message?: string }> {
+  const user = await requireAdmin();
+  if (!Number.isInteger(days) || days < 0 || days > MAX_AMENDMENT_WINDOW_DAYS) {
+    return { success: false, message: `Enter a whole number of days from 0 to ${MAX_AMENDMENT_WINDOW_DAYS}.` };
+  }
+  await setAmendmentWindowDays(prisma, days, user.username);
+  return { success: true, days };
 }
