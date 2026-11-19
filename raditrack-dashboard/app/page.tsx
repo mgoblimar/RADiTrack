@@ -25,8 +25,8 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     getDashboardData(),
     getSevenDayStaffAnalytics(),
-    // The 12-month trend opens on the current calendar year.
-    getTwelveMonthTatTrend(String(new Date().getFullYear())),
+    // Def-CAL-01: the 12-month trend opens on the last 12 months (calendar years stay selectable).
+    getTwelveMonthTatTrend("rolling"),
     getModalityTatOverview(),
     getConfigurationsAction(),
     getDatasetStatusAction(),

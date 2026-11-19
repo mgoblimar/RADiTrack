@@ -21,6 +21,7 @@ import {
 } from "@/lib/audit";
 import type { CurrentUser } from "@/lib/auth/roles";
 import { csvLine } from "@/lib/csv";
+import { backlogAgeGroup, emptyBacklogAges, isBacklogAgeKey, type BacklogAgeCounts, type BacklogAgeKey } from "@/lib/backlog-age";
 
 /** Result of an action the screen reports back to the user. */
 export interface ExamActionResult {
@@ -361,6 +362,8 @@ export interface ExaminationFilterOptions {
   patientCategories?: string[];
   urgencyLevel?: string;
   searchTerm?: string;
+  /** CAL-18: only exams still waiting for a report, that have waited this long since completion. */
+  backlogAge?: BacklogAgeKey | "all";
 }
 
 export interface FilteredExaminationItem {
@@ -406,6 +409,8 @@ export interface FilteredExaminationsResult {
     totalBreached: number;
     /** Unsigned exams already waiting longer than their SLA target. */
     totalOverdue: number;
+    /** CAL-18: completed, unsigned exams by how long they have waited (as of now). */
+    backlogAges: BacklogAgeCounts;
   };
 }
 
@@ -522,6 +527,7 @@ export async function fetchFilteredExaminationsAction(
   let totalOverdue = 0;
   let totalFinalized = 0;
   let totalBacklog = 0;
+  const backlogAges = emptyBacklogAges();
 
   const items: FilteredExaminationItem[] = exams.map((e) => {
     const isFinalized = Boolean(e.report && e.report.reportSignedAt);
@@ -558,6 +564,7 @@ export async function fetchFilteredExaminationsAction(
           ((now.getTime() - new Date(e.examCompletedAt).getTime()) / (1000 * 60)).toFixed(1)
         );
         dwellHours = Number((dwellMinutes / 60).toFixed(1));
+        backlogAges[backlogAgeGroup(now.getTime() / 60_000 - new Date(e.examCompletedAt).getTime() / 60_000)]++;
         if (targetTat && dwellMinutes > targetTat) {
           isBreached = true;
           totalOverdue++;
@@ -609,12 +616,17 @@ export async function fetchFilteredExaminationsAction(
     };
   });
 
-  const visibleItems =
+  const byStatus =
     options.statusType === "backlog"
       ? items.filter((item) => !item.isFinalized)
       : options.statusType === "finalized"
         ? items.filter((item) => item.isFinalized)
         : items;
+  // The summary (and its age counts) ignores this filter, so every option keeps showing its count.
+  const ageFilter = isBacklogAgeKey(options.backlogAge) ? options.backlogAge : null;
+  const visibleItems = ageFilter
+    ? byStatus.filter((item) => !item.isFinalized && item.dwellMinutes !== null && backlogAgeGroup(item.dwellMinutes) === ageFilter)
+    : byStatus;
 
   const avgTatMinutes =
     tatList.length > 0
@@ -633,6 +645,7 @@ export async function fetchFilteredExaminationsAction(
       avgTatHours,
       totalBreached,
       totalOverdue,
+      backlogAges,
     },
   };
 }
