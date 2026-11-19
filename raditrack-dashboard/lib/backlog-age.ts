@@ -3,16 +3,20 @@
 //
 // Only completed, unsigned, not-cancelled exams are aged. Age = now - exam completed
 // time, in 24-hour days. Each group includes its lower edge and excludes its upper
-// edge; exactly 30 days counts as "30 days and over".
+// edge; exactly 30 days counts as "30 days or more".
 
 export const BACKLOG_AGE_GROUPS = [
-  { key: "under1d", label: "< 1 day", maxHours: 24 },
-  { key: "d1to3", label: "1 to < 3 days", maxHours: 72 },
-  { key: "d3to7", label: "3 to < 7 days", maxHours: 168 },
-  { key: "d7to15", label: "7 to < 15 days", maxHours: 360 },
-  { key: "d15to30", label: "15 to < 30 days", maxHours: 720 },
-  { key: "d30plus", label: "30 days and over", maxHours: Infinity },
+  { key: "under1d", label: "Less than 1 day", description: "Completed less than 24 hours ago", maxHours: 24 },
+  { key: "d1to3", label: "1 to 3 days", description: "Waiting at least 1 day, but less than 3", maxHours: 72 },
+  { key: "d3to7", label: "3 to 7 days", description: "Waiting at least 3 days, but less than 7", maxHours: 168 },
+  { key: "d7to15", label: "7 to 15 days", description: "Waiting at least 7 days, but less than 15", maxHours: 360 },
+  { key: "d15to30", label: "15 to 30 days", description: "Waiting at least 15 days, but less than 30", maxHours: 720 },
+  { key: "d30plus", label: "30 days or more", description: "Waiting 30 days or longer", maxHours: Infinity },
 ] as const;
+
+export function isBacklogAgeKey(value: unknown): value is BacklogAgeKey {
+  return BACKLOG_AGE_GROUPS.some((group) => group.key === value);
+}
 
 export type BacklogAgeKey = (typeof BACKLOG_AGE_GROUPS)[number]["key"];
 export type BacklogAgeCounts = Record<BacklogAgeKey, number>;

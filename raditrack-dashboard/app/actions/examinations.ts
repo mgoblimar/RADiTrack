@@ -21,7 +21,7 @@ import {
 } from "@/lib/audit";
 import type { CurrentUser } from "@/lib/auth/roles";
 import { csvLine } from "@/lib/csv";
-import { backlogAgeGroup, emptyBacklogAges, type BacklogAgeCounts } from "@/lib/backlog-age";
+import { backlogAgeGroup, emptyBacklogAges, isBacklogAgeKey, type BacklogAgeCounts, type BacklogAgeKey } from "@/lib/backlog-age";
 
 /** Result of an action the screen reports back to the user. */
 export interface ExamActionResult {
@@ -362,6 +362,8 @@ export interface ExaminationFilterOptions {
   patientCategories?: string[];
   urgencyLevel?: string;
   searchTerm?: string;
+  /** CAL-18: only exams still waiting for a report, that have waited this long since completion. */
+  backlogAge?: BacklogAgeKey | "all";
 }
 
 export interface FilteredExaminationItem {
@@ -614,12 +616,17 @@ export async function fetchFilteredExaminationsAction(
     };
   });
 
-  const visibleItems =
+  const byStatus =
     options.statusType === "backlog"
       ? items.filter((item) => !item.isFinalized)
       : options.statusType === "finalized"
         ? items.filter((item) => item.isFinalized)
         : items;
+  // The summary (and its age counts) ignores this filter, so every option keeps showing its count.
+  const ageFilter = isBacklogAgeKey(options.backlogAge) ? options.backlogAge : null;
+  const visibleItems = ageFilter
+    ? byStatus.filter((item) => !item.isFinalized && item.dwellMinutes !== null && backlogAgeGroup(item.dwellMinutes) === ageFilter)
+    : byStatus;
 
   const avgTatMinutes =
     tatList.length > 0
