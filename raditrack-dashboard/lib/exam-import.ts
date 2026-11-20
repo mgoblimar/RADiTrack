@@ -40,6 +40,8 @@ export interface ExamImportRecord {
 export interface ImportRowError {
   rowNumber: number;
   message: string;
+  /** Accession on the rejected row, when it has one (for the rejected-rows download). */
+  accession?: string;
 }
 
 export interface ImportParseResult {
@@ -72,6 +74,21 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   completedAfterMin: ["completed_after_min"],
   tatMin: ["tat_min", "tat_minutes"],
 };
+
+/** Columns every file must have; used to tell a missing header row from bad data. */
+const REQUIRED_COLUMNS = ["accession", "modality", "category"] as const;
+const REQUIRED_COLUMN_NAMES: Record<(typeof REQUIRED_COLUMNS)[number], string> = {
+  accession: "Accession",
+  modality: "Modality",
+  category: "Patient_Category",
+};
+
+/** Required columns not found among the normalized header `keys` (empty when row 1 is a valid header). */
+export function missingRequiredColumns(keys: readonly string[]): string[] {
+  const present = new Set(keys);
+  return REQUIRED_COLUMNS.filter((column) => !COLUMN_ALIASES[column].some((alias) => present.has(alias)))
+    .map((column) => REQUIRED_COLUMN_NAMES[column]);
+}
 
 function pick(row: RawRow, key: keyof typeof COLUMN_ALIASES): RawValue {
   for (const alias of COLUMN_ALIASES[key]) {
@@ -282,11 +299,12 @@ export function parseExamRows(rows: RawRow[], now: Date = new Date()): ImportPar
     const rowNumber = index + 2;
     const result = parseRow(row, rowNumber, now);
     if (typeof result === "string") {
-      errors.push({ rowNumber, message: result });
+      const accession = text(pick(row, "accession")).slice(0, 64);
+      errors.push(accession ? { rowNumber, message: result, accession } : { rowNumber, message: result });
       return;
     }
     if (seen.has(result.examinationIdentifier)) {
-      errors.push({ rowNumber, message: `Duplicate accession "${result.examinationIdentifier}" in this file.` });
+      errors.push({ rowNumber, message: `Duplicate accession "${result.examinationIdentifier}" in this file.`, accession: result.examinationIdentifier });
       return;
     }
     seen.add(result.examinationIdentifier);
