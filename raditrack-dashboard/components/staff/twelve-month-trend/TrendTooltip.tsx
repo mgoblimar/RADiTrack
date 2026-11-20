@@ -3,6 +3,7 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import type { MonthTrendData } from "@/app/actions";
 import { ModalityCode } from "@/lib/enums";
+import { manilaNow } from "@/lib/app-time-zone";
 import { MODALITIES, QC_PURPLE } from "./types";
 
 /* =========================================================
@@ -89,20 +90,30 @@ function ChangeChip({
 function Header({
   title,
   count,
+  asOfDate,
 }: {
   title: string;
   count: string;
+  asOfDate?: string | null;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <p
-        className="text-sm font-extrabold"
-        style={{ color: BRAND_BLUE }}
-      >
-        {title}
-      </p>
+      <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+        <p
+          className="text-sm font-extrabold"
+          style={{ color: BRAND_BLUE }}
+        >
+          {title}
+        </p>
 
-      <span className="text-xs font-semibold text-muted-foreground">
+        {asOfDate && (
+          <span className="text-xs font-semibold text-muted-foreground">
+            (as of {asOfDate})
+          </span>
+        )}
+      </div>
+
+      <span className="text-xs font-semibold text-muted-foreground shrink-0">
         {count}
       </span>
     </div>
@@ -282,6 +293,34 @@ export function TrendTooltip({
 
   const title = point.fullMonth || label || "";
 
+  const isCurrentRunningMonth =
+    typeof point.isCurrentRunningMonth === "boolean"
+      ? point.isCurrentRunningMonth
+      : (() => {
+          const today = manilaNow();
+          const curYear = today.getFullYear();
+          const curYear2 = String(curYear).slice(-2);
+          const curMonthShort = today.toLocaleDateString("en-US", {
+            month: "short",
+          });
+
+          const t = point.fullMonth || label || "";
+          return (
+            t.includes(curMonthShort) &&
+            (t.includes(String(curYear)) || t.includes(curYear2))
+          );
+        })();
+
+  const asOfDate =
+    point.asOfDate ??
+    (isCurrentRunningMonth
+      ? manilaNow().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : null);
+
   const previousMonthLabel =
     point.previousMonthLabel ?? "previous month";
 
@@ -340,6 +379,7 @@ export function TrendTooltip({
         <Header
           title={title}
           count={`${point.totalFinalized} signed`}
+          asOfDate={asOfDate}
         />
 
         <Hero
@@ -407,6 +447,7 @@ export function TrendTooltip({
       <Header
         title={title}
         count={`${modVol} signed`}
+        asOfDate={asOfDate}
       />
 
       <Hero

@@ -243,7 +243,7 @@ export default async function PatientActivityPage() {
                           {item.modalityCode}
                         </span>
 
-                        <span className="truncate text-xs font-extrabold text-qc-blue sm:text-sm xl:text-[15px]">
+                        <span className="min-w-0 break-words text-xs font-extrabold text-qc-blue sm:text-sm xl:text-[15px]">
                           {item.modalityName}
                         </span>
                       </div>
