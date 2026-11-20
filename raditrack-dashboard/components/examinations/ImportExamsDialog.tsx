@@ -1,9 +1,26 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, FileUp, History, Upload, UserPlus, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileSpreadsheet,
+  FileUp,
+  History,
+  Loader2,
+  Upload,
+  UserPlus,
+  X,
+} from "lucide-react";
 import {
   addImportRadiologistsAction,
   commitExamImportAction,
@@ -23,6 +40,12 @@ const PREVIEW_ROWS = 6;
 const fmt = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-PH", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Pending";
 
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 /** Upload → preview → choose "add" or "load as test data" → import. */
 export function ImportExamsButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,7 +64,7 @@ export function ImportExamsButton() {
   );
 }
 
-function ImportDialog({ onClose }: { onClose: () => void }) {
+export function ImportDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -50,6 +73,46 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [isPending, startTransition] = useTransition();
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressStage, setProgressStage] = useState<
+    "idle" | "reading" | "ready" | "importing" | "complete" | "error"
+  >("idle");
+
+  const dragCounter = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startProgress = (targetMax: number, stage: "reading" | "importing") => {
+    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    setProgress(15);
+    setProgressStage(stage);
+
+    progressTimerRef.current = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= targetMax) {
+          if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+          return targetMax;
+        }
+        const diff = targetMax - prev;
+        const step = Math.max(1, Math.round(diff * 0.15));
+        return Math.min(targetMax, prev + step);
+      });
+    }, 180);
+  };
+
+  const finishProgress = (stage: "ready" | "complete" | "error") => {
+    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    setProgress(100);
+    setProgressStage(stage);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
@@ -62,12 +125,23 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
     setMessage(note ? { tone: "ok", text: note } : null);
     setPreview(null);
     setApplyAmendments(false);
+    startProgress(90, "reading");
     const formData = new FormData();
     formData.append("file", chosen);
     startTransition(async () => {
-      const result = await previewExamImportAction(formData);
-      if ("error" in result) setMessage({ tone: "error", text: result.error });
-      else setPreview(result);
+      try {
+        const result = await previewExamImportAction(formData);
+        if ("error" in result) {
+          setMessage({ tone: "error", text: result.error });
+          finishProgress("error");
+        } else {
+          setPreview(result);
+          finishProgress("ready");
+        }
+      } catch {
+        setMessage({ tone: "error", text: "Failed to read file." });
+        finishProgress("error");
+      }
     });
   };
 
@@ -76,18 +150,85 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
     if (!chosen) return;
     setFile(chosen);
     runPreview(chosen);
+    event.target.value = "";
+  };
+
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
+    setIsDragging(false);
+
+    if (isPending) return;
+
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (!droppedFile) return;
+
+    const lowerName = droppedFile.name.toLowerCase();
+    if (!lowerName.endsWith(".xlsx") && !lowerName.endsWith(".csv")) {
+      setMessage({
+        tone: "error",
+        text: "Please upload an Excel workbook (.xlsx) or CSV (.csv) file.",
+      });
+      return;
+    }
+
+    setFile(droppedFile);
+    runPreview(droppedFile);
+  };
+
+  const handleClearFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPending) return;
+    setFile(null);
+    setPreview(null);
+    setProgress(0);
+    setProgressStage("idle");
+    setMessage(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const addRadiologists = (names: string[]) => {
     if (!file) return;
+    startProgress(90, "reading");
     startTransition(async () => {
-      const result = await addImportRadiologistsAction(names);
-      if (!result.success) {
-        setMessage({ tone: "error", text: result.error ?? "Could not add the radiologists." });
-        return;
+      try {
+        const result = await addImportRadiologistsAction(names);
+        if (!result.success) {
+          setMessage({ tone: "error", text: result.error ?? "Could not add the radiologists." });
+          finishProgress("error");
+          return;
+        }
+        const added = result.added ?? [];
+        runPreview(file, added.length ? `Added ${added.join(", ")} as radiologist(s). The file was checked again.` : "Already in RADiTrack. The file was checked again.");
+      } catch {
+        setMessage({ tone: "error", text: "Could not add the radiologists." });
+        finishProgress("error");
       }
-      const added = result.added ?? [];
-      runPreview(file, added.length ? `Added ${added.join(", ")} as radiologist(s). The file was checked again.` : "Already in RADiTrack. The file was checked again.");
     });
   };
 
@@ -104,30 +245,38 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
     if (mode === "test" && !window.confirm(
       `Back up all current exams and reports, then replace them with these ${preview.records.length} exams as test data? Restore the real data from the RIS Simulator page when you finish.`,
     )) return;
+    startProgress(95, "importing");
     startTransition(async () => {
-      const result = await commitExamImportAction(preview.records, mode, {
-        fileName: preview.fileName,
-        rowsInFile: preview.totalRows,
-        errorRows: preview.errors.length,
-      }, { applyAmendments });
-      setHistoryVersion((v) => v + 1);
-      if (!result.success) {
-        setMessage({ tone: "error", text: result.error ?? "Import failed. Nothing was saved." });
-        return;
+      try {
+        const result = await commitExamImportAction(preview.records, mode, {
+          fileName: preview.fileName,
+          rowsInFile: preview.totalRows,
+          errorRows: preview.errors.length,
+        }, { applyAmendments });
+        setHistoryVersion((v) => v + 1);
+        if (!result.success) {
+          setMessage({ tone: "error", text: result.error ?? "Import failed. Nothing was saved." });
+          finishProgress("error");
+          return;
+        }
+        finishProgress("complete");
+        const b = result.batch;
+        const done = mode === "test"
+          ? `Loaded ${result.count} exams as test data. Real data is backed up.`
+          : b
+            ? `Added ${b.inserted}, updated ${b.updated}, amended ${b.amended}, unchanged ${b.unchanged}, refused ${b.refused}.`
+            : `Imported ${result.count} exams.`;
+        const source = result.batch
+          ? ` File: ${result.batch.fileName} · ${fmt(result.batch.uploadedAt)} · by ${result.batch.uploadedBy}.`
+          : "";
+        setMessage({ tone: "ok", text: done + source });
+        setPreview(null);
+        notifyDatabaseChanged();
+        router.refresh();
+      } catch {
+        setMessage({ tone: "error", text: "Import operation encountered an unexpected error." });
+        finishProgress("error");
       }
-      const b = result.batch;
-      const done = mode === "test"
-        ? `Loaded ${result.count} exams as test data. Real data is backed up.`
-        : b
-          ? `Added ${b.inserted}, updated ${b.updated}, amended ${b.amended}, unchanged ${b.unchanged}, refused ${b.refused}.`
-          : `Imported ${result.count} exams.`;
-      const source = result.batch
-        ? ` File: ${result.batch.fileName} · ${fmt(result.batch.uploadedAt)} · by ${result.batch.uploadedBy}.`
-        : "";
-      setMessage({ tone: "ok", text: done + source });
-      setPreview(null);
-      notifyDatabaseChanged();
-      router.refresh();
     });
   };
 
@@ -149,12 +298,170 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="space-y-4 p-5">
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-border bg-background px-4 py-6 text-center hover:border-qc-blue/30">
-            <Upload className="h-5 w-5 text-qc-blue" />
-            <span className="text-sm font-extrabold text-qc-navy">{isPending ? "Reading file…" : "Choose a file"}</span>
-            <span className="text-[13px] text-muted-foreground">.xlsx or .csv, up to 5 MB</span>
-            <input type="file" accept=".xlsx,.csv" className="sr-only" onChange={handleFile} disabled={isPending} />
-          </label>
+          <div
+            role="button"
+            tabIndex={isPending ? -1 : 0}
+            aria-label="Upload exams file: drag and drop an Excel or CSV file here, or click to browse"
+            onClick={() => {
+              if (!isPending && !file) fileInputRef.current?.click();
+            }}
+            onKeyDown={(e) => {
+              if (!isPending && !file && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 text-center transition-all duration-200 ${
+              isDragging
+                ? "border-qc-blue bg-qc-blue/10 scale-[1.01] ring-4 ring-qc-blue/15"
+                : file
+                  ? "border-border bg-background"
+                  : "cursor-pointer border-border bg-background hover:border-qc-blue/40 hover:bg-qc-blue/[0.02]"
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.csv"
+              className="sr-only"
+              onChange={handleFile}
+              disabled={isPending}
+            />
+
+            {isDragging ? (
+              <div className="flex flex-col items-center gap-2 py-3 pointer-events-none">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-qc-blue text-white shadow-md animate-bounce">
+                  <FileUp className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-extrabold text-qc-blue">Drop file here to upload</p>
+                  <p className="text-xs text-muted-foreground">Release to process .xlsx or .csv</p>
+                </div>
+              </div>
+            ) : !file ? (
+              <div className="flex flex-col items-center gap-2 py-2">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-qc-blue/10 text-qc-blue">
+                  <Upload className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="text-sm font-extrabold text-qc-navy">Choose a file or drag and drop</span>
+                  <p className="text-xs text-muted-foreground">Excel workbook (.xlsx) or CSV (.csv), up to 1 MB</p>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full space-y-3 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-qc-blue/10 text-qc-blue">
+                      <FileSpreadsheet className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-extrabold text-qc-navy" title={file.name}>
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(file.size)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {progressStage === "reading" && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-qc-blue/10 px-2.5 py-1 text-xs font-bold text-qc-blue">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Reading ({Math.round(progress)}%)
+                      </span>
+                    )}
+                    {progressStage === "importing" && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-qc-blue/10 px-2.5 py-1 text-xs font-bold text-qc-blue">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Importing ({Math.round(progress)}%)
+                      </span>
+                    )}
+                    {progressStage === "ready" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Ready
+                      </span>
+                    )}
+                    {progressStage === "complete" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Done
+                      </span>
+                    )}
+                    {progressStage === "error" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Failed
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                      disabled={isPending}
+                      className="rounded-lg border border-border px-2.5 py-1 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-qc-navy disabled:opacity-50"
+                      title="Replace with another file"
+                    >
+                      Change
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearFile}
+                      disabled={isPending}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-red-700 disabled:opacity-50"
+                      title="Remove file"
+                      aria-label="Remove file"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="space-y-1.5" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full transition-all duration-300 ease-out ${
+                        progressStage === "error"
+                          ? "bg-red-600"
+                          : progressStage === "complete"
+                            ? "bg-emerald-600"
+                            : "bg-qc-blue"
+                      }`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>
+                      {progressStage === "reading" && "Reading and validating examinations…"}
+                      {progressStage === "ready" && `${preview?.records.length ?? 0} examinations verified · Ready to import`}
+                      {progressStage === "importing" && "Importing examinations into database…"}
+                      {progressStage === "complete" && "Import completed successfully"}
+                      {progressStage === "error" && "Validation or import error"}
+                      {progressStage === "idle" && "Ready"}
+                    </span>
+                    <span className="font-mono font-bold">
+                      {Math.round(progress)}%
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-center text-[11px] text-muted-foreground">
+                  Drag &amp; drop another file here or click &ldquo;Change&rdquo; to replace
+                </p>
+              </div>
+            )}
+          </div>
 
           {preview && (
             <>
@@ -294,8 +601,18 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
             disabled={!canImport || isPending}
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-qc-navy px-5 text-xs font-extrabold text-white shadow-sm hover:bg-qc-blue disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Upload className="h-3.5 w-3.5 text-qc-yellow" />
-            {!preview ? "Import" : mode === "test" ? `Load ${preview.records.length} exams as test data` : "Import"}
+            {isPending && progressStage === "importing" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-qc-yellow" />
+            ) : (
+              <Upload className="h-3.5 w-3.5 text-qc-yellow" />
+            )}
+            {isPending && progressStage === "importing"
+              ? "Importing…"
+              : !preview
+                ? "Import"
+                : mode === "test"
+                  ? `Load ${preview.records.length} exams as test data`
+                  : "Import"}
           </button>
         </div>
       </div>
