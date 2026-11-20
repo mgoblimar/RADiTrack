@@ -34,7 +34,7 @@ const COLORS = [
 
 const renderOutsideLabel = (props: PieLabelRenderProps) => {
   const { value, name } = props;
-  if (value === 0) return null;
+  if (!value || value === 0) return null;
 
   const cx = Number(props.cx);
   const cy = Number(props.cy);
@@ -63,6 +63,24 @@ const renderOutsideLabel = (props: PieLabelRenderProps) => {
         {" "}{value}
       </tspan>
     </text>
+  );
+};
+
+/* Custom Pointer Line Renderer: Hides line when value is 0 */
+const renderLabelLine = (props: any) => {
+  const { value, points } = props;
+  if (!value || value === 0 || !points || points.length < 2) {
+    return <g />;
+  }
+
+  return (
+    <polyline
+      fill="none"
+      stroke="#5267C7"
+      strokeWidth={1.5}
+      strokeDasharray="2 2"
+      points={points.map((p: { x: number; y: number }) => `${p.x},${p.y}`).join(" ")}
+    />
   );
 };
 
@@ -119,11 +137,7 @@ export default function ModalityPieChart({
                   strokeWidth={activeSlicesCount > 1 ? 3 : 0}
                   dataKey="value"
                   label={renderOutsideLabel}
-                  labelLine={{
-                    stroke: "#5267C7",
-                    strokeWidth: 1.5,
-                    strokeDasharray: "2 2",
-                  }}
+                  labelLine={renderLabelLine}
                   isAnimationActive={false}
                 >
                   {chartData.map((_, index) => (
@@ -159,7 +173,6 @@ export default function ModalityPieChart({
           </div>
         )}
       </div>
-
     </div>
   );
 }

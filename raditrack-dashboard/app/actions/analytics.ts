@@ -11,6 +11,7 @@ import {
 } from "@/lib/enums";
 import { calculatedMedian } from "./utils";
 import { sevenDayFilterKey } from "@/lib/seven-day-filter";
+import { manilaNow } from "@/lib/app-time-zone";
 
 // ============================================================================
 // 5. QUERY: 7-Day Retrospective Staff & Management Analytics (Proposal Page 6)
@@ -298,6 +299,10 @@ export interface MonthTrendData {
   previousMonthAvgTatHours?: number;
   previousMonthTotalFinalized?: number;
   byModality?: Record<string, MonthModalityTrend>;
+  /** True if this month is the currently running (in-progress) month. */
+  isCurrentRunningMonth?: boolean;
+  /** Manila date the running month's figures run to, e.g. "Nov 20, 2026". */
+  asOfDate?: string;
   // Flattened per-modality fields, e.g. CT_avgTatHours, prior_CT_totalFinalized
   [key: `${string}_avgTatHours`]: number;
   [key: `${string}_totalFinalized`]: number;
@@ -374,7 +379,7 @@ export async function getTwelveMonthTatTrend(
   anchorDate?: string,
 ): Promise<TwelveMonthTrendResult> {
   await requireUser();
-  const now = parseAnchorDate(anchorDate) ?? new Date();
+  const now = parseAnchorDate(anchorDate) ?? manilaNow();
   const isRolling = period === "rolling";
   const targetYear = !isRolling && !isNaN(Number(period)) ? Number(period) : now.getFullYear();
 
@@ -592,6 +597,11 @@ export async function getTwelveMonthTatTrend(
       flatModalityProps[`prevMonth_${mCode}_totalFinalized`] = prevModReports.length;
     }
 
+    const isCurrentRunningMonth = now >= cfg.start && now <= cfg.end;
+    const asOfDate = isCurrentRunningMonth
+      ? now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : undefined;
+
     return {
       monthIndex: cfg.monthIndex,
       monthLabel: cfg.monthLabel,
@@ -607,6 +617,8 @@ export async function getTwelveMonthTatTrend(
       previousMonthAvgTatHours: prevAvgHours,
       previousMonthTotalFinalized: prevReports.length,
       byModality,
+      isCurrentRunningMonth,
+      asOfDate,
       ...flatModalityProps,
     };
   });
