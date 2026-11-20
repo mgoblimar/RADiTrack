@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
   FileSpreadsheet,
   FileUp,
   History,
@@ -33,9 +34,12 @@ import {
 import type { PlanRow } from "@/lib/import-plan";
 import { MODALITY_CONFIG, TRIAGE_CONFIG, type ModalityCode, type TriageLevel } from "@/lib/enums";
 import { notifyDatabaseChanged } from "@/lib/broadcast";
+import { csvLine } from "@/lib/csv";
+import { HEADER_ROW_RULE, MAX_IMPORT_FILE_BYTES, MAX_IMPORT_FILE_LABEL } from "@/lib/import-limits";
 
 const TEMPLATE_URL = "/test-data/raditrack-test-dataset.xlsx";
 const PREVIEW_ROWS = 6;
+const LISTED_PROBLEMS = 50;
 
 const fmt = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-PH", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Pending";
@@ -122,9 +126,16 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
   /** Reads `chosen` and shows what importing it would do. Re-run after adding radiologists. */
   const runPreview = (chosen: File, note?: string) => {
-    setMessage(note ? { tone: "ok", text: note } : null);
     setPreview(null);
     setApplyAmendments(false);
+    // Checked here so an oversized file never reaches the server (its 1 MB limit gives an error page).
+    if (chosen.size > MAX_IMPORT_FILE_BYTES) {
+      setMessage({ tone: "error", text: `${chosen.name} is ${formatFileSize(chosen.size)}; the limit is ${MAX_IMPORT_FILE_LABEL}. Split it into smaller files and upload them one at a time.` });
+      setProgress(100);
+      setProgressStage("error");
+      return;
+    }
+    setMessage(note ? { tone: "ok", text: note } : null);
     startProgress(90, "reading");
     const formData = new FormData();
     formData.append("file", chosen);
@@ -239,6 +250,15 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     ? (preview?.records.length ?? 0) > 0
     : !!counts && counts.insert + counts.update + counts.amend + counts.refused > 0;
   const canImport = !!preview && blocking.length === 0 && hasWork;
+  const hasProblems = blocking.length > 0;
+  // UPL-30: only say "Ready to import" when the Import button will actually work.
+  const readyText = !preview
+    ? "Ready"
+    : hasProblems
+      ? `${blocking.length} row${blocking.length === 1 ? "" : "s"} need fixing · Nothing can be imported until the file is fixed`
+      : !hasWork
+        ? `${preview.records.length} examinations checked · No changes to import`
+        : `${preview.records.length} examinations verified · Ready to import`;
 
   const handleImport = () => {
     if (!preview) return;
@@ -349,7 +369,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                 </div>
                 <div>
                   <span className="text-sm font-extrabold text-qc-navy">Choose a file or drag and drop</span>
-                  <p className="text-xs text-muted-foreground">Excel workbook (.xlsx) or CSV (.csv), up to 1 MB</p>
+                  <p className="text-xs text-muted-foreground">Excel workbook (.xlsx) or CSV (.csv), up to {MAX_IMPORT_FILE_LABEL}</p>
                 </div>
               </div>
             ) : (
@@ -382,7 +402,13 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                         Importing ({Math.round(progress)}%)
                       </span>
                     )}
-                    {progressStage === "ready" && (
+                    {progressStage === "ready" && hasProblems && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Needs fixing
+                      </span>
+                    )}
+                    {progressStage === "ready" && !hasProblems && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Ready
@@ -444,7 +470,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>
                       {progressStage === "reading" && "Reading and validating examinations…"}
-                      {progressStage === "ready" && `${preview?.records.length ?? 0} examinations verified · Ready to import`}
+                      {progressStage === "ready" && readyText}
                       {progressStage === "importing" && "Importing examinations into database…"}
                       {progressStage === "complete" && "Import completed successfully"}
                       {progressStage === "error" && "Validation or import error"}
@@ -462,6 +488,11 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               </div>
             )}
           </div>
+
+          <p className="flex items-start gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs text-slate-600">
+            <FileSpreadsheet className="mt-0.5 h-3.5 w-3.5 shrink-0 text-qc-blue" />
+            <span><span className="font-extrabold text-qc-navy">File layout:</span> {HEADER_ROW_RULE} Blank rows below the headers are skipped.</span>
+          </p>
 
           {preview && (
             <>
@@ -503,7 +534,10 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
               {mode === "append" && counts && counts.refused > 0 && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
-                  <p className="mb-1 flex items-center gap-1.5 font-extrabold"><AlertTriangle className="h-3.5 w-3.5" /> Not applied (the rest of the file still imports; these are logged):</p>
+                  <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                    <p className="flex items-center gap-1.5 font-extrabold"><AlertTriangle className="h-3.5 w-3.5" /> Not applied (the rest of the file still imports; these are logged):</p>
+                    {blocking.length === 0 && <RejectedRowsDownload preview={preview} />}
+                  </div>
                   <PlanChanges rows={preview.plan.rows.filter((r) => r.kind === "refused")} names={preview.radiologists.names} />
                 </div>
               )}
@@ -549,11 +583,17 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               )}
 
               {blocking.length > 0 && (
-                <div className="max-h-36 overflow-y-auto rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
-                  <p className="mb-1 flex items-center gap-1.5 font-extrabold"><AlertTriangle className="h-3.5 w-3.5" /> Fix these rows and upload again:</p>
-                  <ul className="space-y-0.5">
-                    {blocking.slice(0, 50).map((e) => <li key={`${e.rowNumber}-${e.message}`}>Row {e.rowNumber}: {e.message}</li>)}
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+                  <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                    <p className="flex items-center gap-1.5 font-extrabold"><AlertTriangle className="h-3.5 w-3.5" /> Fix these rows and upload again:</p>
+                    <RejectedRowsDownload preview={preview} />
+                  </div>
+                  <ul className="max-h-36 space-y-0.5 overflow-y-auto">
+                    {blocking.slice(0, LISTED_PROBLEMS).map((e) => <li key={`${e.rowNumber}-${e.message}`}>Row {e.rowNumber}{e.accession ? ` (${e.accession})` : ""}: {e.message}</li>)}
                   </ul>
+                  {blocking.length > LISTED_PROBLEMS && (
+                    <p className="mt-1 font-bold">…and {blocking.length - LISTED_PROBLEMS} more. Download the list to see every row.</p>
+                  )}
                 </div>
               )}
 
@@ -617,6 +657,43 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * UPL-31: the rows that will not be imported, as a CSV the admin can fix and keep.
+ * Built in the browser from the preview, so nothing extra is sent to the server.
+ */
+function rejectedRowsCsv(preview: ImportPreview): string {
+  const problems = preview.errors.map((e) => [e.rowNumber || "", e.accession ?? "", "Problem in file", e.message]);
+  const refused = preview.plan.rows
+    .filter((r) => r.kind === "refused")
+    .map((r) => [r.rowNumber, r.accession, "Not applied", r.reason ?? "Refused"]);
+  const rows = [...problems, ...refused].sort((a, b) => Number(a[0] || 0) - Number(b[0] || 0));
+  return [csvLine(["Row", "Accession", "Type", "Reason"]), ...rows.map(csvLine)].join("\r\n");
+}
+
+function RejectedRowsDownload({ preview }: { preview: ImportPreview }) {
+  const download = () => {
+    // The BOM makes Excel read the file as UTF-8.
+    const blob = new Blob(["\uFEFF" + rejectedRowsCsv(preview)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${preview.fileName.replace(/\.(xlsx|csv)$/i, "")}-rejected-rows.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <button
+      type="button"
+      onClick={download}
+      className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-red-300 bg-white px-2.5 font-bold text-red-900 hover:bg-red-100"
+    >
+      <Download className="h-3.5 w-3.5" /> Download rejected rows (CSV)
+    </button>
   );
 }
 
