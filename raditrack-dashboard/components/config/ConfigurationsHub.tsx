@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Pencil,
   UsersRound,
+  History,
   Plus,
   X,
   Save,
@@ -21,6 +22,7 @@ import {
   Cpu,
 } from "lucide-react";
 import { AccountsPanel } from "@/components/config/AccountsPanel";
+import { AuditLogPanel } from "@/components/config/audit-log/AuditLogPanel";
 
 import {
   ConfigurationsData,
@@ -441,6 +443,7 @@ type ConfigTab =
   | "slas"
   | "rooms"
   | "accounts"
+  | "audit"
   | "radiologists";
 
 export function ConfigurationsHub({
@@ -629,6 +632,21 @@ export function ConfigurationsHub({
               >
                 <UsersRound className="h-4 w-4" />
                 Accounts
+              </button>
+            )}
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("audit")}
+                className={`${tabButtonBase} ${
+                  activeTab === "audit"
+                    ? "bg-qc-yellow text-qc-navy shadow-sm"
+                    : "text-slate-500 hover:bg-white/70 hover:text-qc-navy"
+                }`}
+              >
+                <History className="h-4 w-4" />
+                Audit log
               </button>
             )}
 
@@ -1179,6 +1197,8 @@ export function ConfigurationsHub({
       {isAdmin && activeTab === "accounts" && (
         <AccountsPanel currentUserId={currentUserId} />
       )}
+
+      {isAdmin && activeTab === "audit" && <AuditLogPanel />}
 
       {/* =========================================================
           TAB 3 — RADIOLOGISTS
