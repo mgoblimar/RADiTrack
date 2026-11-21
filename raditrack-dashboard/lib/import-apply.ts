@@ -19,6 +19,7 @@ export interface StoredExam extends ExistingExam {
     tatExamToSignMinutes: number | null;
     isSlaBreached: boolean;
     radiologistId: string | null;
+    reportStatus: string;
   } | null;
 }
 
@@ -39,7 +40,7 @@ export async function loadExistingExams(db: Tx, accessions: readonly string[]): 
     select: {
       examId: true, examinationIdentifier: true, modalityCode: true, triageLevel: true, statusCode: true,
       studyDate: true, examCompletedAt: true, notes: true,
-      report: { select: { reportSignedAt: true, lastAmendedAt: true, tatExamToSignMinutes: true, isSlaBreached: true, radiologistId: true } },
+      report: { select: { reportSignedAt: true, lastAmendedAt: true, tatExamToSignMinutes: true, isSlaBreached: true, radiologistId: true, reportStatus: true } },
     },
   });
   return new Map(exams.map((e) => [e.examinationIdentifier, e]));
@@ -86,7 +87,8 @@ export async function applyUpdate(
       radiologistId: record.radiologistId ?? exam.report?.radiologistId ?? null,
     };
     await tx.radiologyReport.upsert({ where: { examId: exam.examId }, update: report, create: { examId: exam.examId, ...report } });
-    reportChanges = diffFields(exam.report, report, ["tatExamToSignMinutes", "isSlaBreached"]);
+    // reportStatus is recorded too: "null before" tells an undo that this sign-off created the report row.
+    reportChanges = diffFields(exam.report, report, ["tatExamToSignMinutes", "isSlaBreached", "reportStatus"]);
   }
   return { examId: exam.examId, accession: exam.examinationIdentifier, action: "IMPORT_UPDATE", changes: { ...row.changes, ...reportChanges } };
 }
