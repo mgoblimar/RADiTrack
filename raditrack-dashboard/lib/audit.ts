@@ -22,9 +22,14 @@ export type AuditAction =
   | "AMEND_SKIPPED"
   | "REFUSED_SIGNED_OFF"
   | "REFUSED_CANCELLED"
-  | "RADIOLOGIST_ADDED";
+  | "RADIOLOGIST_ADDED"
+  | "ROLLBACK_REMOVE"
+  | "ROLLBACK_RESTORE";
 
-export type AuditSource = "MANUAL" | "IMPORT" | "SIMULATOR" | "RIS_SYNC";
+export type AuditSource = "MANUAL" | "IMPORT" | "SIMULATOR" | "RIS_SYNC" | "ROLLBACK";
+
+/** Status of an upload. ROLLED_BACK = undone later from the Audit log tab. */
+export type ImportBatchStatus = "SUCCESS" | "FAILED" | "ROLLED_BACK";
 
 import { diffFields, type FieldChanges } from "@/lib/field-changes";
 

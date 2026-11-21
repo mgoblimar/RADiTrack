@@ -36,6 +36,7 @@ import { MODALITY_CONFIG, TRIAGE_CONFIG, type ModalityCode, type TriageLevel } f
 import { notifyDatabaseChanged } from "@/lib/broadcast";
 import { csvLine } from "@/lib/csv";
 import { HEADER_ROW_RULE, MAX_IMPORT_FILE_BYTES, MAX_IMPORT_FILE_LABEL } from "@/lib/import-limits";
+import { describeChanges, UPLOAD_STATUS_LABELS, uploadChangesSummary, uploadStatusTone } from "@/lib/audit-display";
 
 const TEMPLATE_URL = "/test-data/raditrack-test-dataset.xlsx";
 const PREVIEW_ROWS = 6;
@@ -255,7 +256,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const readyText = !preview
     ? "Ready"
     : hasProblems
-      ? `${blocking.length} row${blocking.length === 1 ? "" : "s"} need fixing · Nothing can be imported until the file is fixed`
+      ? `${blocking.length === 1 ? "1 row needs" : `${blocking.length} rows need`} fixing · Nothing can be imported until it is fixed`
       : !hasWork
         ? `${preview.records.length} examinations checked · No changes to import`
         : `${preview.records.length} examinations verified · Ready to import`;
@@ -301,8 +302,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-start justify-center overflow-y-auto bg-qc-navy/40 p-4 sm:items-center" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="import-title" className="w-full max-w-3xl overflow-hidden rounded-3xl border border-border bg-card shadow-[0_30px_80px_rgba(5,14,64,0.25)]">
+    <div className="fixed inset-0 z-[10000] flex justify-center overflow-y-auto bg-qc-navy/40 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="import-title" className="my-auto w-full max-w-3xl shrink-0 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_30px_80px_rgba(5,14,64,0.25)]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow"><FileUp className="h-5 w-5" /></div>
@@ -759,10 +760,10 @@ function UploadHistory({ version }: { version: number }) {
                   <td className="px-2.5 py-1.5">{b.uploadedBy}</td>
                   <td className="px-2.5 py-1.5">{b.mode === "test" ? "Test data" : "Add or update"}{b.testMode && b.mode !== "test" ? " (test mode)" : ""}</td>
                   <td className="px-2.5 py-1.5">{b.rowsInFile}</td>
-                  <td className="px-2.5 py-1.5">{batchChanges(b)}</td>
-                  <td className={`px-2.5 py-1.5 font-bold ${b.status === "SUCCESS" ? "text-emerald-700" : "text-red-700"}`} title={b.message ?? undefined}>
-                    {b.status === "SUCCESS" ? "Success" : "Failed"}
-                    {b.status !== "SUCCESS" && b.message && <span className="block font-normal text-red-900">{b.message}</span>}
+                  <td className="px-2.5 py-1.5">{uploadChangesSummary(b)}</td>
+                  <td className={`px-2.5 py-1.5 font-bold ${UPLOAD_TONE_CLASS[uploadStatusTone(b.status)]}`} title={b.message ?? undefined}>
+                    {UPLOAD_STATUS_LABELS[b.status] ?? b.status}
+                    {b.status !== "SUCCESS" && b.message && <span className="block font-normal opacity-90">{b.message}</span>}
                   </td>
                 </tr>
               ))}
@@ -774,33 +775,7 @@ function UploadHistory({ version }: { version: number }) {
   );
 }
 
-const FIELD_LABELS: Record<string, string> = {
-  modalityCode: "Modality",
-  triageLevel: "Category",
-  statusCode: "Status",
-  studyDate: "Study",
-  examCompletedAt: "Completed",
-  reportSignedAt: "Signed",
-  notes: "Notes",
-  radiologistId: "Radiologist",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  ARRIVED: "Arrived",
-  IN_PROGRESS: "In progress",
-  EXAM_COMPLETED: "Waiting for report",
-  PENDING_INTERPRETATION: "Waiting for report",
-  COMPLETED_SIGNED_OFF: "Signed off",
-  CANCELLED: "Cancelled",
-};
-
-const showValue = (field: string, value: string | number | boolean | null, names: Record<string, string> = {}) => {
-  if (value === null || value === "") return "—";
-  if (field === "radiologistId") return names[String(value)] ?? "Unknown radiologist";
-  if (field === "statusCode") return STATUS_LABELS[String(value)] ?? String(value);
-  if (["studyDate", "examCompletedAt", "reportSignedAt"].includes(field)) return fmt(String(value));
-  return String(value);
-};
+const UPLOAD_TONE_CLASS = { ok: "text-emerald-700", error: "text-red-700", undone: "text-slate-500" } as const;
 
 /** Rows of the re-upload plan with what would change, as "field: now → in file". */
 function PlanChanges({ rows, names }: { rows: PlanRow[]; names: Record<string, string> }) {
@@ -813,23 +788,10 @@ function PlanChanges({ rows, names }: { rows: PlanRow[]; names: Record<string, s
           {row.signedDaysAgo !== undefined && !row.reason && <span> · signed off {row.signedDaysAgo} day(s) ago</span>}
           {row.reason && <span> · {row.reason}</span>}
           <span className="block text-[12px] opacity-90">
-            {Object.entries(row.changes)
-              .map(([field, [from, to]]) => `${FIELD_LABELS[field] ?? field}: ${showValue(field, from, names)} → ${showValue(field, to, names)}`)
-              .join(" · ")}
+            {describeChanges(row.changes, names)}
           </span>
         </li>
       ))}
     </ul>
   );
-}
-
-function batchChanges(b: ImportBatchSummary): string {
-  if (b.mode === "test") return `${b.inserted} loaded`;
-  const parts = [
-    b.inserted && `${b.inserted} new`,
-    b.updated && `${b.updated} updated`,
-    b.amended && `${b.amended} amended`,
-    b.refused && `${b.refused} refused`,
-  ].filter(Boolean);
-  return parts.length ? parts.join(" · ") : b.status === "SUCCESS" ? "no changes" : "—";
 }
