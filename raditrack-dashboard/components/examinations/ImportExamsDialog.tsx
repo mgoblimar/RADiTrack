@@ -256,7 +256,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const readyText = !preview
     ? "Ready"
     : hasProblems
-      ? `${blocking.length} row${blocking.length === 1 ? "" : "s"} need fixing · Nothing can be imported until the file is fixed`
+      ? `${blocking.length === 1 ? "1 row needs" : `${blocking.length} rows need`} fixing · Nothing can be imported until it is fixed`
       : !hasWork
         ? `${preview.records.length} examinations checked · No changes to import`
         : `${preview.records.length} examinations verified · Ready to import`;
@@ -302,8 +302,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-start justify-center overflow-y-auto bg-qc-navy/40 p-4 sm:items-center" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="import-title" className="w-full max-w-3xl overflow-hidden rounded-3xl border border-border bg-card shadow-[0_30px_80px_rgba(5,14,64,0.25)]">
+    <div className="fixed inset-0 z-[10000] flex justify-center overflow-y-auto bg-qc-navy/40 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="import-title" className="my-auto w-full max-w-3xl shrink-0 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_30px_80px_rgba(5,14,64,0.25)]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-qc-navy text-qc-yellow"><FileUp className="h-5 w-5" /></div>

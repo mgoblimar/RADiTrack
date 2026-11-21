@@ -40,8 +40,8 @@ export function UndoUploadDialog({
 
   const accessions = preview.ok ? preview.accessions : preview.blockedBy;
   return createPortal(
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-qc-navy/40 p-4" onMouseDown={(e) => e.target === e.currentTarget && !isWorking && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="undo-title" className="w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-card shadow-[0_30px_80px_rgba(5,14,64,0.25)]">
+    <div className="fixed inset-0 z-[10000] flex justify-center overflow-y-auto bg-qc-navy/40 p-4" onMouseDown={(e) => e.target === e.currentTarget && !isWorking && onClose()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="undo-title" className="my-auto w-full max-w-lg shrink-0 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_30px_80px_rgba(5,14,64,0.25)]">
         <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
           <div className="flex items-center gap-3">
             <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${preview.ok ? "bg-violet-100 text-violet-700" : "bg-red-50 text-red-700"}`}>
