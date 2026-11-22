@@ -1,4 +1,4 @@
-@startuml raditrack_activity_exam_lifecycle
+@startuml raditrack_activity_examination_lifecycle
 !theme plain
 skinparam shadowing false
 skinparam roundcorner 8
@@ -8,18 +8,15 @@ skinparam ActivityBorderColor #334155
 
 title RADiTrack — Activity Diagram: Examination Lifecycle & TAT Calculation
 
-' ==============================================================================
-' SWIMLANES
-' ==============================================================================
-
 |Radiologic Technologist|
 start
 :Complete the imaging examination;
 :Log the completed exam\n(accession no., modality, patient category);
 note right
-  From the RIS (via the sync agent),
-  Import exams, or RIS Simulator →
-  Log Completed Scan
+  Prototype: an Administrator logs it through
+  Import exams or RIS Simulator → Log Completed Scan.
+  Planned: from the RIS via the sync agent
+  (after the hospital approves RIS access).
 end note
 
 |RADiTrack|
@@ -30,6 +27,7 @@ if (Valid?) then (no)
 else (yes)
 endif
 :Save exam with status "Exam completed"\nand completion time **T1**;
+:Record "Created" in the audit trail;
 :Add exam to the reading backlog;
 fork
   :Refresh dashboard KPIs\n(backlog count, scans);
@@ -38,8 +36,7 @@ fork again
 end fork
 
 |Radiologist|
-:Open Examinations → Backlog;
-:Review exams with waiting time;
+:Open Examinations → Backlog\n(optionally filter by waiting time:\n< 1 day … 30 days or more);
 if (Waiting time > SLA target?) then (yes)
   |RADiTrack|
   :Flag exam as\n"Past SLA, still unsigned";
@@ -49,6 +46,11 @@ endif
 :Interpret images and\nsign off the report;
 
 |RADiTrack|
+if (Already signed off?) then (yes)
+  :Refuse ("already signed off")\nand record the refused attempt;
+  stop
+else (no)
+endif
 :Record sign-off time **T2**;
 :Calculate **TAT = T2 − T1**;
 :Look up SLA target for the exam's\nmodality + patient category;
@@ -57,7 +59,7 @@ if (TAT > SLA target?) then (yes)
 else (no)
   :Mark report as\n**within SLA** (met target);
 endif
-:Set status "Completed / signed off"\nand remove from backlog;
+:Set status "Completed / signed off",\nremove from backlog and record\n"Signed off" in the audit trail;
 fork
   :Update dashboard KPIs, charts\nand 7-day / 12-month views;
 fork again
@@ -65,6 +67,13 @@ fork again
 fork again
   :Notify other open RADiTrack tabs;
 end fork
+
+note right
+  From here the exam is **locked**: editing, cancelling,
+  deleting or signing off again is refused. It changes only
+  through an import within the amendment window that the
+  administrator confirms; TAT stays on the first sign-off.
+end note
 stop
 
 @enduml

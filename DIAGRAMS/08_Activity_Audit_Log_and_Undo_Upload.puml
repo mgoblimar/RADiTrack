@@ -1,0 +1,65 @@
+@startuml raditrack_activity_audit_log_and_undo_upload
+!theme plain
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ActivityBackgroundColor #F8FAFC
+skinparam ActivityBorderColor #334155
+
+title RADiTrack — Activity Diagram: Reviewing the Audit Log and Undoing an Upload
+
+|Administrator|
+start
+:Open Configuration → **Audit log**;
+
+if (View?) then (Exam changes)
+  repeat
+    :Filter by accession, action, source,\nuser, date range or real / test data;
+    :Read the changes, newest first (50 per page):\ntime, user, accession, what happened,\nsource / file, before → after values;
+  repeat while (Look at another exam or filter?) is (yes)
+  ->no;
+  stop
+else (Uploads)
+endif
+
+|RADiTrack|
+:List every upload with file, user, time,\nrows, changes and result;
+:Offer **Undo upload** where the quick checks pass\n(successful "Add or update" upload,\nwithin the amendment window,\nsame data loaded, not undone yet);
+
+|Administrator|
+if (Undo an upload?) then (no)
+  :Review the uploads\n(**View changes** shows what each did);
+  stop
+else (yes)
+endif
+:Press **Undo upload**;
+
+|RADiTrack|
+:Check the upload in full: was any of its exams\nchanged or deleted afterwards (a later audit entry,\nor values no longer the ones it wrote)?;
+if (Can it be undone?) then (no)
+  :Show the reason and the exams\nchanged since; nothing is changed;
+  |Administrator|
+  stop
+else (yes)
+endif
+:Show what will happen\n(exams to remove, exams to restore);
+
+|Administrator|
+if (Confirm?) then (no)
+  stop
+else (yes)
+endif
+
+|RADiTrack|
+:Lock imports and the upload's exam rows;
+:Check again (nothing may have\nchanged in between);
+:In one transaction:\nremove the exams the upload added;\nput back the values it changed or amended\n(including removing sign-offs it added);
+:Record each exam in the audit trail\n("Removed by undo" / "Restored by undo");
+:Mark the upload as **Undone**\n(by whom and when);
+:Refresh dashboard and other open tabs;
+
+|Administrator|
+:See "Upload undone: N removed, N restored";
+stop
+
+@enduml

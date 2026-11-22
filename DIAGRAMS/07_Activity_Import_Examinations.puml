@@ -1,0 +1,81 @@
+@startuml raditrack_activity_import_examinations
+!theme plain
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ActivityBackgroundColor #F8FAFC
+skinparam ActivityBorderColor #334155
+
+title RADiTrack — Activity Diagram: Importing Examinations (.xlsx / .csv)
+
+|Administrator|
+start
+:Open Examinations → **Import exams**;
+:Drag and drop or choose an .xlsx\n(sheet "Exams") or .csv file;
+
+|RADiTrack|
+if (File type .xlsx / .csv and ≤ 1 MB?) then (no)
+  :Show the problem in the dialog;
+  stop
+else (yes)
+endif
+if (Row 1 is the column headers\n(Accession, Modality, Patient_Category)?) then (no)
+  :Show "Row 1 must be the column headers";
+  stop
+else (yes)
+endif
+:Validate every row\n(accession, modality, category, dates and numbers,\nExcel errors, times in order, not in the future,\nno duplicate accession in the file, ≤ 5,000 rows);
+:Match radiologist names\n(capitals and spacing ignored);
+:Compare each row with the stored exam\n(by accession number);
+:Plan each row: **new**, **update** (not signed off),\n**unchanged**, **amendment** (signed off within\nthe amendment window) or **refused**;
+:Show preview: counts, rows to fix,\nunknown radiologists, changes per exam;
+
+|Administrator|
+if (Unknown radiologist listed?) then (yes)
+  :Add as new radiologist\n(or fix the spelling in the file);
+  |RADiTrack|
+  :Check the file again;
+  |Administrator|
+else (no)
+endif
+if (Rows with problems?) then (yes)
+  :Download rejected rows (CSV),\nfix the file and upload again;
+  stop
+else (no)
+endif
+:Choose how to import;
+
+if (Mode?) then (Add or update)
+  if (Amendments listed?) then (yes)
+    :Tick "Apply amendments"\nor leave them to be skipped;
+  else (no)
+  endif
+  :Press **Import**;
+  |RADiTrack|
+  :In one transaction (imports run one at a time):\nadd new exams, update unsigned exams,\napply confirmed amendments (TAT stays on\nthe first sign-off), skip unchanged rows;
+  :Log refused rows and skipped amendments\nwith their reason;
+else (Load as test data)
+  |Administrator|
+  :Confirm replacing all exams;
+  |RADiTrack|
+  if (Real data already backed up?) then (no)
+    :Back up real exams and reports;
+  else (yes)
+  endif
+  :In one transaction: clear exams and\ninsert the file's exams;
+endif
+:Calculate TAT and SLA breach for\nsigned reports (current SLA targets);
+:Record the upload in the upload log\nand every exam change in the audit trail;
+:Refresh dashboard and other open tabs;
+
+|Administrator|
+:See "Added N, updated N, amended N,\nunchanged N, refused N" with file, time and user;
+stop
+
+note right
+  An upload can later be undone from
+  Configuration → Audit log → Uploads
+  (see the Audit Log and Undo Upload diagram).
+end note
+
+@enduml

@@ -1,0 +1,221 @@
+@startuml raditrack_entity_relationship
+' ============================================================================
+' RADiTrack — Entity-Relationship Diagram (v0.2.2)
+' Matches raditrack-dashboard/prisma/schema.prisma (PostgreSQL on Supabase).
+' Column types are the PostgreSQL types Prisma creates.
+' No patient-identifiable data: an examination is identified only by its accession number.
+' radiologists.license_number still exists in the database but is unused, so it is left out.
+' ============================================================================
+
+!theme plain
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam entity {
+    BackgroundColor #F8FAFC
+    BorderColor #334155
+    FontName "Segoe UI", "Helvetica", sans-serif
+    FontSize 12
+    HeaderBackgroundColor #0EA5E9
+    HeaderFontColor #FFFFFF
+    HeaderFontSize 13
+}
+
+title RADiTrack — Entity-Relationship Diagram
+
+' ---------------------------------------------------------------------------
+' Reference data
+' ---------------------------------------------------------------------------
+
+entity "modalities" as modalities {
+    * modality_code : TEXT <<PK>>
+    --
+    * modality_name : TEXT
+    department_room : TEXT
+    * is_active : BOOLEAN = true
+}
+
+entity "examination_statuses" as statuses {
+    * status_code : TEXT <<PK>>
+    --
+    * status_name : TEXT
+    * stage_category : TEXT
+    * sequence_order : INT = 1
+}
+
+entity "sla_configurations" as sla {
+    * sla_id : UUID <<PK>>
+    --
+    * modality_code : TEXT <<FK>>
+    * triage_level : TEXT = 'OPD'
+    * urgency_level : TEXT = 'ROUTINE'
+    * target_tat_minutes : INT
+    * created_at : TIMESTAMP = now()
+    --
+    <<UK(modality_code, triage_level, urgency_level)>>
+}
+
+entity "radiologists" as radiologists {
+    * radiologist_id : UUID <<PK>>
+    --
+    * full_name : TEXT
+    subspecialty : TEXT
+    * is_active : BOOLEAN = true
+    * created_at : TIMESTAMP = now()
+}
+
+' ---------------------------------------------------------------------------
+' Examinations and reports
+' ---------------------------------------------------------------------------
+
+entity "examinations" as examinations {
+    * exam_id : UUID <<PK>>
+    --
+    * examination_identifier : TEXT <<UK>>
+    * modality_code : TEXT <<FK>>
+    * status_code : TEXT <<FK>>
+    * triage_level : TEXT = 'OPD'
+    * study_date : TIMESTAMP
+    exam_completed_at : TIMESTAMP
+    notes : TEXT
+    * created_at : TIMESTAMP = now()
+    * updated_at : TIMESTAMP
+}
+
+entity "radiology_reports" as reports {
+    * report_id : UUID <<PK>>
+    --
+    * exam_id : UUID <<FK, UK>>
+    radiologist_id : UUID <<FK>>
+    report_started_at : TIMESTAMP
+    report_signed_at : TIMESTAMP
+    * report_status : TEXT = 'FINALIZED'
+    tat_exam_to_sign_minutes : DOUBLE PRECISION
+    * is_sla_breached : BOOLEAN = false
+    last_amended_at : TIMESTAMP
+    * created_at : TIMESTAMP = now()
+    * updated_at : TIMESTAMP
+}
+
+' ---------------------------------------------------------------------------
+' Accounts, settings and logs
+' ---------------------------------------------------------------------------
+
+entity "user_accounts" as users {
+    * user_id : UUID <<PK>>
+    --
+    * username : TEXT <<UK>>
+    * full_name : TEXT
+    * role : TEXT = 'RADIOLOGIST'
+    * password_hash : TEXT
+    * assigned_modalities : TEXT[] = {}
+    * must_change_password : BOOLEAN = true
+    * is_active : BOOLEAN = true
+    * session_version : INT = 0
+    * failed_login_count : INT = 0
+    locked_until : TIMESTAMP
+    last_login_at : TIMESTAMP
+    * created_at : TIMESTAMP = now()
+    * updated_at : TIMESTAMP
+}
+
+entity "app_settings" as settings {
+    * key : TEXT <<PK>>
+    --
+    * value : TEXT
+    * updated_at : TIMESTAMP = now()
+    updated_by : TEXT
+}
+
+entity "import_batches" as batches {
+    * batch_id : UUID <<PK>>
+    --
+    * file_name : TEXT
+    * mode : TEXT
+    * uploaded_by_user_id : TEXT
+    * uploaded_by_username : TEXT
+    * uploaded_at : TIMESTAMP = now()
+    * rows_in_file : INT = 0
+    * inserted : INT = 0
+    * updated : INT = 0
+    * unchanged : INT = 0
+    * amended : INT = 0
+    * refused : INT = 0
+    * error_rows : INT = 0
+    * status : TEXT
+    message : TEXT
+    * test_mode : BOOLEAN = false
+}
+
+entity "examination_audit_logs" as audit {
+    * audit_id : UUID <<PK>>
+    --
+    exam_id : UUID
+    * accession : TEXT
+    * action : TEXT
+    * source : TEXT
+    changes : JSONB
+    batch_id : UUID <<FK>>
+    * actor_user_id : TEXT
+    * actor_username : TEXT
+    * test_mode : BOOLEAN = false
+    * created_at : TIMESTAMP = now()
+}
+
+' ============================================================================
+' RELATIONSHIPS & CARDINALITIES
+' ============================================================================
+
+modalities ||--o{ examinations : "categorizes (1:N)"
+statuses ||--o{ examinations : "tracks_lifecycle (1:N)"
+modalities ||--o{ sla : "defines_targets (1:N)"
+examinations ||--o| reports : "produces (1:0..1)"
+radiologists |o--o{ reports : "signs (0..1:N)"
+batches |o--o{ audit : "groups_changes_of_an_upload (0..1:N)"
+' References by value (no foreign key on purpose: the logs must outlive what they describe).
+examinations .. audit : "accession / exam_id\n(no foreign key)"
+users .. audit : "made by\n(no FK)"
+users .. batches : "uploaded by\n(no FK)"
+
+note right of reports
+  TAT = report_signed_at − exam_completed_at (minutes),
+  always from the FIRST sign-off. A later sign-off time from
+  an amendment is kept in last_amended_at.
+end note
+
+note right of batches
+  One row per upload attempt.
+  mode: append (Add or update) | test (Load as test data)
+  status: SUCCESS | FAILED | ROLLED_BACK (undone later)
+end note
+
+note bottom of audit
+  One row per change to an examination, with before -> after
+  values in changes ({ field: [before, after] }).
+  action: CREATE, UPDATE, SIGN_OFF, CANCEL, DELETE, IMPORT_INSERT,
+  IMPORT_UPDATE, AMEND, AMEND_SKIPPED, REFUSED_SIGNED_OFF,
+  REFUSED_CANCELLED, RADIOLOGIST_ADDED, ROLLBACK_REMOVE, ROLLBACK_RESTORE
+  source: MANUAL | IMPORT | SIMULATOR | ROLLBACK | RIS_SYNC (planned)
+  exam_id has no foreign key on purpose: entries survive deletes and the test-data switch.
+end note
+
+note right of users
+  Staff sign-in accounts (role = RADIOLOGIST, RESIDENT or ADMIN).
+  assigned_modalities: modality codes; the first one is the
+  dashboard's starting filter. Not linked to radiologists,
+  and never used to rank individual doctors.
+end note
+
+note right of settings
+  Administrator settings, e.g.
+  amendment_window_days = 7
+end note
+
+note bottom of examinations
+  While test data is loaded, real rows are kept in
+  examinations_backup and radiology_reports_backup
+  (same columns), and restored when test mode ends.
+end note
+
+@enduml
