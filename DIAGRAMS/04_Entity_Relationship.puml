@@ -173,10 +173,19 @@ modalities ||--o{ sla : "defines_targets (1:N)"
 examinations ||--o| reports : "produces (1:0..1)"
 radiologists |o--o{ reports : "signs (0..1:N)"
 batches |o--o{ audit : "groups_changes_of_an_upload (0..1:N)"
-' References by value (no foreign key on purpose: the logs must outlive what they describe).
-examinations .. audit : "accession / exam_id\n(no foreign key)"
-users .. audit : "made by\n(no FK)"
-users .. batches : "uploaded by\n(no FK)"
+' References by value (dashed): no foreign key on purpose, the logs must outlive what they describe.
+examinations |o..o{ audit : "has_history (0..1:N)"
+users ||..o{ audit : "makes (1:N)"
+users ||..o{ batches : "uploads (1:N)"
+users |o..o{ settings : "last_changed (0..1:N)"
+
+legend bottom right
+  **Solid line** = relationship enforced by a foreign key in the database.
+  **Dashed line** = logical relationship, not enforced by a foreign key (on purpose):
+  the log stores the user's or exam's ID and name as values, so the audit trail
+  and upload log survive when an exam is deleted or undone, or an account is
+  renamed or removed.
+endlegend
 
 note right of reports
   TAT = report_signed_at − exam_completed_at (minutes),
@@ -207,9 +216,9 @@ note right of users
   and never used to rank individual doctors.
 end note
 
-note right of settings
-  Administrator settings, e.g.
-  amendment_window_days = 7
+note bottom of settings
+  Administrator settings,
+  e.g. amendment_window_days = 7
 end note
 
 note bottom of examinations
