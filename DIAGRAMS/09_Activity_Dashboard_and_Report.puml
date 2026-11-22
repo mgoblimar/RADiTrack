@@ -27,13 +27,13 @@ repeat
   :Show instant estimate for the\nselected window;
   :Fetch exact figures from the server\n(same date rules as the estimate);
   fork
-    :Update KPI cards\n(scans, avg & median TAT,\nSLA %, backlog, vs prior period);
+    :Update KPI cards\n(scans, avg & median TAT,\nSLA %, backlog, vs prior period;\nbacklog by waiting time on hover:\n< 1 day … 30 days or more);
   fork again
     :Update TAT by modality\n(highlight selected modality;\nSLA targets when a category is chosen);
   fork again
     :Update 7-day table\n(7 days ending on window end);
   fork again
-    :Update 12-month trend\n(ending on window end month);
+    :Update 12-month trend\n(last 12 months, ending on the window's\nend month; running month shows "as of" date);
   end fork
 
   |Department Head / Staff|

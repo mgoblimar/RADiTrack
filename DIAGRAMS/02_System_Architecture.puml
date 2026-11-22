@@ -5,11 +5,11 @@ skinparam shadowing false
 skinparam roundcorner 8
 skinparam defaultFontName Arial
 
-title RADiTrack — System Architecture & Component Diagram (Zero-PII)
+title RADiTrack — System Architecture & Component Diagram (v0.2.2, Zero-PII)
 
 package "Data sources" as Sources {
     [Radiology Information System (RIS)\n<<pending hospital approval>>] as ExtRIS
-    [RIS Sync Agent\n(read-only view raditrack.vw_exams,\nevery 5 min — branch feat/ris-sync-agent)] as SyncAgent
+    [RIS Sync Agent <<planned>>\n(read-only view raditrack.vw_exams,\nevery 5 min)] as SyncAgent
     [Spreadsheet file\n(.xlsx / .csv)] as SpreadsheetFile
 }
 
@@ -23,7 +23,7 @@ package "RADiTrack web application (Next.js 16 on Vercel)" as AppLayer {
     [Sign-in check\n(proxy.ts, encrypted session cookie)] as Proxy
 
     package "Pages (React 19, Tailwind CSS 4)" as UI {
-        [Staff dashboard  /\n(Dashboard, Examinations, Configuration,\nRIS Simulator, Guide)] as StaffDashboard
+        [Staff dashboard  /\n(Dashboard, Examinations, Configuration\nincl. Accounts and Audit log, RIS Simulator, Guide)] as StaffDashboard
         [Patient TV  /patient] as PatientTv
         [PDF report  /report] as ReportPage
         [Sign in  /login\nChange password  /change-password] as AuthPages
@@ -31,15 +31,17 @@ package "RADiTrack web application (Next.js 16 on Vercel)" as AppLayer {
 
     package "Server actions (app/actions)" as Actions {
         [dashboard · analytics\n(KPIs, TAT by modality,\n7-day table, 12-month trend)] as Analytics
-        [examinations\n(log, sign off, edit, cancel,\ndelete, search, CSV export)] as ExamActions
-        [dataset\n(import preview & commit,\ntest data load & restore)] as DatasetActions
-        [configurations · accounts · auth\n(SLA targets, rooms, users, sign-in)] as ConfigActions
+        [examinations\n(log, sign off, edit, cancel, delete,\nsearch, CSV export; signed-off exams locked)] as ExamActions
+        [dataset\n(import preview & commit: add or update,\namendments, radiologists; test data\nload & restore)] as DatasetActions
+        [audit-log\n(audit trail & upload log lists,\nundo upload)] as AuditActions
+        [configurations · accounts · auth\n(SLA targets, amendment window,\nrooms, users, sign-in)] as ConfigActions
         [patient\n(today's public counts)] as PatientActions
         [simulator\n(RIS Simulator scenarios)] as SimulatorActions
     }
 
     package "Shared logic (lib)" as Lib {
-        [Spreadsheet reader & import rules\n(spreadsheet-rows, exam-import)] as ImportLib
+        [Spreadsheet reader & import rules\n(spreadsheet-rows, exam-import, import-plan,\nimport-apply, radiologists)] as ImportLib
+        [Audit trail & undo rules\n(audit, rollback-plan, import-rollback)] as AuditLib
         [Date windows in Manila time\n(kpi-range, app-time-zone)] as TimeLib
         [Prisma 7 client\n(lib/prisma.ts)] as PrismaClient
     }
@@ -54,6 +56,9 @@ package "Data layer (Supabase)" as DataLayer {
         [sla_configurations] as TblSla
         [radiologists] as TblStaff
         [user_accounts] as TblUsers
+        [app_settings] as TblSettings
+        [import_batches\n(upload log)] as TblBatches
+        [examination_audit_logs\n(audit trail)] as TblAudit
         [examinations_backup ·\nradiology_reports_backup\n(only while test data is loaded)] as TblBackup
     }
 }
@@ -75,6 +80,7 @@ Proxy --> AuthPages
 StaffDashboard --> Analytics : filters (time window, modality, category)
 StaffDashboard --> ExamActions
 StaffDashboard --> DatasetActions
+StaffDashboard --> AuditActions
 StaffDashboard --> ConfigActions
 StaffDashboard --> SimulatorActions
 ReportPage --> Analytics
@@ -82,12 +88,16 @@ AuthPages --> ConfigActions
 PatientTv --> PatientActions
 
 DatasetActions --> ImportLib
+DatasetActions --> AuditLib
+ExamActions --> AuditLib
+AuditActions --> AuditLib
 Analytics --> TimeLib
 PatientActions --> TimeLib
 
 Analytics --> PrismaClient
 ExamActions --> PrismaClient
 DatasetActions --> PrismaClient
+AuditActions --> PrismaClient
 ConfigActions --> PrismaClient
 PatientActions --> PrismaClient
 SimulatorActions --> PrismaClient
@@ -97,6 +107,8 @@ PrismaClient --> Database : SQL queries & transactions
 note bottom of Database
   No patient names, hospital numbers or images are stored.
   Each exam is identified only by its accession number.
+  Every change to an exam is written to the audit trail
+  in the same transaction as the change itself.
 end note
 
 note right of StaffDashboard

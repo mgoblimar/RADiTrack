@@ -1,4 +1,4 @@
-@startuml raditrack_data_flow
+@startuml raditrack_sequence_data_flow
 !theme plain
 autonumber
 skinparam responseMessageBelowArrow true
@@ -7,7 +7,7 @@ skinparam defaultFontName Arial
 skinparam shadowing false
 skinparam roundcorner 8
 
-title RADiTrack — Data Flow & TAT Calculation (Zero-PII)
+title RADiTrack — Sequence Diagram: Data Flow & TAT Calculation (Zero-PII)
 
 actor "Administrator\n(prototype data entry)" as Admin
 actor "Radiologist /\nResident" as Doctor
@@ -30,8 +30,9 @@ end note
 Admin -> Intake: Log completed exam\n(accession no., modality, patient category)\nor upload an .xlsx / .csv file
 Intake -> Server: createExaminationAction (T1 = time logged)\nor import: previewExamImportAction, then commitExamImportAction
 activate Server
-Server -> Server: Import only: validate every row\n(known modality & category, times in order,\nnot in the future, accession not already used)
-Server -> DB: INSERT examinations\n(status EXAM_COMPLETED, exam_completed_at = T1;\nimported signed exams also get their report)
+Server -> Server: Import only: validate every row\n(row 1 = headers, ≤ 1 MB, known modality & category,\nradiologist, times in order, not in the future)\nand plan each row against stored exams by accession:\nnew / update / unchanged / amendment / refused
+Server -> DB: In one transaction (imports run one at a time):\nINSERT new examinations (status EXAM_COMPLETED,\nexam_completed_at = T1; signed rows also get their report),\nUPDATE unsigned exams, apply confirmed amendments\n(TAT stays on the first sign-off)
+Server -> DB: Same transaction: INSERT import_batches (upload log)\nand examination_audit_logs (one entry per change,\nbefore → after values)
 DB --> Server: Saved
 Server --> Intake: Done
 deactivate Server
@@ -48,11 +49,16 @@ Server --> PublicUI: Today's counts (no patient details)
 Doctor -> StaffUI: Examinations → Backlog → Sign off
 StaffUI -> Server: signOffReportAction(examId)
 activate Server
-Server -> DB: Read exam + SLA targets for its modality
-DB --> Server: exam_completed_at (T1), targets
-Server -> Server: T2 = now\nTAT = T2 − T1 (minutes)\nbreach = TAT > target for the exam's\nmodality + patient category
-Server -> DB: In one transaction:\nUPSERT radiology_reports (report_signed_at = T2,\ntat_exam_to_sign_minutes, is_sla_breached)\nUPDATE examinations (status COMPLETED_SIGNED_OFF)
-DB --> Server: Saved
+Server -> DB: Read exam, its report + SLA targets for its modality
+DB --> Server: exam_completed_at (T1), report, targets
+alt already signed off
+  Server -> DB: INSERT examination_audit_logs\n(REFUSED_SIGNED_OFF); nothing else changes
+  Server --> StaffUI: "This exam is already signed off"
+else not signed off yet
+  Server -> Server: T2 = now\nTAT = T2 − T1 (minutes)\nbreach = TAT > target for the exam's\nmodality + patient category
+  Server -> DB: In one transaction:\nsave radiology_reports (report_signed_at = T2,\ntat_exam_to_sign_minutes, is_sla_breached),\nUPDATE examinations (status COMPLETED_SIGNED_OFF),\nINSERT examination_audit_logs (SIGN_OFF)
+  DB --> Server: Saved
+end
 Server --> StaffUI: Done (page revalidated)
 deactivate Server
 
@@ -69,6 +75,8 @@ Server --> StaffUI: KPI cards, TAT by modality,\n7-day table, 12-month trend
 note right of StaffUI
   The PDF report (/report) calls the same
   functions, so its numbers match the screen.
+  All date windows use Manila time,
+  whatever the device's time zone.
 end note
 
 @enduml

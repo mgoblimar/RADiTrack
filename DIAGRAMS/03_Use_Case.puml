@@ -13,16 +13,16 @@ skinparam usecase {
     BorderColor #334155
 }
 
-title RADiTrack — Use Case Diagram (Zero-PII Radiology Turnaround Time Tracking)
+title RADiTrack — Use Case Diagram (v0.2.2)
 
 ' ==============================================================================
-' PRIMARY ACTORS (left) — declared in the same order as their packages
+' PRIMARY ACTORS (left)
 ' ==============================================================================
 
 actor "Radiologist / Resident\n(signed-in doctor)" as Doctor
 actor "RADiTrack\nAdministrator" as Admin
 actor "Hospital IT" as HospitalIT
-actor "RIS Sync Agent\n<<system>>" as SyncAgent
+actor "RIS Sync Agent\n<<system, planned>>" as SyncAgent
 actor "Patient / Public\n(Waiting Area)" as Public
 
 ' ==============================================================================
@@ -40,11 +40,12 @@ rectangle "RADiTrack" {
 
     package "Examination Workflow" {
         usecase "Log Completed Examination\n(prototype: RIS Simulator)" as UC_Log
-        usecase "Edit / Delete Examination" as UC_Edit
+        usecase "Edit / Cancel / Delete\nExamination (not signed off)" as UC_Edit
         usecase "Search & Filter Examinations" as UC_Search
-        usecase "View Reading Backlog\n(Waiting Time & Past-SLA Exams)" as UC_Backlog
+        usecase "View Reading Backlog\n(Filter by Waiting Time)" as UC_Backlog
         usecase "Sign Off Report" as UC_Sign
         usecase "Calculate TAT &\nSLA Breach" as UC_Tat
+        usecase "Record Change in\nAudit Trail" as UC_Audit
     }
 
     package "Monitoring & Analytics" {
@@ -52,24 +53,32 @@ rectangle "RADiTrack" {
         usecase "View TAT by Modality" as UC_ByModality
         usecase "View 7-Day TAT Table" as UC_SevenDay
         usecase "Compare Previous 7 Days" as UC_ComparePrev
-        usecase "View 12-Month Trend\n(Previous Month & Last Year)" as UC_Trend
+        usecase "View 12-Month Trend\n(Last 12 Months)" as UC_Trend
         usecase "Filter by Time Window,\nModality & Patient Category" as UC_Filter
         usecase "Generate PDF Report" as UC_Report
         usecase "Read RADiTrack Guide" as UC_Guide
     }
 
-    package "Configuration & Data Management" {
-        usecase "Manage SLA Targets" as UC_Sla
-        usecase "Manage Modality Rooms & Status" as UC_Rooms
-        usecase "Import Exams (.xlsx / .csv)" as UC_Import
+    package "Data Management" {
+        usecase "Import Exams (.xlsx / .csv)\n(Add or Update)" as UC_Import
+        usecase "Amend Signed-off Exam\n(within amendment window)" as UC_Amend
+        usecase "Add Unknown Radiologist" as UC_AddRad
+        usecase "Download Rejected Rows" as UC_Rejected
         usecase "Export Examinations (CSV)" as UC_Export
+        usecase "View Audit Log &\nUpload History" as UC_AuditLog
+        usecase "Undo an Upload" as UC_Undo
         usecase "Load Validation Test Dataset" as UC_LoadTest
         usecase "Back Up Real Data" as UC_Backup
-        usecase "Verify Calculations\n(Expected vs RADiTrack)" as UC_Verify
         usecase "Restore Real Data" as UC_Restore
     }
 
-    package "RIS Integration" {
+    package "Configuration" {
+        usecase "Manage SLA Targets" as UC_Sla
+        usecase "Set Amendment Window" as UC_Window
+        usecase "Manage Modality Rooms & Status" as UC_Rooms
+    }
+
+    package "RIS Integration (planned)" {
         usecase "Provide Read-Only RIS View\n& Login" as UC_View
         usecase "Sync Exams from RIS View\n(every 5 minutes)" as UC_Sync
     }
@@ -105,12 +114,14 @@ Doctor --> UC_Export
 Admin --> UC_Accounts
 Admin --> UC_Log
 Admin --> UC_Edit
-Admin --> UC_Sla
-Admin --> UC_Rooms
 Admin --> UC_Import
+Admin --> UC_AuditLog
+Admin --> UC_Undo
 Admin --> UC_LoadTest
-Admin --> UC_Verify
 Admin --> UC_Restore
+Admin --> UC_Sla
+Admin --> UC_Window
+Admin --> UC_Rooms
 
 HospitalIT --> UC_View
 SyncAgent --> UC_Sync
@@ -128,9 +139,20 @@ Doctor <|-- Admin
 
 UC_SignIn ..> UC_Default : <<include>>
 UC_Sign ..> UC_Tat : <<include>>
-UC_Sync ..> UC_Tat : <<include>>
 UC_Import ..> UC_Tat : <<include>>
+UC_Sync ..> UC_Tat : <<include>>
 UC_LoadTest ..> UC_Backup : <<include>>
+
+UC_Sign ..> UC_Audit : <<include>>
+UC_Edit ..> UC_Audit : <<include>>
+UC_Log ..> UC_Audit : <<include>>
+UC_Import ..> UC_Audit : <<include>>
+UC_Undo ..> UC_Audit : <<include>>
+
+UC_Amend ..> UC_Import : <<extend>>
+UC_AddRad ..> UC_Import : <<extend>>
+UC_Rejected ..> UC_Import : <<extend>>
+UC_Undo ..> UC_AuditLog : <<extend>>
 
 UC_Kpi ..> UC_Filter : <<include>>
 UC_ByModality ..> UC_Filter : <<include>>
@@ -141,12 +163,13 @@ UC_ComparePrev ..> UC_SevenDay : <<extend>>
 legend bottom
   **Sign In:** Radiologists and Residents have the same access. Their first assigned modality is the starting
   filter, and they can switch to any modality. Accounts never rank or score individual doctors.
-  **Calculate TAT & SLA Breach:** TAT = Report signed − Exam completed; a breach is TAT **>** the SLA target
-  for the exam's modality and patient category (exactly on target is within SLA).
-  **Sync Exams from RIS View:** reads only the read-only view //raditrack.vw_exams// (no patient names or IDs),
-  matches exams by accession number, and is skipped while test data is loaded.
-  **RIS Integration (planned):** the sync agent is on branch //feat/ris-sync-agent// and goes live only after the
-  hospital approves RIS access. Until then exams enter through Import Exams and the RIS Simulator.
+  **Calculate TAT & SLA Breach:** TAT = Report signed − Exam completed (first sign-off); a breach is TAT **>** the SLA
+  target for the exam's modality and patient category (exactly on target is within SLA).
+  **Signed-off exams are locked:** signing again, editing, cancelling or deleting is refused and recorded. They change
+  only through an import within the amendment window (default 7 days) that the administrator confirms.
+  **Undo an Upload:** whole upload only, within the amendment window, and only if none of its exams changed afterwards.
+  **RIS Integration (planned):** goes live only after the hospital approves RIS access. Until then exams enter
+  through Import Exams and the RIS Simulator.
 endlegend
 
 @enduml
