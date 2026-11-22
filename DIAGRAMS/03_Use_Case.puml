@@ -6,8 +6,9 @@ skinparam roundcorner 8
 skinparam defaultFontName Arial
 skinparam packageStyle rectangle
 skinparam actorStyle awesome
-skinparam nodesep 18
-skinparam ranksep 70
+skinparam nodesep 12
+skinparam ranksep 60
+skinparam ArrowColor #334155
 skinparam usecase {
     BackgroundColor #F8FAFC
     BorderColor #334155
@@ -16,81 +17,73 @@ skinparam usecase {
 title RADiTrack — Use Case Diagram (v0.2.2)
 
 ' ==============================================================================
-' PRIMARY ACTORS (left)
+' ACTORS (left), declared top to bottom in the same order as their use-case groups
 ' ==============================================================================
 
 actor "Radiologist / Resident\n(signed-in doctor)" as Doctor
 actor "RADiTrack\nAdministrator" as Admin
+actor "Patient / Public\n(waiting area)" as Public
 actor "Hospital IT" as HospitalIT
 actor "RIS Sync Agent\n<<system, planned>>" as SyncAgent
-actor "Patient / Public\n(Waiting Area)" as Public
-
-' ==============================================================================
-' SYSTEM BOUNDARY
-' ==============================================================================
 
 rectangle "RADiTrack" {
 
+    ' ---------------- Doctors (and administrators) ----------------
     package "Access" {
-        usecase "Sign In\n(username & password)" as UC_SignIn
+        usecase "Sign In" as UC_SignIn
         usecase "Open Dashboard on\nAssigned Modality" as UC_Default
         usecase "Change Password" as UC_Password
-        usecase "Manage Accounts &\nAssigned Modalities" as UC_Accounts
     }
 
-    package "Examination Workflow" {
-        usecase "Log Completed Examination\n(prototype: RIS Simulator)" as UC_Log
-        usecase "Edit / Cancel / Delete\nExamination (not signed off)" as UC_Edit
+    package "Reading & Sign-off" {
+        usecase "View Reading Backlog\n(filter by waiting time)" as UC_Backlog
         usecase "Search & Filter Examinations" as UC_Search
-        usecase "View Reading Backlog\n(Filter by Waiting Time)" as UC_Backlog
         usecase "Sign Off Report" as UC_Sign
         usecase "Calculate TAT &\nSLA Breach" as UC_Tat
-        usecase "Record Change in\nAudit Trail" as UC_Audit
     }
 
-    package "Monitoring & Analytics" {
-        usecase "View Dashboard KPIs\n(Scans, Avg TAT, SLA %, Backlog)" as UC_Kpi
+    package "Monitoring & Reports" {
+        usecase "View Dashboard KPIs" as UC_Kpi
         usecase "View TAT by Modality" as UC_ByModality
         usecase "View 7-Day TAT Table" as UC_SevenDay
         usecase "Compare Previous 7 Days" as UC_ComparePrev
-        usecase "View 12-Month Trend\n(Last 12 Months)" as UC_Trend
-        usecase "Filter by Time Window,\nModality & Patient Category" as UC_Filter
+        usecase "View 12-Month Trend" as UC_Trend
+        usecase "Filter by Time Window,\nModality & Category" as UC_Filter
         usecase "Generate PDF Report" as UC_Report
+        usecase "Export Examinations (CSV)" as UC_Export
         usecase "Read RADiTrack Guide" as UC_Guide
     }
 
-    package "Data Management" {
-        usecase "Import Exams (.xlsx / .csv)\n(Add or Update)" as UC_Import
+    ' ---------------- Administrator only ----------------
+    package "Administration: Examinations & Data" {
+        usecase "Log Completed Examination\n(prototype: RIS Simulator)" as UC_Log
+        usecase "Edit / Cancel / Delete Examination\n(not signed off)" as UC_Edit
+        usecase "Import Exams (.xlsx / .csv)" as UC_Import
         usecase "Amend Signed-off Exam\n(within amendment window)" as UC_Amend
         usecase "Add Unknown Radiologist" as UC_AddRad
         usecase "Download Rejected Rows" as UC_Rejected
-        usecase "Export Examinations (CSV)" as UC_Export
         usecase "View Audit Log &\nUpload History" as UC_AuditLog
         usecase "Undo an Upload" as UC_Undo
-        usecase "Load Validation Test Dataset" as UC_LoadTest
-        usecase "Back Up Real Data" as UC_Backup
-        usecase "Restore Real Data" as UC_Restore
+        usecase "Load Test Dataset /\nRestore Real Data" as UC_TestData
     }
 
-    package "Configuration" {
+    package "Administration: Configuration" {
+        usecase "Manage Accounts &\nAssigned Modalities" as UC_Accounts
         usecase "Manage SLA Targets" as UC_Sla
         usecase "Set Amendment Window" as UC_Window
-        usecase "Manage Modality Rooms & Status" as UC_Rooms
+        usecase "Manage Modality Rooms" as UC_Rooms
+    }
+
+    ' ---------------- Public and RIS ----------------
+    package "Public Display" {
+        usecase "View Live Queue Status\n(Patient TV, no PII)" as UC_Tv
     }
 
     package "RIS Integration (planned)" {
-        usecase "Provide Read-Only RIS View\n& Login" as UC_View
-        usecase "Sync Exams from RIS View\n(every 5 minutes)" as UC_Sync
-    }
-
-    package "Public Display" {
-        usecase "View Live Queue Status\n(Patient TV, No PII)" as UC_Tv
+        usecase "Provide Read-Only\nRIS View & Login" as UC_View
+        usecase "Sync Exams from RIS\n(every 5 minutes)" as UC_Sync
     }
 }
-
-' ==============================================================================
-' SECONDARY ACTOR (right)
-' ==============================================================================
 
 actor "Radiology Information\nSystem (RIS)\n<<system>>" as RIS
 
@@ -101,75 +94,65 @@ actor "Radiology Information\nSystem (RIS)\n<<system>>" as RIS
 Doctor --> UC_SignIn
 Doctor --> UC_Password
 Doctor --> UC_Backlog
-Doctor --> UC_Sign
 Doctor --> UC_Search
+Doctor --> UC_Sign
 Doctor --> UC_Kpi
 Doctor --> UC_ByModality
 Doctor --> UC_SevenDay
 Doctor --> UC_Trend
 Doctor --> UC_Report
-Doctor --> UC_Guide
 Doctor --> UC_Export
-
-Admin --> UC_Accounts
-Admin --> UC_Log
-Admin --> UC_Edit
-Admin --> UC_Import
-Admin --> UC_AuditLog
-Admin --> UC_Undo
-Admin --> UC_LoadTest
-Admin --> UC_Restore
-Admin --> UC_Sla
-Admin --> UC_Window
-Admin --> UC_Rooms
-
-HospitalIT --> UC_View
-SyncAgent --> UC_Sync
-Public --> UC_Tv
-
-UC_View --> RIS
-UC_Sync --> RIS
+Doctor --> UC_Guide
 
 ' An administrator can also do everything a doctor can do
 Doctor <|-- Admin
 
+Admin --> UC_Log
+Admin --> UC_Edit
+Admin --> UC_Import
+Admin --> UC_AuditLog
+Admin --> UC_TestData
+Admin --> UC_Accounts
+Admin --> UC_Sla
+Admin --> UC_Window
+Admin --> UC_Rooms
+
+Public --> UC_Tv
+HospitalIT --> UC_View
+SyncAgent --> UC_Sync
+UC_View --> RIS
+UC_Sync --> RIS
+
 ' ==============================================================================
-' INCLUDE / EXTEND RELATIONSHIPS
+' INCLUDE / EXTEND (kept inside their own group where possible)
 ' ==============================================================================
 
 UC_SignIn ..> UC_Default : <<include>>
 UC_Sign ..> UC_Tat : <<include>>
-UC_Import ..> UC_Tat : <<include>>
-UC_Sync ..> UC_Tat : <<include>>
-UC_LoadTest ..> UC_Backup : <<include>>
-
-UC_Sign ..> UC_Audit : <<include>>
-UC_Edit ..> UC_Audit : <<include>>
-UC_Log ..> UC_Audit : <<include>>
-UC_Import ..> UC_Audit : <<include>>
-UC_Undo ..> UC_Audit : <<include>>
-
-UC_Amend ..> UC_Import : <<extend>>
-UC_AddRad ..> UC_Import : <<extend>>
-UC_Rejected ..> UC_Import : <<extend>>
-UC_Undo ..> UC_AuditLog : <<extend>>
 
 UC_Kpi ..> UC_Filter : <<include>>
 UC_ByModality ..> UC_Filter : <<include>>
 UC_SevenDay ..> UC_Filter : <<include>>
 UC_Trend ..> UC_Filter : <<include>>
-UC_ComparePrev ..> UC_SevenDay : <<extend>>
+' Extend arrows are written target-first (<..) so the main use case stays next to its actor
+' and the optional ones sit to its right; the arrowheads still point at the main use case.
+UC_SevenDay <.. UC_ComparePrev : <<extend>>
+
+UC_Import <.. UC_Amend : <<extend>>
+UC_Import <.. UC_AddRad : <<extend>>
+UC_Import <.. UC_Rejected : <<extend>>
+UC_AuditLog <.. UC_Undo : <<extend>>
 
 legend bottom
-  **Sign In:** Radiologists and Residents have the same access. Their first assigned modality is the starting
-  filter, and they can switch to any modality. Accounts never rank or score individual doctors.
-  **Calculate TAT & SLA Breach:** TAT = Report signed − Exam completed (first sign-off); a breach is TAT **>** the SLA
-  target for the exam's modality and patient category (exactly on target is within SLA).
-  **Signed-off exams are locked:** signing again, editing, cancelling or deleting is refused and recorded. They change
-  only through an import within the amendment window (default 7 days) that the administrator confirms.
-  **Undo an Upload:** whole upload only, within the amendment window, and only if none of its exams changed afterwards.
-  **RIS Integration (planned):** goes live only after the hospital approves RIS access. Until then exams enter
-  through Import Exams and the RIS Simulator.
+  **An administrator can do everything a doctor can** (the hollow arrow), plus the Administration use cases.
+  **Calculate TAT & SLA Breach:** TAT = Report signed − Exam completed (first sign-off). A breach is TAT **>** the SLA target
+  for the exam's modality and patient category. It runs on every sign-off: on screen, by import and by RIS sync.
+  **Audit trail:** every change to an examination (log, edit, cancel, delete, sign-off, import, amendment, undo)
+  is recorded with who, when and the values before and after. Refused attempts are recorded too.
+  **Signed-off exams are locked:** they change only through an import within the amendment window (default 7 days)
+  that the administrator confirms. **Undo an Upload:** whole upload only, within the amendment window,
+  and only if none of its exams changed afterwards.
+  **RIS Integration (planned):** goes live only after the hospital approves RIS access.
 endlegend
 
 @enduml
