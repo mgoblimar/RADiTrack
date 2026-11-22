@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FlaskConical } from "lucide-react";
 
 /** Shown on every staff screen while the validation dataset replaces real data. */
-export function TestModeBanner({ backupCount }: { backupCount: number }) {
+export function TestModeBanner({ backupCount, activeCount }: { backupCount: number; activeCount: number }) {
   return (
     <div
       role="status"
@@ -10,7 +10,7 @@ export function TestModeBanner({ backupCount }: { backupCount: number }) {
     >
       <FlaskConical className="h-4 w-4 shrink-0 text-amber-700" />
       <span>
-        TEST DATA ACTIVE: these figures come from the 100-exam validation dataset, not real hospital records
+        TEST DATA ACTIVE: these figures come from {activeCount} test exam{activeCount === 1 ? "" : "s"}, not real hospital records
         ({backupCount} real exams are safely backed up).
       </span>
       <Link href="/simulator" className="underline underline-offset-2 hover:text-amber-800">

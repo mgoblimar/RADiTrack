@@ -1,5 +1,6 @@
 "use client";
 
+import { manilaIsoDate } from "@/lib/app-time-zone";
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { exportExaminationsCSVAction } from "@/app/actions";
@@ -25,9 +26,7 @@ export function ExportCsvButton() {
 
       link.setAttribute(
         "download",
-        `RADiTrack_Export_${new Date()
-          .toISOString()
-          .split("T")[0]}.csv`,
+        `RADiTrack_Export_${manilaIsoDate()}.csv`,
       );
 
       document.body.appendChild(link);

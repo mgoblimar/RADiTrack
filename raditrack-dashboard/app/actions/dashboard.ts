@@ -11,6 +11,7 @@ import {
 } from "@/lib/enums";
 import { calculatedMedian } from "./utils";
 import { resolveKpiRange, type KpiPreset } from "@/lib/kpi-range";
+import { countBacklogAges, type BacklogAgeCounts } from "@/lib/backlog-age";
 import type { ModalityTatOverviewItem, ModalityTatStats } from "./analytics";
 
 // 3. QUERY: Dashboard Aggregations
@@ -95,6 +96,7 @@ export async function getDashboardData() {
     totalVolume: allExams.length,
     finalizedCount: allReports.length,
     pendingReadingCount: pendingReadingExams.length,
+    backlogAges: countBacklogAges(pendingReadingExams.map((e) => e.examCompletedAt!), new Date()),
     avgTatMinutes: avgTat,
     medianTatMinutes: medianTat,
     pctOnTime,
@@ -182,6 +184,18 @@ export interface FilteredKpiResult {
   modalityOverview: ModalityTatOverviewItem[];
   volumeByModality: Record<string, number>;
   pendingByModality: Record<string, number>;
+  /**
+   * Def-CAL-01: true while the chosen period is still running (This Week / This Month /
+   * This Year / Today...), so the screen can say "to date" and show `asOfDate`.
+   */
+  isPartialPeriod: boolean;
+  /** Manila date the partial period's figures run to, e.g. "Nov 19, 2026"; null for a finished period. */
+  asOfDate: string | null;
+  /**
+   * CAL-18: the reading backlog right now (completed, unsigned, not cancelled), by how
+   * long each exam has waited. Follows the modality and category filters; not the time window.
+   */
+  backlogAges: BacklogAgeCounts;
 }
 
 export async function fetchFilteredExecutiveKpiAction(
@@ -233,7 +247,7 @@ export async function fetchFilteredExecutiveKpiAction(
         },
         report: { is: null },
       },
-      select: { examId: true, studyDate: true, modalityCode: true, triageLevel: true },
+      select: { examId: true, studyDate: true, examCompletedAt: true, modalityCode: true, triageLevel: true },
     }),
     prisma.modality.findMany({
       include: {
@@ -440,6 +454,16 @@ export async function fetchFilteredExecutiveKpiAction(
     modalityOverview,
     volumeByModality,
     pendingByModality,
+    isPartialPeriod: !isAllTime && end.getTime() > now.getTime(),
+    asOfDate: !isAllTime && end.getTime() > now.getTime()
+      ? now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : null,
+    backlogAges: countBacklogAges(
+      allActivePendingExams
+        .filter((e) => (!targetModality || e.modalityCode === targetModality) && (!targetTriage || e.triageLevel === targetTriage))
+        .map((e) => e.examCompletedAt!),
+      now,
+    ),
   };
 }
 

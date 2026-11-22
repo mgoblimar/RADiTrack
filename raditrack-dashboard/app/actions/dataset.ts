@@ -18,6 +18,29 @@ import {
   type ImportRowError,
 } from "@/lib/exam-import";
 import { readSpreadsheetRows } from "@/lib/spreadsheet-rows";
+import { planImport, type ImportPlan, type PlanKind, type PlanRow } from "@/lib/import-plan";
+import {
+  applyAmendment,
+  applyUpdate,
+  loadExistingExams,
+  lockImports,
+  notAppliedEntry,
+  slaTargets,
+} from "@/lib/import-apply";
+import { getAmendmentWindowDays } from "@/lib/settings";
+import { normalizeRadiologistName, resolveRadiologists, type UnknownRadiologist } from "@/lib/radiologists";
+import { UserError, userMessage } from "@/lib/user-error";
+import {
+  actorOf,
+  diffFields,
+  isTestModeActive,
+  recordExamChanges,
+  recordImportBatch,
+  AUDITED_EXAM_FIELDS,
+  AUDITED_REPORT_FIELDS,
+  type Actor,
+  type ExamChange,
+} from "@/lib/audit";
 import { testDatasetRows } from "@/data/test-dataset";
 
 const EXAMS_TABLE = "examinations";
@@ -40,30 +63,58 @@ export interface ImportPreview {
   records: ExamImportRecord[];
   /** Rows that cannot be imported at all. */
   errors: ImportRowError[];
-  /** Accessions already in the database (blocks "add", irrelevant for test mode). */
-  conflicts: ImportRowError[];
+  /** What "Add or update" would do with each valid row (ignored by "Load as test data"). */
+  plan: {
+    counts: Record<PlanKind, number>;
+    /** Updates, amendments and refusals (first 200), for the preview list. */
+    rows: PlanRow[];
+    windowDays: number;
+  };
+  /** Radiologist names in the file that RADiTrack does not know, and id -> name for showing changes. */
+  radiologists: { unknown: UnknownRadiologist[]; names: Record<string, string> };
 }
 
 export type ImportMode = "append" | "test";
+
+/** One upload as shown on screen (upload history and the success message). */
+export interface ImportBatchSummary {
+  batchId: string;
+  fileName: string;
+  mode: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  rowsInFile: number;
+  inserted: number;
+  updated: number;
+  unchanged: number;
+  amended: number;
+  refused: number;
+  errorRows: number;
+  status: string;
+  message: string | null;
+  testMode: boolean;
+}
+
+/** What the browser knows about the file when the user presses Import. */
+export interface ImportFileInfo {
+  fileName: string;
+  rowsInFile: number;
+  errorRows: number;
+}
 
 interface ActionResult {
   success: boolean;
   count?: number;
   error?: string;
+  batch?: ImportBatchSummary;
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function backupExists(db: Tx | typeof prisma): Promise<boolean> {
-  const rows = await db.$queryRaw<{ exists: boolean }[]>`
-    SELECT EXISTS (
-      SELECT FROM information_schema.tables
-      WHERE table_schema = current_schema() AND table_name = ${EXAMS_BACKUP}
-    ) AS "exists"`;
-  return rows[0]?.exists ?? false;
-}
+/** Test mode is ON exactly while the backup table exists. */
+const backupExists = (db: Tx) => isTestModeActive(db);
 
 /** Copies backup rows into a live table using the columns both tables share. */
 async function restoreTable(tx: Tx, table: string, backup: string): Promise<void> {
@@ -79,8 +130,11 @@ async function restoreTable(tx: Tx, table: string, backup: string): Promise<void
   await tx.$executeRawUnsafe(`INSERT INTO "${table}" (${list}) SELECT ${list} FROM "${backup}"`);
 }
 
-/** Inserts exams (and signed reports) computing TAT and SLA breach exactly like sign-off does. */
-async function insertRecords(tx: Tx, records: ExamImportRecord[]): Promise<void> {
+/**
+ * Inserts exams (and signed reports) computing TAT and SLA breach exactly like sign-off does.
+ * Returns one IMPORT_INSERT audit entry per exam (the caller decides whether to record them).
+ */
+async function insertRecords(tx: Tx, records: ExamImportRecord[]): Promise<ExamChange[]> {
   const slaConfigs = await tx.slaConfiguration.findMany();
   const targetFor = (modality: string, triage: string) =>
     slaConfigs.find((s) => s.modalityCode === modality && s.triageLevel === triage)?.targetTatMinutes;
@@ -108,14 +162,31 @@ async function insertRecords(tx: Tx, records: ExamImportRecord[]): Promise<void>
       reportStatus: "FINALIZED",
       tatExamToSignMinutes: tatMinutes,
       isSlaBreached: target !== undefined ? tatMinutes > target : false,
+      radiologistId: r.radiologistId ?? null,
     }];
   });
   if (reports.length > 0) await tx.radiologyReport.createMany({ data: reports });
+
+  const reportByExam = new Map(reports.map((r) => [r.examId, r]));
+  return exams.map((exam) => ({
+    examId: exam.examId,
+    accession: exam.examinationIdentifier,
+    action: "IMPORT_INSERT" as const,
+    changes: {
+      ...diffFields(null, exam, AUDITED_EXAM_FIELDS),
+      ...diffFields(null, reportByExam.get(exam.examId) ?? null, AUDITED_REPORT_FIELDS),
+    },
+  }));
 }
 
-/** Backs up real data (first time only), then replaces all exams with `records`. */
-async function replaceWithTestData(records: ExamImportRecord[]): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+/**
+ * Backs up real data (first time only), then replaces all exams with `records`.
+ * Logged as one upload batch (mode "test"); test exams get no per-exam audit entries,
+ * since they are thrown away when the real data is restored.
+ */
+async function replaceWithTestData(records: ExamImportRecord[], actor: Actor, file: ImportFileInfo) {
+  return prisma.$transaction(async (tx) => {
+    await lockImports(tx);
     if (!(await backupExists(tx))) {
       await tx.$executeRawUnsafe(`CREATE TABLE "${EXAMS_BACKUP}" AS SELECT * FROM "${EXAMS_TABLE}"`);
       await tx.$executeRawUnsafe(`CREATE TABLE "${REPORTS_BACKUP}" AS SELECT * FROM "${REPORTS_TABLE}"`);
@@ -123,15 +194,76 @@ async function replaceWithTestData(records: ExamImportRecord[]): Promise<void> {
     await tx.radiologyReport.deleteMany();
     await tx.examination.deleteMany();
     await insertRecords(tx, records);
+    return recordImportBatch(tx, {
+      batchId: crypto.randomUUID(),
+      fileName: file.fileName,
+      mode: "test",
+      actor,
+      rowsInFile: file.rowsInFile,
+      inserted: records.length,
+      errorRows: file.errorRows,
+      status: "SUCCESS",
+      testMode: true,
+    });
   }, TX_OPTIONS);
+}
+
+type BatchRow = Awaited<ReturnType<typeof recordImportBatch>>;
+
+function toSummary(batch: BatchRow): ImportBatchSummary {
+  return {
+    batchId: batch.batchId,
+    fileName: batch.fileName,
+    mode: batch.mode,
+    uploadedAt: batch.uploadedAt.toISOString(),
+    uploadedBy: batch.uploadedByUsername,
+    rowsInFile: batch.rowsInFile,
+    inserted: batch.inserted,
+    updated: batch.updated,
+    unchanged: batch.unchanged,
+    amended: batch.amended,
+    refused: batch.refused,
+    errorRows: batch.errorRows,
+    status: batch.status,
+    message: batch.message,
+    testMode: batch.testMode,
+  };
+}
+
+/** Logs a failed upload attempt. Never throws: a logging problem must not hide the real error. */
+async function recordFailedBatch(actor: Actor, file: ImportFileInfo, mode: ImportMode, message: string) {
+  try {
+    await recordImportBatch(prisma, {
+      batchId: crypto.randomUUID(),
+      fileName: file.fileName,
+      mode,
+      actor,
+      rowsInFile: file.rowsInFile,
+      errorRows: file.errorRows,
+      status: "FAILED",
+      message,
+      testMode: await isTestModeActive(prisma),
+    });
+  } catch (logError) {
+    console.error("Could not log the failed upload:", logError);
+  }
 }
 
 function revalidateAll() {
   for (const path of ["/", "/simulator", "/patient", "/report"]) revalidatePath(path);
 }
 
-const errorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
+/** Two imports saved the same accession at once: the database refused the second one. */
+const isDuplicateAccession = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+
+/** Shows RADiTrack's own messages; database and library errors get `fallback` (no raw error text on screen). */
+const errorMessage = (error: unknown, fallback: string) => {
+  if (isDuplicateAccession(error)) {
+    return "Some of these accessions were saved by another import a moment ago. Nothing from this file was saved. Upload it again to see which rows already exist.";
+  }
+  return userMessage(error, fallback);
+};
 
 /** Re-validates records sent back from the client before writing them. */
 function revalidateRecords(records: ExamImportRecord[]): ImportRowError[] {
@@ -163,68 +295,173 @@ export async function getDatasetStatusAction(): Promise<DatasetStatus> {
 
 /** Reads and validates an uploaded .xlsx/.csv without saving anything. */
 export async function previewExamImportAction(formData: FormData): Promise<ImportPreview | { error: string }> {
+  // First line on purpose: server actions are reachable by direct POST, not only through the Import button.
+  await requireAdmin();
   const file = formData.get("file");
   if (!(file instanceof File)) return { error: "Choose a file to import." };
   try {
     const rows = await readSpreadsheetRows(file);
     if (rows.length === 0) return { error: "No exam rows found. The first row must be the column headers." };
-    const { records, errors } = parseExamRows(rows);
+    const parsed = parseExamRows(rows);
+    const radiologists = await resolveRadiologists(prisma, parsed.records);
+    const records = radiologists.records;
+    const errors = [...parsed.errors, ...radiologists.errors].sort((a, b) => a.rowNumber - b.rowNumber);
+    const existing = await loadExistingExams(prisma, records.map((r) => r.examinationIdentifier));
+    const windowDays = await getAmendmentWindowDays(prisma);
+    const plan = planImport(records, existing, new Date(), windowDays);
+    const listed = plan.rows.filter((r) => r.kind === "update" || r.kind === "amend" || r.kind === "refused").slice(0, 200);
 
-    const existing = await prisma.examination.findMany({
-      where: { examinationIdentifier: { in: records.map((r) => r.examinationIdentifier) } },
-      select: { examinationIdentifier: true },
-    });
-    const taken = new Set(existing.map((e) => e.examinationIdentifier));
-    const conflicts = records
-      .filter((r) => taken.has(r.examinationIdentifier))
-      .map((r) => ({ rowNumber: r.rowNumber, message: `Accession "${r.examinationIdentifier}" already exists.` }));
-
-    return { fileName: file.name, totalRows: rows.length, records, errors, conflicts };
+    return {
+      fileName: file.name,
+      totalRows: rows.length,
+      records,
+      errors,
+      plan: { counts: plan.counts, rows: listed, windowDays },
+      radiologists: { unknown: radiologists.unknown, names: radiologists.names },
+    };
   } catch (error) {
-  await requireAdmin();
-    return { error: errorMessage(error, "Could not read the file.") };
+    return { error: errorMessage(error, "Could not read the file. Check that it is a valid .xlsx or .csv file and try again.") };
   }
 }
 
+/**
+ * "Add or update": plans the file against the exams stored NOW (inside the transaction,
+ * after taking the import lock), then inserts new exams, updates unsigned ones,
+ * applies confirmed amendments, and logs everything else that was not applied.
+ */
+async function appendOrUpdate(records: ExamImportRecord[], actor: Actor, file: ImportFileInfo, applyAmendments: boolean) {
+  return prisma.$transaction(async (tx) => {
+    await lockImports(tx);
+    const testMode = await isTestModeActive(tx);
+    const existing = await loadExistingExams(tx, records.map((r) => r.examinationIdentifier));
+    const plan: ImportPlan = planImport(records, existing, new Date(), await getAmendmentWindowDays(tx));
+    const byAccession = new Map(records.map((r) => [r.examinationIdentifier, r]));
+    const rowsOf = (kind: PlanKind) => plan.rows.filter((r) => r.kind === kind);
+    const amendments = rowsOf("amend");
+    const skipped = applyAmendments ? 0 : amendments.length;
+
+    const batch = await recordImportBatch(tx, {
+      batchId: crypto.randomUUID(),
+      fileName: file.fileName,
+      mode: "append",
+      actor,
+      rowsInFile: file.rowsInFile,
+      inserted: plan.counts.insert,
+      updated: plan.counts.update,
+      unchanged: plan.counts.unchanged,
+      amended: applyAmendments ? amendments.length : 0,
+      refused: plan.counts.refused,
+      errorRows: file.errorRows,
+      status: "SUCCESS",
+      message: skipped > 0 ? `${skipped} amendment(s) to signed-off exams were not confirmed and were skipped.` : null,
+      testMode,
+    });
+
+    const entries: ExamChange[] = await insertRecords(tx, rowsOf("insert").map((r) => byAccession.get(r.accession)!));
+    const targetFor = await slaTargets(tx);
+    for (const row of rowsOf("update")) {
+      entries.push(await applyUpdate(tx, row, byAccession.get(row.accession)!, existing.get(row.accession)!, targetFor));
+    }
+    for (const row of amendments) {
+      const exam = existing.get(row.accession)!;
+      entries.push(applyAmendments
+        ? await applyAmendment(tx, row, byAccession.get(row.accession)!, exam, targetFor)
+        : notAppliedEntry(row, exam));
+    }
+    for (const row of rowsOf("refused")) entries.push(notAppliedEntry(row, existing.get(row.accession)!));
+
+    await recordExamChanges(tx, entries, { actor, source: "IMPORT", batchId: batch.batchId, testMode });
+    return batch;
+  }, TX_OPTIONS);
+}
+
 /** Saves previewed records: append to current data, or load them as test data (backing up real data). */
-export async function commitExamImportAction(records: ExamImportRecord[], mode: ImportMode): Promise<ActionResult> {
-  await requireAdmin();
+export async function commitExamImportAction(
+  records: ExamImportRecord[],
+  mode: ImportMode,
+  file: ImportFileInfo,
+  options: { applyAmendments?: boolean } = {},
+): Promise<ActionResult> {
+  const user = await requireAdmin();
+  const actor = actorOf(user);
   if (records.length === 0) return { success: false, error: "There are no valid rows to import." };
   const invalid = revalidateRecords(records);
   if (invalid.length > 0) return { success: false, error: invalid[0].message };
 
   try {
-    if (mode === "test") {
-      await replaceWithTestData(records);
-    } else {
-      await prisma.$transaction(async (tx) => {
-        const clash = await tx.examination.findFirst({
-          where: { examinationIdentifier: { in: records.map((r) => r.examinationIdentifier) } },
-          select: { examinationIdentifier: true },
-        });
-        if (clash) throw new Error(`Accession "${clash.examinationIdentifier}" already exists. Nothing was imported.`);
-        await insertRecords(tx, records);
-      }, TX_OPTIONS);
-    }
+    const matched = await resolveRadiologists(prisma, records.map((r) => ({ ...r, radiologistId: null })));
+    if (matched.errors.length > 0) throw new UserError(`Row ${matched.errors[0].rowNumber}: ${matched.errors[0].message}`);
+    const batch = mode === "test"
+      ? await replaceWithTestData(matched.records, actor, file)
+      : await appendOrUpdate(matched.records, actor, file, options.applyAmendments === true);
     revalidateAll();
-    return { success: true, count: records.length };
+    const summary = toSummary(batch);
+    const count = mode === "test" ? records.length : summary.inserted + summary.updated + summary.amended;
+    return { success: true, count, batch: summary };
   } catch (error) {
     console.error("Exam import failed:", error);
-    return { success: false, error: errorMessage(error, "Import failed. Nothing was saved.") };
+    const message = errorMessage(error, "Import failed. Nothing was saved.");
+    await recordFailedBatch(actor, file, mode, message);
+    return { success: false, error: message };
   }
+}
+
+/**
+ * "Add as new radiologist" from the import preview: creates the named radiologists
+ * (active, name exactly as written) and logs each one. Names already known are skipped.
+ */
+export async function addImportRadiologistsAction(names: string[]): Promise<{ success: boolean; added?: string[]; error?: string }> {
+  const user = await requireAdmin();
+  const wanted = new Map<string, string>();
+  for (const raw of Array.isArray(names) ? names.slice(0, 50) : []) {
+    const name = String(raw ?? "").trim().replace(/\s+/g, " ").slice(0, 150);
+    if (name) wanted.set(normalizeRadiologistName(name), name);
+  }
+  if (wanted.size === 0) return { success: false, error: "No radiologist name to add." };
+  try {
+    const added = await prisma.$transaction(async (tx) => {
+      const existing = new Set((await tx.radiologist.findMany({ select: { fullName: true } })).map((r) => normalizeRadiologistName(r.fullName)));
+      const toAdd = [...wanted.entries()].filter(([key]) => !existing.has(key)).map(([, name]) => name);
+      for (const fullName of toAdd) await tx.radiologist.create({ data: { fullName, isActive: true } });
+      await recordExamChanges(
+        tx,
+        toAdd.map((fullName) => ({ examId: null, accession: "", action: "RADIOLOGIST_ADDED" as const, changes: { fullName: [null, fullName] } })),
+        { actor: actorOf(user), source: "IMPORT", testMode: await isTestModeActive(tx) },
+      );
+      return toAdd;
+    });
+    revalidatePath("/");
+    return { success: true, added };
+  } catch (error) {
+    console.error("Adding radiologists failed:", error);
+    return { success: false, error: errorMessage(error, "Could not add the radiologists.") };
+  }
+}
+
+/** The most recent uploads, newest first (administrators only). */
+export async function listImportBatchesAction(limit = 20): Promise<ImportBatchSummary[]> {
+  await requireAdmin();
+  const take = Math.min(Math.max(Math.trunc(limit) || 20, 1), 100);
+  const batches = await prisma.importBatch.findMany({ orderBy: { uploadedAt: "desc" }, take });
+  return batches.map(toSummary);
 }
 
 /** Loads the bundled 100-exam validation dataset (dates relative to now) as test data. */
 export async function loadTestDatasetAction(): Promise<ActionResult> {
-  await requireAdmin();
-  const { records, errors } = parseExamRows(testDatasetRows());
+  const user = await requireAdmin();
+  const rows = testDatasetRows();
+  const { records, errors } = parseExamRows(rows);
   if (errors.length > 0) {
     return { success: false, error: `Test dataset row ${errors[0].rowNumber}: ${errors[0].message}` };
   }
   try {
-    await replaceWithTestData(records);
+    const batch = await replaceWithTestData(records, actorOf(user), {
+      fileName: "Built-in validation dataset",
+      rowsInFile: rows.length,
+      errorRows: 0,
+    });
     revalidateAll();
-    return { success: true, count: records.length };
+    return { success: true, count: records.length, batch: toSummary(batch) };
   } catch (error) {
     console.error("Loading test dataset failed:", error);
     return { success: false, error: errorMessage(error, "Failed to load the test dataset. Nothing changed.") };
@@ -236,7 +473,7 @@ export async function restoreRealDataAction(): Promise<ActionResult> {
   await requireAdmin();
   try {
     const count = await prisma.$transaction(async (tx) => {
-      if (!(await backupExists(tx))) throw new Error("Test mode is not active; there is no backup to restore.");
+      if (!(await backupExists(tx))) throw new UserError("Test mode is not active; there is no backup to restore.");
       await tx.radiologyReport.deleteMany();
       await tx.examination.deleteMany();
       await restoreTable(tx, EXAMS_TABLE, EXAMS_BACKUP);

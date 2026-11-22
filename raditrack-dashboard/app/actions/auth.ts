@@ -97,7 +97,11 @@ export async function changePasswordAction(
   formData: FormData,
 ): Promise<AuthFormState> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) {
+    // A server action may change cookies: clear a stale one, so /login does not bounce back.
+    await deleteSession();
+    redirect("/login");
+  }
 
   const currentPassword = String(formData.get("currentPassword") ?? "");
   const newPassword = String(formData.get("newPassword") ?? "");

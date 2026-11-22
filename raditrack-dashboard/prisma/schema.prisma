@@ -126,6 +126,8 @@ model RadiologyReport {
 
   tatExamToSignMinutes Float?  @map("tat_exam_to_sign_minutes")
   isSlaBreached        Boolean @default(false) @map("is_sla_breached")
+  // A later sign-off time from an amendment; TAT stays on reportSignedAt (the first sign-off).
+  lastAmendedAt        DateTime? @map("last_amended_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -136,4 +138,63 @@ model RadiologyReport {
   @@index([reportSignedAt])
   @@index([tatExamToSignMinutes, isSlaBreached])
   @@map("radiology_reports")
+}
+
+// One row per upload attempt (prisma/sql/002_audit_logs.sql).
+model ImportBatch {
+  batchId            String   @id @default(uuid()) @map("batch_id")
+  fileName           String   @map("file_name")
+  mode               String // append | test
+  uploadedByUserId   String   @map("uploaded_by_user_id")
+  uploadedByUsername String   @map("uploaded_by_username")
+  uploadedAt         DateTime @default(now()) @map("uploaded_at")
+  rowsInFile         Int      @default(0) @map("rows_in_file")
+  inserted           Int      @default(0)
+  updated            Int      @default(0)
+  unchanged          Int      @default(0)
+  amended            Int      @default(0)
+  refused            Int      @default(0)
+  errorRows          Int      @default(0) @map("error_rows")
+  status             String // SUCCESS | FAILED
+  message            String?
+  testMode           Boolean  @default(false) @map("test_mode")
+
+  auditLogs ExaminationAuditLog[]
+
+  @@index([uploadedAt])
+  @@map("import_batches")
+}
+
+// One row per change to an examination. examId has no relation on purpose:
+// entries must survive deletes and the test-data switch.
+model ExaminationAuditLog {
+  auditId       String   @id @default(uuid()) @map("audit_id")
+  examId        String?  @map("exam_id")
+  accession     String
+  action        String
+  source        String // MANUAL | IMPORT | SIMULATOR | RIS_SYNC
+  changes       Json?
+  batchId       String?  @map("batch_id")
+  actorUserId   String   @map("actor_user_id")
+  actorUsername String   @map("actor_username")
+  testMode      Boolean  @default(false) @map("test_mode")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  batch ImportBatch? @relation(fields: [batchId], references: [batchId], onDelete: SetNull)
+
+  @@index([accession])
+  @@index([examId])
+  @@index([batchId])
+  @@index([createdAt])
+  @@map("examination_audit_logs")
+}
+
+// Small key/value settings edited by administrators.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @default(now()) @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  @@map("app_settings")
 }

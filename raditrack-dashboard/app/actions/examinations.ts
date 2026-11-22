@@ -11,12 +11,55 @@ import {
   ExaminationStatusCode,
   ReportStatusCode,
 } from "@/lib/enums";
+import {
+  actorOf,
+  diffFields,
+  isTestModeActive,
+  recordExamChanges,
+  AUDITED_EXAM_FIELDS,
+  AUDITED_REPORT_FIELDS,
+} from "@/lib/audit";
+import type { CurrentUser } from "@/lib/auth/roles";
+import { csvLine } from "@/lib/csv";
+import { backlogAgeGroup, emptyBacklogAges, isBacklogAgeKey, type BacklogAgeCounts, type BacklogAgeKey } from "@/lib/backlog-age";
+
+/** Result of an action the screen reports back to the user. */
+export interface ExamActionResult {
+  success: boolean;
+  error?: string;
+}
+
+const SIGNED_OFF_LOCKED =
+  "This exam is already signed off. A signed-off exam cannot be signed again, cancelled or deleted; amendments go through a re-upload within the amendment window.";
+
+/** Refuses a change to a signed-off exam and records the attempt (outside the refused transaction). */
+async function refuseSignedOff(
+  user: CurrentUser,
+  exam: { examId: string; examinationIdentifier: string },
+  attempted: "SIGN_OFF" | "CANCEL" | "DELETE",
+): Promise<ExamActionResult> {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await recordExamChanges(
+        tx,
+        [{ examId: exam.examId, accession: exam.examinationIdentifier, action: "REFUSED_SIGNED_OFF", changes: { attempted: [null, attempted], reason: [null, "Already signed off."] } }],
+        { actor: actorOf(user), source: "MANUAL", testMode: await isTestModeActive(tx) },
+      );
+    });
+  } catch (logError) {
+    console.error("Could not log the refused change:", logError);
+  }
+  return { success: false, error: SIGNED_OFF_LOCKED };
+}
+
+const isDuplicateKey = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 
 // ============================================================================
 // 1. ACTION: Log New Examination (Manual Ingestion)
 // ============================================================================
 export async function createExaminationAction(formData: FormData) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const examinationIdentifier = formData.get("examinationIdentifier") as string;
   const modalityCode = (formData.get("modalityCode") as string) || ModalityCode.CT;
   const triageLevel = (formData.get("triageLevel") as string) || TriageLevel.OPD;
@@ -25,15 +68,22 @@ export async function createExaminationAction(formData: FormData) {
 
   const now = new Date();
 
-  await prisma.examination.create({
-    data: {
-      examinationIdentifier,
-      modalityCode,
-      statusCode,
-      triageLevel,
-      studyDate: now,
-      examCompletedAt: now,
-    },
+  await prisma.$transaction(async (tx) => {
+    const exam = await tx.examination.create({
+      data: {
+        examinationIdentifier,
+        modalityCode,
+        statusCode,
+        triageLevel,
+        studyDate: now,
+        examCompletedAt: now,
+      },
+    });
+    await recordExamChanges(
+      tx,
+      [{ examId: exam.examId, accession: exam.examinationIdentifier, action: "CREATE", changes: diffFields(null, exam, AUDITED_EXAM_FIELDS) }],
+      { actor: actorOf(user), source: "MANUAL", testMode: await isTestModeActive(tx) },
+    );
   });
 
   revalidatePath("/");
@@ -42,19 +92,20 @@ export async function createExaminationAction(formData: FormData) {
 // ============================================================================
 // 2. ACTION: Sign Off Report (TAT & SLA Engine)
 // ============================================================================
-export async function signOffReportAction(formData: FormData) {
-  await requireUser();
+export async function signOffReportAction(formData: FormData): Promise<ExamActionResult> {
+  const user = await requireUser();
   const examId = formData.get("examId") as string;
   const now = new Date();
 
   const exam = await prisma.examination.findUnique({
     where: { examId },
-    include: { modality: { include: { slaConfigs: true } } },
+    include: { modality: { include: { slaConfigs: true } }, report: true },
   });
 
   if (!exam || !exam.examCompletedAt) {
-    throw new Error("Exam not found or completion time missing.");
+    return { success: false, error: "Exam not found or its completion time is missing." };
   }
+  if (exam.report?.reportSignedAt) return refuseSignedOff(user, exam, "SIGN_OFF");
 
   // Turnaround Time in minutes: (ReportSigned - ExamCompleted)
   const diffMs = now.getTime() - new Date(exam.examCompletedAt).getTime();
@@ -68,30 +119,45 @@ export async function signOffReportAction(formData: FormData) {
     ? tatMinutes > targetRule.targetTatMinutes
     : false;
 
-  await prisma.$transaction([
-    prisma.radiologyReport.upsert({
-      where: { examId },
-      update: {
-        reportSignedAt: now,
-        tatExamToSignMinutes: tatMinutes,
-        isSlaBreached,
-        reportStatus: ReportStatusCode.FINALIZED,
-      },
-      create: {
-        examId,
-        reportSignedAt: now,
-        tatExamToSignMinutes: tatMinutes,
-        isSlaBreached,
-        reportStatus: ReportStatusCode.FINALIZED,
-      },
-    }),
-    prisma.examination.update({
-      where: { examId },
-      data: { statusCode: ExaminationStatusCode.COMPLETED_SIGNED_OFF },
-    }),
-  ]);
+  const signed = {
+    reportSignedAt: now,
+    tatExamToSignMinutes: tatMinutes,
+    isSlaBreached,
+    reportStatus: ReportStatusCode.FINALIZED,
+  };
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Only an unsigned report may be signed. If two people sign at the same moment,
+      // the second create hits the unique exam_id and is refused (caught below).
+      const updatedUnsigned = await tx.radiologyReport.updateMany({ where: { examId, reportSignedAt: null }, data: signed });
+      const report = updatedUnsigned.count > 0
+        ? await tx.radiologyReport.findUniqueOrThrow({ where: { examId } })
+        : await tx.radiologyReport.create({ data: { examId, ...signed } });
+      const updated = await tx.examination.update({
+        where: { examId },
+        data: { statusCode: ExaminationStatusCode.COMPLETED_SIGNED_OFF },
+      });
+      await recordExamChanges(
+        tx,
+        [{
+          examId,
+          accession: exam.examinationIdentifier,
+          action: "SIGN_OFF",
+          changes: {
+            ...diffFields(exam, updated, ["statusCode"]),
+            ...diffFields(exam.report, report, AUDITED_REPORT_FIELDS),
+          },
+        }],
+        { actor: actorOf(user), source: "MANUAL", testMode: await isTestModeActive(tx) },
+      );
+    });
+  } catch (error) {
+    if (isDuplicateKey(error)) return refuseSignedOff(user, exam, "SIGN_OFF");
+    throw error;
+  }
 
   revalidatePath("/");
+  return { success: true };
 }
 
 // ============================================================================
@@ -102,7 +168,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
   await requireUser();
   const exams = await prisma.examination.findMany({
     include: {
-      report: true,
+      report: { include: { radiologist: { select: { fullName: true } } } },
       modality: { include: { slaConfigs: true } },
     },
     orderBy: { studyDate: "desc" },
@@ -120,6 +186,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
     "Target_SLA_Minutes",
     "SLA_Breach_Status",
     "Workflow_Status",
+    "Radiologist",
   ];
   const rows = exams.map((e) => {
     const targetRule = e.modality.slaConfigs.find(
@@ -128,7 +195,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
     const tatMinutes = e.report?.tatExamToSignMinutes ?? "";
     const tatHours = tatMinutes !== "" ? (Number(tatMinutes) / 60).toFixed(2) : "";
     const isBreached = e.report ? (e.report.isSlaBreached ? "BREACHED" : "MET_SLA") : "PENDING";
-    return [
+    return csvLine([
       e.examinationIdentifier,
       e.modalityCode,
       e.triageLevel,
@@ -141,9 +208,10 @@ export async function exportExaminationsCSVAction(): Promise<string> {
       targetRule?.targetTatMinutes ?? "",
       isBreached,
       e.statusCode,
-    ].join(",");
+      e.report?.radiologist?.fullName ?? "",
+    ]);
   });
-  return [headers.join(","), ...rows].join("\n");
+  return [csvLine(headers), ...rows].join("\n");
 }
 
 // ============================================================================
@@ -155,7 +223,7 @@ export async function exportExaminationsCSVAction(): Promise<string> {
  * Corrects manual entry mistakes (Accession ID, Modality, Triage, Urgency, Notes)
  */
 export async function updateExaminationAction(formData: FormData) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const examId = formData.get("examId") as string;
   const examinationIdentifier = (formData.get("examinationIdentifier") as string)?.trim();
   const modalityCode = formData.get("modalityCode") as string;
@@ -180,14 +248,24 @@ export async function updateExaminationAction(formData: FormData) {
     throw new Error("Finalized examination parameters cannot be modified to preserve audit integrity.");
   }
 
-  await prisma.examination.update({
-    where: { examId },
-    data: {
-      examinationIdentifier,
-      modalityCode,
-      triageLevel,
-      notes,
-    },
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.examination.update({
+      where: { examId },
+      data: {
+        examinationIdentifier,
+        modalityCode,
+        triageLevel,
+        notes,
+      },
+    });
+    const changes = diffFields(existing, updated, AUDITED_EXAM_FIELDS);
+    if (Object.keys(changes).length > 0) {
+      await recordExamChanges(
+        tx,
+        [{ examId, accession: updated.examinationIdentifier, action: "UPDATE", changes }],
+        { actor: actorOf(user), source: "MANUAL", testMode: await isTestModeActive(tx) },
+      );
+    }
   });
 
   revalidatePath("/");
@@ -198,37 +276,74 @@ export async function updateExaminationAction(formData: FormData) {
  * 9B. ACTION: Soft Cancel Examination (Clinical Standard for Aborted Procedures)
  * Sets status to CANCELLED, removing from queue & TAT while preserving medical-legal logs
  */
-export async function cancelExaminationAction(formData: FormData) {
-  await requireAdmin();
+export async function cancelExaminationAction(formData: FormData): Promise<ExamActionResult> {
+  const user = await requireAdmin();
   const examId = formData.get("examId") as string;
-  if (!examId) throw new Error("Missing examId for cancellation.");
+  if (!examId) return { success: false, error: "Missing exam for cancellation." };
 
-  await prisma.examination.update({
-    where: { examId },
-    data: {
-      statusCode: ExaminationStatusCode.CANCELLED,
-    },
+  const current = await prisma.examination.findUnique({ where: { examId }, include: { report: true } });
+  if (!current) return { success: false, error: "Examination not found." };
+  if (current.report?.reportSignedAt) return refuseSignedOff(user, current, "CANCEL");
+
+  await prisma.$transaction(async (tx) => {
+    const before = await tx.examination.findUnique({ where: { examId } });
+    if (!before) throw new Error("Examination not found.");
+    const updated = await tx.examination.update({
+      where: { examId },
+      data: {
+        statusCode: ExaminationStatusCode.CANCELLED,
+      },
+    });
+    await recordExamChanges(
+      tx,
+      [{ examId, accession: updated.examinationIdentifier, action: "CANCEL", changes: diffFields(before, updated, ["statusCode"]) }],
+      { actor: actorOf(user), source: "MANUAL", testMode: await isTestModeActive(tx) },
+    );
   });
 
   revalidatePath("/");
   revalidatePath("/patient");
+  return { success: true };
 }
 
 /**
  * 9C. ACTION: Hard Delete Examination (Administrative Duplicate Cleanup)
  * Permanently removes mistaken double entries from database (cascades report)
  */
-export async function deleteExaminationAction(formData: FormData) {
-  await requireAdmin();
+export async function deleteExaminationAction(formData: FormData): Promise<ExamActionResult> {
+  const user = await requireAdmin();
   const examId = formData.get("examId") as string;
-  if (!examId) throw new Error("Missing examId for deletion.");
+  if (!examId) return { success: false, error: "Missing exam for deletion." };
 
-  await prisma.examination.delete({
-    where: { examId },
+  const current = await prisma.examination.findUnique({ where: { examId }, include: { report: true } });
+  if (!current) return { success: false, error: "Examination not found." };
+  if (current.report?.reportSignedAt) return refuseSignedOff(user, current, "DELETE");
+
+  await prisma.$transaction(async (tx) => {
+    const before = await tx.examination.findUnique({ where: { examId }, include: { report: true } });
+    if (!before) throw new Error("Examination not found.");
+    await tx.examination.delete({
+      where: { examId },
+    });
+    // The removed values are kept in the log, since the row itself is gone.
+    await recordExamChanges(
+      tx,
+      [{
+        examId,
+        accession: before.examinationIdentifier,
+        action: "DELETE",
+        changes: {
+          ...diffFields(before, null, AUDITED_EXAM_FIELDS),
+          ...diffFields(before.report, null, AUDITED_REPORT_FIELDS),
+        },
+      }],
+      { actor: actorOf(user), source: "MANUAL", testMode: await isTestModeActive(tx) },
+    );
   });
 
   revalidatePath("/");
   revalidatePath("/patient");
+  return { success: true };
 }
 
 // ============================================================================
@@ -247,6 +362,8 @@ export interface ExaminationFilterOptions {
   patientCategories?: string[];
   urgencyLevel?: string;
   searchTerm?: string;
+  /** CAL-18: only exams still waiting for a report, that have waited this long since completion. */
+  backlogAge?: BacklogAgeKey | "all";
 }
 
 export interface FilteredExaminationItem {
@@ -292,6 +409,8 @@ export interface FilteredExaminationsResult {
     totalBreached: number;
     /** Unsigned exams already waiting longer than their SLA target. */
     totalOverdue: number;
+    /** CAL-18: completed, unsigned exams by how long they have waited (as of now). */
+    backlogAges: BacklogAgeCounts;
   };
 }
 
@@ -408,6 +527,7 @@ export async function fetchFilteredExaminationsAction(
   let totalOverdue = 0;
   let totalFinalized = 0;
   let totalBacklog = 0;
+  const backlogAges = emptyBacklogAges();
 
   const items: FilteredExaminationItem[] = exams.map((e) => {
     const isFinalized = Boolean(e.report && e.report.reportSignedAt);
@@ -444,6 +564,7 @@ export async function fetchFilteredExaminationsAction(
           ((now.getTime() - new Date(e.examCompletedAt).getTime()) / (1000 * 60)).toFixed(1)
         );
         dwellHours = Number((dwellMinutes / 60).toFixed(1));
+        backlogAges[backlogAgeGroup(now.getTime() / 60_000 - new Date(e.examCompletedAt).getTime() / 60_000)]++;
         if (targetTat && dwellMinutes > targetTat) {
           isBreached = true;
           totalOverdue++;
@@ -495,12 +616,17 @@ export async function fetchFilteredExaminationsAction(
     };
   });
 
-  const visibleItems =
+  const byStatus =
     options.statusType === "backlog"
       ? items.filter((item) => !item.isFinalized)
       : options.statusType === "finalized"
         ? items.filter((item) => item.isFinalized)
         : items;
+  // The summary (and its age counts) ignores this filter, so every option keeps showing its count.
+  const ageFilter = isBacklogAgeKey(options.backlogAge) ? options.backlogAge : null;
+  const visibleItems = ageFilter
+    ? byStatus.filter((item) => !item.isFinalized && item.dwellMinutes !== null && backlogAgeGroup(item.dwellMinutes) === ageFilter)
+    : byStatus;
 
   const avgTatMinutes =
     tatList.length > 0
@@ -519,6 +645,7 @@ export async function fetchFilteredExaminationsAction(
       avgTatHours,
       totalBreached,
       totalOverdue,
+      backlogAges,
     },
   };
 }

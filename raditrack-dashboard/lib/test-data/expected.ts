@@ -177,6 +177,8 @@ export function expectedTwelveMonth(exams: RefExam[], now: Date, triage: string)
     const offset = idx - 11;
     const y = now.getFullYear();
     const m = now.getMonth() + offset;
+    const start = new Date(y, m, 1);
+    const end = new Date(y, m + 1, 0, 23, 59, 59, 999);
     const label = new Date(y, m, 1).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
     const current = monthStats(y, m);
     const byModality = Object.fromEntries(MODALITY_ORDER.map((code) => [code, {
@@ -184,6 +186,10 @@ export function expectedTwelveMonth(exams: RefExam[], now: Date, triage: string)
       previousMonth: monthStats(y, m - 1, code),
       priorYear: monthStats(y - 1, m, code),
     }]));
+    const isCurrentRunningMonth = now >= start && now <= end;
+    const asOfDate = isCurrentRunningMonth
+      ? now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : undefined;
     return {
       label,
       avgTatHours: current.avgTatHours,
@@ -192,6 +198,8 @@ export function expectedTwelveMonth(exams: RefExam[], now: Date, triage: string)
       previousMonthTotalFinalized: monthStats(y, m - 1).totalFinalized,
       priorYearAvgTatHours: monthStats(y - 1, m).avgTatHours,
       byModality,
+      isCurrentRunningMonth,
+      asOfDate,
     };
   });
 }
