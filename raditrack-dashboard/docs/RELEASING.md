@@ -36,7 +36,8 @@ Branch name prefixes: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`.
 
 1. **Check staging.** Open `main`'s Vercel preview, sign in, and click through the dashboard,
    Examinations, Generate report, Configurations and the Patient TV display.
-2. **Pick the version number** (see [Versions](#versions)).
+2. **Pick the version number** (see [Versions](#versions)) and set it in `package.json`
+   (`npm version 0.2.3 --no-git-tag-version`) on `main`. The RADiTrack Guide shows this number.
 3. **Open a release PR** from `main` into `production`, titled `Release v0.2.0`. In the
    description, list what changed for users (new features, fixes) in plain words.
 4. **Merge it.** Vercel deploys `production` to raditrack.vercel.app in a minute or two.

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FlaskConical } from "lucide-react";
 
-/** Shown on every staff screen while the validation dataset replaces real data. */
+/** Shown on the staff Dashboard while the validation dataset replaces real data. */
 export function TestModeBanner({ backupCount, activeCount }: { backupCount: number; activeCount: number }) {
   return (
     <div

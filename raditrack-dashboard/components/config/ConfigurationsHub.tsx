@@ -2,6 +2,7 @@
 
 import { AmendmentWindowSetting } from "@/components/config/AmendmentWindowSetting";
 import { RaditrackGuide } from "@/components/config/RaditrackGuide";
+import { APP_VERSION_LABEL } from "@/lib/version";
 import { useState, useTransition, useMemo } from "react";
 import {
   ShieldCheck,
@@ -482,8 +483,7 @@ export function ConfigurationsHub({
       phiZeroCompliance: true,
       dohAccreditation:
         "Tertiary Level III Hospital Center",
-      systemVersion:
-        "RADiTrack v1.4.0 (Build 2026)",
+      systemVersion: APP_VERSION_LABEL,
     };
 
   // =========================================================

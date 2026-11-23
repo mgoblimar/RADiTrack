@@ -1,0 +1,78 @@
+@startuml raditrack_system_architecture
+!theme plain
+top to bottom direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam packageStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 55
+skinparam ArrowColor #334155
+skinparam rectangle {
+    BackgroundColor #F8FAFC
+    BorderColor #334155
+}
+skinparam database {
+    BackgroundColor #F8FAFC
+    BorderColor #334155
+}
+
+title RADiTrack — System Architecture (v0.2.2, layered view)
+
+' ==============================================================================
+' LAYER 1 — WHO / WHAT SENDS DATA
+' ==============================================================================
+
+rectangle "**Users**\n\nStaff workstation\n(Radiologist, Resident, Administrator)\n\nWaiting-area TV\n(public, no sign-in)" as Users
+rectangle "**Data sources**\n\nSpreadsheet file (.xlsx / .csv)\n\nRadiology Information System (RIS)\n<<pending hospital approval>>" as Sources
+
+' ==============================================================================
+' LAYER 2 — THE WEB APPLICATION (Next.js 16 on Vercel)
+' ==============================================================================
+
+package "RADiTrack web application (Next.js 16 on Vercel)" {
+
+    rectangle "**1. Sign-in check**\nproxy.ts · encrypted session cookie\n(the public Patient TV page needs no sign-in)" as Proxy
+
+    rectangle "**2. Pages** (React 19, Tailwind CSS 4)\n\nDashboard · Examinations · Configuration\n(SLA, rooms, accounts, audit log) · RIS Simulator ·\nGuide · PDF report · Patient TV · Sign in" as Pages
+
+    rectangle "**3. Server actions** (app/actions)\n\ndashboard & analytics · examinations · dataset (import, test data) ·\naudit-log (audit trail, undo upload) · configurations & accounts ·\nsimulator · patient (public counts)" as Actions
+
+    rectangle "**4. Shared logic** (lib)\n\nimport rules (validate, plan, apply) · audit trail & undo rules ·\nTAT & SLA calculation · date windows in Manila time ·\nPrisma 7 database client" as Lib
+}
+
+' ==============================================================================
+' LAYER 3 — DATA
+' ==============================================================================
+
+database "**PostgreSQL on Supabase** (no patient-identifiable data)\n\nExam data: examinations · radiology_reports\nReference: modalities · examination_statuses · sla_configurations · radiologists\nAccounts & settings: user_accounts · app_settings\nLogs: import_batches (upload log) · examination_audit_logs (audit trail)" as DB
+
+rectangle "**RIS Sync Agent** <<planned>>\nreads a read-only RIS view every 5 min" as Sync
+
+' ==============================================================================
+' CONNECTIONS (top to bottom)
+' ==============================================================================
+
+Users --> Proxy : HTTPS
+Sources --> Pages : Import exams (administrator)
+Proxy --> Pages
+Pages --> Actions : requests (filters, sign-off, import…)
+Actions --> Lib
+Lib --> DB : SQL queries in transactions
+Sources ..> Sync : read-only (planned)
+Sync ..> DB : add / update exams (planned)
+
+note right of Actions
+  Every action checks the user's role on the server.
+  Every change to an exam is written to the audit
+  trail in the same transaction as the change.
+end note
+
+note right of Pages
+  Open pages refresh every 10 s, and at once
+  when another tab changes data.
+end note
+
+@enduml
