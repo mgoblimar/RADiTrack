@@ -10,6 +10,7 @@ import {
   sortByModalityOrder,
 } from "@/lib/enums";
 import { getAmendmentWindowDays, setAmendmentWindowDays, MAX_AMENDMENT_WINDOW_DAYS } from "@/lib/settings";
+import { APP_VERSION_LABEL } from "@/lib/version";
 
 // ============================================================================
 // CONFIGURATIONS & SLA BENCHMARKS SUITE
@@ -120,7 +121,7 @@ export async function getConfigurationsAction(): Promise<ConfigurationsData> {
       department: "Department of Radiology & Medical Imaging",
       phiZeroCompliance: true,
       dohAccreditation: "Tertiary Level III Hospital Center",
-      systemVersion: "RADiTrack v1.4.0 (Build 2026)",
+      systemVersion: APP_VERSION_LABEL,
     },
   };
 }

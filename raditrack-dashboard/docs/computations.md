@@ -70,7 +70,7 @@ average = 8,500 ÷ 4 = 2,125 min = 35.4 h; median = (1,500 + 2,000) ÷ 2 = 1,750
 
 ## 5. Date windows (time filters)
 
-The filter bar's time window decides which exams are counted, by **study date/time**. Every window also has a comparison ("prior") window of the same kind.
+The filter bar's time window decides which exams are counted, by **study date/time**. Every window also has a comparison ("prior") window of the same kind, used by the PDF report's executive summary.
 
 | Time window | Includes study times from … to … | Compared with |
 | --- | --- | --- |
@@ -97,7 +97,7 @@ Charts that need a fixed shape (the 7-day table and the 12-month trend) end on t
 | **SLA compliance** | (Finalized − Breached) ÷ Finalized × 100 for the window. |
 | **Reading backlog** | Exams in the window that are not yet signed. For *All time*: every completed, unsigned, non-cancelled exam. |
 
-**Change vs prior period:**
+**Change vs prior period** (shown in the PDF report's executive summary, not on the dashboard cards):
 
 $$\text{Change (\%)} = \frac{\text{current} - \text{prior}}{\text{prior}} \times 100$$
 
@@ -123,7 +123,7 @@ One row per day for the 7 days ending on the window's end date. Rolling = the 7 
 
 ### 6.4 12-month trend
 
-One point per calendar month (rolling 12 months ending on the window's end month, or a chosen calendar year). Each month counts finalized, non-cancelled exams whose study date falls in that month.
+One point per calendar month: the last 12 months ending on the window's end month (the default view), or a chosen calendar year. Each month counts finalized, non-cancelled exams whose study date falls in that month.
 
 - **Average TAT (month)** = average TAT of that month's finalized exams, in hours.
 - **Change vs previous month (%)** = (this month − previous month) ÷ previous month × 100.
@@ -170,4 +170,4 @@ RADiTrack ships with a 100-exam validation dataset (`data/test-dataset.ts`, also
 3. Run `npm run test-data:verify`. It recomputes every expected value independently and compares it with RADiTrack's own functions (KPI cards, TAT by modality, 7-day table, 12-month trend), writing PASS/FAIL per value into the *Verification* sheet of `docs/test-data/verification-<date>.xlsx`.
 4. RIS Simulator → **Restore real data**.
 
-While test data is loaded, a banner appears on every staff screen. Exams added by other users during that time are discarded when the real data is restored, so keep test sessions short.
+While test data is loaded, a banner appears on the staff Dashboard. Exams added by other users during that time are discarded when the real data is restored, so keep test sessions short.

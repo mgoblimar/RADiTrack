@@ -203,7 +203,7 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
     ["Examination identifiers", "Records use de-identified accession numbers.", "De-identified"],
     ["TAT timestamps", "Measured from exam completion (T₁) to report sign-off (T₂).", "T₁ → T₂"],
     ["Hospital", governance.hospitalName, governance.dohAccreditation],
-    ["Test and simulation data", "Kept separate from real data; a banner shows whenever test data is loaded.", "Isolated"],
+    ["Test and simulation data", "Kept separate from real data; a banner on the Dashboard shows whenever test data is loaded.", "Isolated"],
     ["System version", "", governance.systemVersion],
   ];
 
@@ -352,7 +352,7 @@ export function RaditrackGuide({ modalities, governance }: RaditrackGuideProps) 
             </div>
           </Section>
 
-          <Section id="guide-windows" index={6} title="Time windows" intro="The filter bar's time window decides which exams are counted, by study date/time. Each window is compared with the period just before it.">
+          <Section id="guide-windows" index={6} title="Time windows" intro="The filter bar's time window decides which exams are counted, by study date/time. The PDF report compares each window with the period just before it.">
             <div className={`${cardBase} hidden overflow-hidden sm:block`}>
               <table className="w-full text-left text-sm">
                 <thead className="bg-[#FBFCFE] text-xs font-extrabold uppercase tracking-wider text-slate-500">

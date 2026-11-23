@@ -41,11 +41,11 @@ export const PARTS: { icon: LucideIcon; title: string; summary: string; items: s
     summary: "The big picture for any period.",
     items: [
       "Filter bar: one time window, modality and patient category for every section below it.",
-      "KPI cards: total scans, average TAT (with median), SLA compliance and reading backlog, compared with the previous period.",
+      "KPI cards: total scans, average TAT (with median), SLA compliance and reading backlog. Hover a card for the split by modality or by time waiting.",
       "TAT by modality: average TAT per modality; pick a patient category to see its SLA targets (red = over target).",
       "7-day table: always the latest 7 days (today and the 6 days before), like Recent pulse. Exams per day, OPD/IN/ER split, signed, pending and average TAT. Switch between 'Last 7 days' and 'Mon–Sun week'; 'Compare previous 7 days' shows the 7 days before.",
-      "12-month trend: monthly average TAT. Opens on the current calendar year (January–December). 'Last 12 months' instead shows the month your date filter ends in plus the 11 months before it, so it crosses into the previous year. Hover a month for the previous month and the same month last year.",
-      "Generate report: a printable PDF for a chosen period, modality, category and sections.",
+      "12-month trend: monthly average TAT. Opens on 'Last 12 months': the month your date filter ends in plus the 11 months before it, so it can cross into the previous year. 'Calendar year' shows January–December of a chosen year. Hover a month for the previous month and the same month last year.",
+      "Generate report: a printable PDF for a chosen period, modality, category and sections. Its executive summary compares the period with the one before it.",
     ],
   },
   {
@@ -55,8 +55,8 @@ export const PARTS: { icon: LucideIcon; title: string; summary: string; items: s
     items: [
       "Backlog / Finalized / All tabs. All always equals Finalized + Backlog for the current filters.",
       "Search by accession number; filter by date, modality and patient category.",
-      "Sign off, edit or delete an exam from its row.",
-      "Import exams (.xlsx or .csv) with a preview first; Export CSV for audits.",
+      "Sign off an exam from its row. Administrators can also edit, cancel or delete an exam that is not signed yet.",
+      "Import exams (.xlsx or .csv, administrators) with a preview first; Export CSV for audits.",
     ],
   },
   {
@@ -66,7 +66,9 @@ export const PARTS: { icon: LucideIcon; title: string; summary: string; items: s
     items: [
       "SLA targets: maximum TAT per modality and patient category. Changes apply to reports signed afterwards.",
       "Modality rooms: room assignment and whether a modality is online or under maintenance.",
+      "Amendment window: how many days after sign-off a re-uploaded file may correct a signed-off exam, and how long an upload can be undone.",
       "Accounts (administrators): create sign-ins for radiologists and residents and assign their modalities. The first modality is where their dashboard starts.",
+      "Audit log (administrators): every change to an exam and every upload, with who made it; undo a recent upload from here.",
       "Doctors can read these settings; only administrators can change them.",
     ],
   },
